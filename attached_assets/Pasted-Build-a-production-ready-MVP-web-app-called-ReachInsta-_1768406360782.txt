@@ -1,0 +1,411 @@
+Build a production-ready MVP web app called “ReachInsta” (Instagram competitor intelligence for Reels). Generate the full codebase (frontend + backend + DB schema + background jobs), with clear setup instructions and sensible defaults. Do not leave placeholders except for secrets. Implement the complete workflow end-to-end.
+
+================================================================================
+1) PRODUCT GOAL
+================================================================================
+ReachInsta helps Instagram creators and agencies track competitors and discover viral Reels. Users can add up to N competitors (based on plan), fetch competitor Reels data for a selected time range (7/14/28 days), see dashboards and insights, and export CSV (Pro only). Data comes from Apify using TWO different actors:
+- Actor A: “Instagram Scraper” → Reel-level metrics (username, reel url, views, likes, comments, video duration, reel upload timestamp)
+- Actor B: “Instagram Followers Count Scraper” → username + followers count
+We must merge both outputs into final datasets for analytics + display.
+
+================================================================================
+2) TECH STACK (CHOOSE THIS EXACT STACK)
+================================================================================
+- Frontend: Next.js (App Router), TypeScript, TailwindCSS, shadcn/ui, Recharts
+- Backend: Next.js Route Handlers (API routes) + background worker in Node
+- Database/Auth: Supabase (Postgres + Auth)
+- Job queue: Use a Postgres-backed queue (simple “jobs” table + polling worker) to avoid external services.
+- File export: Server-generated CSV download
+- Deployment: Works on Replit; also deployable to Vercel (frontend) + Supabase (db).
+
+================================================================================
+3) AUTH + RBAC (IMPORTANT)
+================================================================================
+Single login page for everyone.
+- Role-based access: user vs admin
+- After login:
+  - role=admin → /admin
+  - role=user → /dashboard
+Enforce RBAC in:
+- Middleware (route protection)
+- API routes (authorization checks)
+Admin can assign plans and override limits from admin panel.
+
+================================================================================
+4) PRICING PLANS + LIMITS
+================================================================================
+Plans:
+- Free: max_competitors=5, time_range_max_days=7, monthly_fetch_limit=1, csv_export=false, analytics_level=basic
+- Plus ($49): max_competitors=50, time_range_max_days=28, monthly_fetch_limit=2, csv_export=false, analytics_level=advanced
+- Pro ($99): max_competitors=100, time_range_max_days=28, monthly_fetch_limit=4, csv_export=true, analytics_level=advanced
+
+Enforce:
+- competitor count cannot exceed max_competitors
+- fetch requests cannot exceed monthly_fetch_limit
+- time range must be within plan range
+- CSV export only for Pro (or admin)
+
+Reset fetch usage monthly (cron-like: on-demand check + monthly reset logic).
+
+================================================================================
+5) CORE USER FLOWS
+================================================================================
+A) Onboarding
+- Sign up / login
+- Land on dashboard
+- Empty state with instructions: add competitors to begin
+
+B) Competitor Management
+- Add competitor usernames one-by-one
+- Bulk add via:
+  - paste list in textarea
+  - upload .txt
+  - upload .csv (single column usernames)
+- Validate username format, remove duplicates, ignore blanks
+- Show remaining slots based on plan
+
+C) Fetch Data
+- User selects time range: 7 / 14 / 28 (only allowed by plan)
+- User clicks “Fetch Data”
+- System creates a job and shows a progress indicator
+- Worker runs:
+  1) Actor A Instagram Scraper for the list of competitors for that user
+  2) Parse results, dedupe usernames, then run Actor B Followers Count Scraper
+  3) Merge follower counts into competitor stats
+  4) Store raw JSON + normalized tables
+- Processing target: 3–5 minutes
+- Show job status in UI:
+  - queued → running → merging → analyzing → completed OR failed (with error)
+
+D) Dashboard Insights
+Provide rich visual representation and actionable insights:
+- Global overview cards: total competitors tracked, reels analyzed, total views, avg views/reel, avg engagement rate
+- “Top 25 Viral Reels” table (sortable) with:
+  - competitor username
+  - reel url (open in new tab)
+  - views, likes, comments
+  - engagement rate = (likes+comments)/views
+  - duration
+  - posted_at
+  - viral score (computed)
+- Charts:
+  1) Views distribution histogram (bucketed)
+  2) Engagement rate distribution
+  3) Duration vs Avg Views (scatter)
+  4) Posting time heatmap (day-of-week x hour) using binned timestamps and avg views/engagement
+  5) Competitor leaderboard (bar chart): avg views/reel or viral score
+- “Best Duration” insight:
+  - group reels into duration buckets (0–10s, 11–20s, 21–30s, 31–45s, 46–60s, 60s+)
+  - show best bucket by avg views + engagement
+- “Best Posting Windows” insight:
+  - compute top 3 time windows by avg views and engagement
+- “Trend signals” (MVP heuristic, no NLP required):
+  - identify repeated keywords from reel URLs or captions IF available from Actor A; if not, skip captions and only provide format trends:
+    - durations, posting times, and competitor frequency
+- Competitor profile cards:
+  - username, followers, reels count in range, avg views, top reel views
+- Filters:
+  - filter by competitor
+  - filter by minimum views threshold
+  - sort by views / engagement / posted date / viral score
+
+E) Export
+- If Pro: allow CSV export for:
+  - all reels in current run
+  - competitor summary
+- If not Pro: show upgrade notice
+
+F) Admin Panel
+- Admin users can:
+  - list/search users
+  - view user usage (competitors count, fetches used, last fetch)
+  - assign plan (free/plus/pro)
+  - set plan expiry date
+  - override limits (max_competitors, monthly_fetch_limit)
+  - toggle user role (admin/user) (guard this with “super admin” email env var)
+- Admin panel uses same auth and RBAC.
+
+================================================================================
+6) DATA MODEL (SUPABASE POSTGRES TABLES)
+================================================================================
+Create SQL migrations.
+
+Tables:
+1) profiles
+- id (uuid, pk, references auth.users)
+- email (text)
+- role (text: 'user'|'admin')
+- plan (text: 'free'|'plus'|'pro')
+- max_competitors (int)
+- monthly_fetch_limit (int)
+- time_range_max_days (int)
+- csv_export (bool)
+- fetches_used (int)
+- fetches_reset_at (timestamptz)  // next reset boundary
+- created_at, updated_at
+
+2) competitors
+- id (uuid pk)
+- user_id (uuid fk profiles.id)
+- username (text)
+- created_at
+Unique index (user_id, username)
+
+3) fetch_runs
+- id (uuid pk)
+- user_id
+- time_range_days (int)
+- status (text: queued|running|merging|analyzing|completed|failed)
+- error_message (text)
+- started_at
+- completed_at
+- created_at
+
+4) reels
+- id (uuid pk)
+- fetch_run_id (uuid fk fetch_runs.id)
+- username (text)
+- reel_url (text)
+- views (bigint)
+- likes (bigint)
+- comments (bigint)
+- duration_seconds (int)
+- posted_at (timestamptz)
+- engagement_rate (numeric)
+- viral_score (numeric)
+Indexes on (fetch_run_id), (username), (views)
+
+5) competitor_stats
+- id (uuid pk)
+- fetch_run_id
+- username
+- followers (bigint)
+- reels_count (int)
+- avg_views (numeric)
+- avg_engagement_rate (numeric)
+- top_reel_views (bigint)
+
+6) raw_payloads
+- id (uuid pk)
+- fetch_run_id
+- actor (text: 'instagram_scraper'|'followers_scraper')
+- payload (jsonb)
+- created_at
+
+7) jobs
+- id (uuid pk)
+- user_id
+- fetch_run_id
+- type (text: 'fetch_apify')
+- status (text: queued|running|completed|failed)
+- attempts (int)
+- last_error (text)
+- created_at
+- updated_at
+
+RLS policies:
+- users can only read/write their own competitors, fetch_runs, reels, stats, raw_payloads, jobs.
+- admin can read all; admin updates plans via server-only route (do not allow client direct updates).
+
+================================================================================
+7) APIFY INTEGRATION (STRICT REQUIREMENTS)
+================================================================================
+Use env vars:
+- APIFY_TOKEN: “apify_api_baqOCXMMeYlIRyhc9XPPUOXuOBznMH1D0XZ2”
+- APIFY_INSTAGRAM_SCRAPER_ACTOR_ID: “shu8hvrXbJbY3Eb9W”  (Actor A)
+- APIFY_FOLLOWERS_SCRAPER_ACTOR_ID: “7RQ4RlfRihUhflQtJ” (Actor B)
+
+Implement:
+- A service that calls Apify “run actor” endpoint, waits for dataset items completion with polling and timeout (e.g., max 8 minutes).
+- Robust error handling: retries up to 2 times per job (with exponential backoff).
+- Log status transitions into fetch_runs and jobs.
+
+Expected Actor A output fields (normalize safely):
+- ownerUsername (Competitor username)
+- url (reel url)
+- videoPlayCount (Reel views count)
+- likesCount (reel likes count)
+- commentsCount (Reel comments count)
+- videoDuration (reel duration in seconds)
+- timestamp (reel upload date and time like this “2026-01-06 13:33:46 UTC”)
+(Handle variations by mapping multiple possible field names.)
+
+Actor B output fields:
+- userName (Competitor username)
+- followersCount (followers count)
+
+Merge rule:
+- key = username (case-insensitive)
+- if follower missing, set null or 0 and mark “followers_unknown” in stats.
+
+================================================================================
+8) ANALYTICS CALCULATIONS
+================================================================================
+Compute and store:
+- engagement_rate = (likes + comments) / max(views,1)
+- viral_score (MVP formula):
+  viral_score = log10(views+1) * 0.7 + log10(likes+1) * 0.2 + log10(comments+1) * 0.1
+Store viral_score numeric.
+
+Duration buckets:
+- 0–10, 11–20, 21–30, 31–45, 46–60, 60+
+
+Posting time heatmap:
+- bucket posted_at into hour-of-day (0–23) and day-of-week (Mon–Sun)
+- metric displayed: avg views or avg engagement_rate (toggle)
+
+Top 25 Viral Reels:
+- sort by viral_score desc (default)
+- allow toggle sort by views or engagement_rate
+
+Competitor summary:
+- reels_count, avg_views, avg_engagement_rate, top_reel_views, followers
+
+================================================================================
+9) UI/UX REQUIREMENTS (DATA REPRESENTATION – HIGH QUALITY)
+================================================================================
+Design a modern dashboard with these sections:
+
+A) Header
+- Plan badge (Free/Plus/Pro)
+- Remaining competitor slots
+- Remaining fetches this month
+- Last fetch timestamp
+- Primary CTA: “Fetch Data”
+
+B) Competitor Manager (left panel or separate tab)
+- Add competitor input
+- Bulk add modal: paste / upload txt / upload csv
+- Competitor list with followers (latest run) and remove button
+
+C) Data Range Selector
+- segmented control: 7 / 14 / 28 days
+- disabled options based on plan
+
+D) Fetch Status
+- show stepper: queued → running → merging → analyzing → completed
+- show estimated time (do not promise exact)
+- show errors with retry button
+
+E) Analytics Tabs
+1) Overview
+   - KPI cards
+   - Leaderboard bar chart
+   - Posting time heatmap
+2) Viral Reels
+   - Top 25 table with filters + sorting
+   - Row expansion: show derived metrics, link
+3) Duration & Timing
+   - Duration bucket bar chart
+   - Scatter: duration vs views (with tooltip)
+4) Competitors
+   - Competitor cards grid with quick stats
+   - Compare up to 3 competitors (multi-select) → comparison table + mini charts
+
+F) Exports
+- If Pro: download buttons
+- If not: upgrade UI (no payment integration needed in MVP, just message “Contact admin”)
+
+Use shadcn components, and Recharts for charts. Keep it responsive.
+
+================================================================================
+10) BACKEND/API ROUTES (NEXT.JS ROUTE HANDLERS)
+================================================================================
+Implement these server routes:
+
+Auth:
+- use Supabase Auth (email/password)
+
+Competitors:
+- POST /api/competitors (add single)
+- POST /api/competitors/bulk (add many)
+- GET /api/competitors
+- DELETE /api/competitors/:id
+
+Fetch:
+- POST /api/fetch (create fetch_run + enqueue job)
+  body: { timeRangeDays: 7|14|28 }
+- GET /api/fetch/latest (latest run + status)
+- GET /api/fetch/:id (details: stats + top reels)
+- POST /api/fetch/:id/retry (re-enqueue if failed, respecting limits)
+
+Dashboard Data:
+- GET /api/dashboard/overview?runId=
+- GET /api/dashboard/viral?runId=&limit=25&sort=
+- GET /api/dashboard/heatmap?runId=&metric=views|engagement
+- GET /api/dashboard/duration?runId=
+- GET /api/dashboard/competitors?runId=
+
+Export:
+- GET /api/export/reels.csv?runId=
+- GET /api/export/competitors.csv?runId=
+Check plan + Pro requirement.
+
+Admin (RBAC required):
+- GET /api/admin/users?query=
+- POST /api/admin/users/:id/plan  { plan, expiry? }
+- POST /api/admin/users/:id/limits { max_competitors, monthly_fetch_limit, time_range_max_days, csv_export }
+- POST /api/admin/users/:id/role { role }  // only allowed for SUPER_ADMIN_EMAIL
+
+================================================================================
+11) WORKER (BACKGROUND JOB PROCESSOR)
+================================================================================
+Create a Node worker script in the repo that:
+- polls jobs table every few seconds for queued jobs
+- claims a job with a transaction (avoid double processing)
+- updates job status running
+- executes Apify pipeline and stores results
+- updates fetch_runs status transitions
+- on success: job completed
+- on failure: attempts++, last_error; if attempts < 3 re-queue with delay; else failed
+
+Also implement “monthly reset”:
+- On any authenticated request, check if now >= fetches_reset_at; if yes, reset fetches_used=0 and set next boundary.
+
+================================================================================
+12) NON-FUNCTIONAL REQUIREMENTS
+================================================================================
+- Security: RLS, server-side checks, no client trust
+- Observability: basic server logs + job logs table optional
+- Performance: store normalized tables; dashboard queries should be efficient
+- Reliability: retries, graceful errors
+- Data privacy: each user only sees their data
+
+================================================================================
+13) SETUP INSTRUCTIONS (GENERATE README)
+================================================================================
+Provide a complete README with:
+- how to create Supabase project
+- run SQL migrations
+- set env vars
+- run Next.js dev
+- run worker process
+- seed an admin user (either via env SUPER_ADMIN_EMAIL or a SQL update)
+- Apify actor IDs + token placement
+- How to test an end-to-end fetch
+
+================================================================================
+14) DELIVERABLES
+================================================================================
+Generate:
+- Full Next.js app with all pages:
+  / (landing)
+  /login
+  /dashboard
+  /admin
+- All components, charts, tables, filters, loading states
+- All API routes
+- Supabase SQL migrations
+- Worker script
+- README
+- Minimal seed script for sample data (optional)
+
+================================================================================
+15) IMPORTANT IMPLEMENTATION NOTES
+================================================================================
+- Do not rely on Instagram private APIs. Only use Apify results.
+- Handle Apify field variability with robust mapping.
+- If followers are missing for some usernames, display “—” and proceed.
+- The UI must remain useful even if some competitors return zero reels in time range.
+- Keep the MVP clean and highly usable, with excellent data visualization.
+- No payment integration required in MVP; admin assigns plans manually.

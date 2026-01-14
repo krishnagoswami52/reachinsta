@@ -41,6 +41,8 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
+  const ADMIN_EMAILS = ["krishna@techcm.in"];
+  
   app.get("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -49,11 +51,12 @@ export async function registerRoutes(
       let profile = await storage.getProfile(userId);
       
       if (!profile) {
+        const isAdmin = ADMIN_EMAILS.includes(email?.toLowerCase());
         profile = await storage.upsertProfile({
           id: userId,
           email: email,
-          role: "user",
-          plan: "free",
+          role: isAdmin ? "admin" : "user",
+          plan: isAdmin ? "pro" : "free",
         });
       }
       

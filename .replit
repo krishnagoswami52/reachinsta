@@ -40,3 +40,8 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_log_in_with_replit:2.0.0", "javascript_database:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+APIFY_TOKEN = "apify_api_baqOCXMMeYlIRyhc9XPPUOXuOBznMH1D0XZ2"

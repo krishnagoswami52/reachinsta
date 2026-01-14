@@ -16,15 +16,27 @@ interface ApifyRunResult {
 interface InstagramReelData {
   ownerUsername?: string;
   username?: string;
+  owner?: { username?: string };
   url?: string;
   shortCode?: string;
+  id?: string;
+  videoUrl?: string;
+  displayUrl?: string;
   videoPlayCount?: number;
   videoViewCount?: number;
+  playCount?: number;
+  viewCount?: number;
   likesCount?: number;
+  likes?: number;
   commentsCount?: number;
+  comments?: number;
   videoDuration?: number;
+  duration?: number;
   timestamp?: string;
   takenAtTimestamp?: number;
+  takenAt?: string;
+  type?: string;
+  productType?: string;
 }
 
 interface FollowersData {
@@ -91,19 +103,24 @@ async function getDatasetItems<T>(datasetId: string): Promise<T[]> {
 }
 
 function parseReelData(item: InstagramReelData, username: string): Partial<InsertReel> | null {
-  const reelUrl = item.url || (item.shortCode ? `https://instagram.com/reel/${item.shortCode}` : null);
+  const reelUrl = item.url || 
+    (item.shortCode ? `https://instagram.com/reel/${item.shortCode}` : null) ||
+    (item.id ? `https://instagram.com/reel/${item.id}` : null);
+  
   if (!reelUrl) return null;
 
-  const views = item.videoPlayCount || item.videoViewCount || 0;
-  const likes = item.likesCount || 0;
-  const comments = item.commentsCount || 0;
-  const durationSeconds = item.videoDuration ? Math.round(item.videoDuration) : 0;
+  const views = item.videoPlayCount || item.videoViewCount || item.playCount || item.viewCount || 0;
+  const likes = item.likesCount || item.likes || 0;
+  const comments = item.commentsCount || item.comments || 0;
+  const durationSeconds = item.videoDuration || item.duration ? Math.round(item.videoDuration || item.duration || 0) : 0;
 
   let postedAt: Date | null = null;
   if (item.timestamp) {
     postedAt = new Date(item.timestamp);
   } else if (item.takenAtTimestamp) {
     postedAt = new Date(item.takenAtTimestamp * 1000);
+  } else if (item.takenAt) {
+    postedAt = new Date(item.takenAt);
   }
 
   const engagementRate = views > 0 ? (likes + comments) / views : 0;
@@ -112,8 +129,10 @@ function parseReelData(item: InstagramReelData, username: string): Partial<Inser
     Math.log10(likes + 1) * 0.2 +
     Math.log10(comments + 1) * 0.1;
 
+  const itemUsername = item.ownerUsername || item.username || item.owner?.username || username;
+
   return {
-    username: (item.ownerUsername || item.username || username).toLowerCase(),
+    username: itemUsername.toLowerCase(),
     reelUrl,
     views,
     likes,
@@ -140,12 +159,15 @@ export async function processApifyFetch(
     startedAt: new Date(),
   });
 
+  const directUrls = usernames.map(username => `https://www.instagram.com/${username}`);
+  
   const reelsInput = {
-    usernames: usernames,
+    directUrls: directUrls,
     resultsType: "posts",
-    resultsLimit: 50,
-    searchType: "user",
+    resultsLimit: 200,
+    searchType: "hashtag",
     searchLimit: 1,
+    addParentData: false,
   };
 
   console.log("Starting Instagram Scraper actor...");
@@ -157,6 +179,10 @@ export async function processApifyFetch(
 
   const reelsData = await getDatasetItems<InstagramReelData>(completedReelsRun.defaultDatasetId);
   console.log(`Got ${reelsData.length} items from Instagram Scraper`);
+  
+  if (reelsData.length > 0) {
+    console.log("Sample item structure:", JSON.stringify(reelsData[0], null, 2).slice(0, 1000));
+  }
 
   await storage.createRawPayload({
     fetchRunId: fetchRun.id,

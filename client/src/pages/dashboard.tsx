@@ -36,8 +36,15 @@ export default function DashboardPage() {
     queryKey: ["/api/competitors"],
   });
 
-  const { data: latestFetch } = useQuery<{ fetchRun: FetchRun; reels: Reel[]; stats: CompetitorStats[] } | null>({
+  const { data: latestFetch, isLoading: isFetchLoading } = useQuery<{ fetchRun: FetchRun; reels: Reel[]; stats: CompetitorStats[] } | null>({
     queryKey: ["/api/fetch/latest"],
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data?.fetchRun && ["queued", "running", "merging", "analyzing"].includes(data.fetchRun.status)) {
+        return 3000;
+      }
+      return false;
+    },
   });
 
   const fetchMutation = useMutation({

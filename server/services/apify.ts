@@ -1,147 +1,50 @@
+import { ApifyClient } from 'apify-client';
 import { storage } from "../storage";
 import type { FetchRun, InsertReel, InsertCompetitorStats } from "@shared/schema";
 
 const APIFY_TOKEN = process.env.APIFY_TOKEN;
-const INSTAGRAM_SCRAPER_ACTOR_ID = process.env.APIFY_INSTAGRAM_SCRAPER_ACTOR_ID || "shu8hvrXbJbY3Eb9W";
-const FOLLOWERS_SCRAPER_ACTOR_ID = process.env.APIFY_FOLLOWERS_SCRAPER_ACTOR_ID || "7RQ4RlfRihUhflQtJ";
+const INSTAGRAM_SCRAPER_ACTOR_ID = "shu8hvrXbJbY3Eb9W";
+const FOLLOWERS_SCRAPER_ACTOR_ID = "7RQ4RlfRihUhflQtJ";
 
-const APIFY_BASE_URL = "https://api.apify.com/v2";
-
-interface ApifyRunResult {
-  id: string;
-  status: string;
-  defaultDatasetId: string;
-}
-
-interface InstagramReelData {
-  ownerUsername?: string;
-  username?: string;
-  owner?: { username?: string };
-  url?: string;
-  shortCode?: string;
+interface InstagramPostData {
   id?: string;
-  videoUrl?: string;
-  displayUrl?: string;
-  videoPlayCount?: number;
-  videoViewCount?: number;
-  playCount?: number;
-  viewCount?: number;
-  likesCount?: number;
-  likes?: number;
-  commentsCount?: number;
-  comments?: number;
-  videoDuration?: number;
-  duration?: number;
-  timestamp?: string;
-  takenAtTimestamp?: number;
-  takenAt?: string;
+  shortCode?: string;
+  url?: string;
   type?: string;
   productType?: string;
+  ownerUsername?: string;
+  ownerFullName?: string;
+  ownerId?: string;
+  caption?: string;
+  hashtags?: string[];
+  mentions?: string[];
+  commentsCount?: number;
+  likesCount?: number;
+  videoPlayCount?: number;
+  videoViewCount?: number;
+  videoDuration?: number;
+  timestamp?: string;
+  displayUrl?: string;
+  videoUrl?: string;
+  alt?: string;
+  locationName?: string;
+  firstComment?: string;
+  latestComments?: any[];
+  dimensionsHeight?: number;
+  dimensionsWidth?: number;
+  images?: string[];
+  inputUrl?: string;
 }
 
-interface FollowersData {
+interface FollowerData {
   userName?: string;
   username?: string;
   followersCount?: number;
   followers?: number;
-}
-
-async function runActor(actorId: string, input: any): Promise<ApifyRunResult> {
-  const response = await fetch(`${APIFY_BASE_URL}/acts/${actorId}/runs?token=${APIFY_TOKEN}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Failed to start Apify actor: ${response.status} - ${text}`);
-  }
-
-  const data = await response.json();
-  return data.data;
-}
-
-async function waitForRun(runId: string, maxWaitMs: number = 480000): Promise<ApifyRunResult> {
-  const startTime = Date.now();
-  const pollInterval = 5000;
-
-  while (Date.now() - startTime < maxWaitMs) {
-    const response = await fetch(`${APIFY_BASE_URL}/actor-runs/${runId}?token=${APIFY_TOKEN}`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to check run status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const run = data.data;
-
-    if (run.status === "SUCCEEDED") {
-      return run;
-    }
-
-    if (run.status === "FAILED" || run.status === "ABORTED" || run.status === "TIMED-OUT") {
-      throw new Error(`Apify run failed with status: ${run.status}`);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, pollInterval));
-  }
-
-  throw new Error("Apify run timed out");
-}
-
-async function getDatasetItems<T>(datasetId: string): Promise<T[]> {
-  const response = await fetch(
-    `${APIFY_BASE_URL}/datasets/${datasetId}/items?token=${APIFY_TOKEN}&format=json`
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch dataset: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-function parseReelData(item: InstagramReelData, username: string): Partial<InsertReel> | null {
-  const reelUrl = item.url || 
-    (item.shortCode ? `https://instagram.com/reel/${item.shortCode}` : null) ||
-    (item.id ? `https://instagram.com/reel/${item.id}` : null);
-  
-  if (!reelUrl) return null;
-
-  const views = item.videoPlayCount || item.videoViewCount || item.playCount || item.viewCount || 0;
-  const likes = item.likesCount || item.likes || 0;
-  const comments = item.commentsCount || item.comments || 0;
-  const durationSeconds = item.videoDuration || item.duration ? Math.round(item.videoDuration || item.duration || 0) : 0;
-
-  let postedAt: Date | null = null;
-  if (item.timestamp) {
-    postedAt = new Date(item.timestamp);
-  } else if (item.takenAtTimestamp) {
-    postedAt = new Date(item.takenAtTimestamp * 1000);
-  } else if (item.takenAt) {
-    postedAt = new Date(item.takenAt);
-  }
-
-  const engagementRate = views > 0 ? (likes + comments) / views : 0;
-  const viralScore =
-    Math.log10(views + 1) * 0.7 +
-    Math.log10(likes + 1) * 0.2 +
-    Math.log10(comments + 1) * 0.1;
-
-  const itemUsername = item.ownerUsername || item.username || item.owner?.username || username;
-
-  return {
-    username: itemUsername.toLowerCase(),
-    reelUrl,
-    views,
-    likes,
-    comments,
-    durationSeconds,
-    postedAt,
-    engagementRate: engagementRate.toFixed(6),
-    viralScore: viralScore.toFixed(4),
-  };
+  fullName?: string;
+  biography?: string;
+  postsCount?: number;
+  followsCount?: number;
 }
 
 export async function processApifyFetch(
@@ -152,166 +55,198 @@ export async function processApifyFetch(
     throw new Error("APIFY_TOKEN is not configured");
   }
 
-  console.log(`Starting Apify fetch for run ${fetchRun.id} with ${usernames.length} usernames`);
+  console.log(`Starting Apify fetch for run ${fetchRun.id} with ${usernames.length} usernames: ${usernames.join(', ')}`);
+
+  const client = new ApifyClient({ token: APIFY_TOKEN });
 
   await storage.updateFetchRun(fetchRun.id, {
     status: "running",
     startedAt: new Date(),
   });
 
-  const directUrls = usernames.map(username => `https://www.instagram.com/${username}`);
-  
-  const reelsInput = {
-    directUrls: directUrls,
-    resultsType: "posts",
-    resultsLimit: 200,
-    searchType: "hashtag",
-    searchLimit: 1,
-    addParentData: false,
-  };
-
-  console.log("Starting Instagram Scraper actor...");
-  const reelsRun = await runActor(INSTAGRAM_SCRAPER_ACTOR_ID, reelsInput);
-  console.log(`Instagram Scraper run started: ${reelsRun.id}`);
-
-  const completedReelsRun = await waitForRun(reelsRun.id);
-  console.log("Instagram Scraper completed");
-
-  const reelsData = await getDatasetItems<InstagramReelData>(completedReelsRun.defaultDatasetId);
-  console.log(`Got ${reelsData.length} items from Instagram Scraper`);
-  
-  if (reelsData.length > 0) {
-    console.log("Sample item structure:", JSON.stringify(reelsData[0], null, 2).slice(0, 1000));
-  }
-
-  await storage.createRawPayload({
-    fetchRunId: fetchRun.id,
-    actor: "instagram_scraper",
-    payload: reelsData as any,
-  });
-
-  await storage.updateFetchRun(fetchRun.id, { status: "merging" });
-
-  const uniqueUsernames = [...new Set(
-    reelsData
-      .map((item) => (item.ownerUsername || item.username || "").toLowerCase())
-      .filter(Boolean)
-  )];
-
-  let followersMap = new Map<string, number>();
-
-  if (uniqueUsernames.length > 0) {
-    console.log(`Fetching followers for ${uniqueUsernames.length} usernames...`);
+  try {
+    const directUrls = usernames.map(username => `https://www.instagram.com/${username}`);
     
-    const followersInput = {
-      usernames: uniqueUsernames,
+    console.log("Starting Instagram Scraper actor with URLs:", directUrls);
+    
+    const reelsInput = {
+      directUrls: directUrls,
+      resultsType: "posts",
+      resultsLimit: 200,
+      searchType: "hashtag",
+      searchLimit: 1,
+      addParentData: false,
     };
 
-    try {
-      const followersRun = await runActor(FOLLOWERS_SCRAPER_ACTOR_ID, followersInput);
-      const completedFollowersRun = await waitForRun(followersRun.id);
-      const followersData = await getDatasetItems<FollowersData>(completedFollowersRun.defaultDatasetId);
+    const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR_ID).call(reelsInput);
+    console.log(`Instagram Scraper run completed with status: ${run.status}`);
 
-      await storage.createRawPayload({
-        fetchRunId: fetchRun.id,
-        actor: "followers_scraper",
-        payload: followersData as any,
-      });
+    const { items: postsData } = await client.dataset(run.defaultDatasetId).listItems();
+    console.log(`Got ${postsData.length} items from Instagram Scraper`);
 
-      for (const item of followersData) {
-        const username = (item.userName || item.username || "").toLowerCase();
-        const followers = item.followersCount || item.followers || 0;
-        if (username) {
-          followersMap.set(username, followers);
-        }
+    if (postsData.length > 0) {
+      console.log("Sample post data:", JSON.stringify(postsData[0], null, 2).slice(0, 2000));
+    }
+
+    await storage.createRawPayload({
+      fetchRunId: fetchRun.id,
+      actor: "instagram_scraper",
+      payload: postsData as any,
+    });
+
+    await storage.updateFetchRun(fetchRun.id, { status: "analyzing" });
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - fetchRun.timeRangeDays);
+    console.log(`Filtering posts from last ${fetchRun.timeRangeDays} days (since ${cutoffDate.toISOString()})`);
+
+    const reelsToInsert: InsertReel[] = [];
+    const userStatsMap = new Map<string, {
+      views: number[];
+      engagements: number[];
+      topViews: number;
+    }>();
+
+    for (const item of postsData as InstagramPostData[]) {
+      if ((item as any).error) {
+        console.log("Skipping error item:", (item as any).error);
+        continue;
       }
 
-      console.log(`Got followers for ${followersMap.size} usernames`);
-    } catch (error) {
-      console.error("Failed to fetch followers, continuing without:", error);
+      const username = (item.ownerUsername || "").toLowerCase();
+      if (!username) {
+        console.log("Skipping item with no username");
+        continue;
+      }
+
+      const reelUrl = item.url || 
+        (item.shortCode ? `https://www.instagram.com/p/${item.shortCode}/` : null) ||
+        (item.id ? `https://www.instagram.com/p/${item.id}/` : null);
+      
+      if (!reelUrl) {
+        console.log("Skipping item with no URL:", item.id);
+        continue;
+      }
+
+      let postedAt: Date | null = null;
+      if (item.timestamp) {
+        postedAt = new Date(item.timestamp);
+      }
+
+      if (postedAt && postedAt < cutoffDate) {
+        continue;
+      }
+
+      const views = item.videoPlayCount || item.videoViewCount || 0;
+      const likes = item.likesCount || 0;
+      const comments = item.commentsCount || 0;
+      const durationSeconds = item.videoDuration ? Math.round(item.videoDuration) : 0;
+
+      const engagementRate = views > 0 ? (likes + comments) / views : (likes > 0 ? 1 : 0);
+      const viralScore =
+        Math.log10(views + 1) * 0.7 +
+        Math.log10(likes + 1) * 0.2 +
+        Math.log10(comments + 1) * 0.1;
+
+      reelsToInsert.push({
+        fetchRunId: fetchRun.id,
+        username,
+        reelUrl,
+        views,
+        likes,
+        comments,
+        durationSeconds,
+        postedAt,
+        engagementRate: engagementRate.toFixed(6),
+        viralScore: viralScore.toFixed(4),
+      });
+
+      if (!userStatsMap.has(username)) {
+        userStatsMap.set(username, { views: [], engagements: [], topViews: 0 });
+      }
+      const stats = userStatsMap.get(username)!;
+      stats.views.push(views);
+      stats.engagements.push(engagementRate);
+      stats.topViews = Math.max(stats.topViews, views);
     }
-  }
 
-  await storage.updateFetchRun(fetchRun.id, { status: "analyzing" });
+    console.log(`Parsed ${reelsToInsert.length} valid posts to insert`);
 
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - fetchRun.timeRangeDays);
+    if (reelsToInsert.length > 0) {
+      await storage.createReels(reelsToInsert);
+      console.log(`Inserted ${reelsToInsert.length} reels`);
+    }
 
-  const reelsToInsert: InsertReel[] = [];
-  const userStatsMap = new Map<string, {
-    views: number[];
-    engagements: number[];
-    topViews: number;
-  }>();
+    const uniqueUsernames = [...userStatsMap.keys()];
+    let followersMap = new Map<string, number>();
 
-  for (const item of reelsData) {
-    const username = (item.ownerUsername || item.username || "").toLowerCase();
-    if (!username) continue;
+    if (uniqueUsernames.length > 0) {
+      console.log(`Fetching followers for ${uniqueUsernames.length} usernames...`);
+      
+      try {
+        const followersInput = { usernames: uniqueUsernames };
+        const followersRun = await client.actor(FOLLOWERS_SCRAPER_ACTOR_ID).call(followersInput);
+        const { items: followersData } = await client.dataset(followersRun.defaultDatasetId).listItems();
 
-    const parsed = parseReelData(item, username);
-    if (!parsed || !parsed.reelUrl) continue;
+        console.log(`Got ${followersData.length} follower records`);
 
-    if (parsed.postedAt && parsed.postedAt < cutoffDate) continue;
+        await storage.createRawPayload({
+          fetchRunId: fetchRun.id,
+          actor: "followers_scraper",
+          payload: followersData as any,
+        });
 
-    reelsToInsert.push({
-      fetchRunId: fetchRun.id,
-      username: parsed.username!,
-      reelUrl: parsed.reelUrl,
-      views: parsed.views!,
-      likes: parsed.likes!,
-      comments: parsed.comments!,
-      durationSeconds: parsed.durationSeconds!,
-      postedAt: parsed.postedAt,
-      engagementRate: parsed.engagementRate!,
-      viralScore: parsed.viralScore!,
+        for (const item of followersData as FollowerData[]) {
+          const uname = (item.userName || item.username || "").toLowerCase();
+          const followers = item.followersCount || item.followers || 0;
+          if (uname) {
+            followersMap.set(uname, followers);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch followers, continuing without:", error);
+      }
+    }
+
+    const competitorStatsToInsert: InsertCompetitorStats[] = [];
+
+    for (const [username, stats] of userStatsMap) {
+      const avgViews = stats.views.length > 0 
+        ? stats.views.reduce((a, b) => a + b, 0) / stats.views.length 
+        : 0;
+      const avgEngagement = stats.engagements.length > 0
+        ? stats.engagements.reduce((a, b) => a + b, 0) / stats.engagements.length
+        : 0;
+
+      competitorStatsToInsert.push({
+        fetchRunId: fetchRun.id,
+        username,
+        followers: followersMap.get(username) || null,
+        reelsCount: stats.views.length,
+        avgViews: avgViews.toFixed(2),
+        avgEngagementRate: avgEngagement.toFixed(6),
+        topReelViews: stats.topViews,
+      });
+    }
+
+    if (competitorStatsToInsert.length > 0) {
+      await storage.createCompetitorStats(competitorStatsToInsert);
+      console.log(`Inserted stats for ${competitorStatsToInsert.length} competitors`);
+    }
+
+    await storage.updateFetchRun(fetchRun.id, {
+      status: "completed",
+      completedAt: new Date(),
     });
 
-    if (!userStatsMap.has(username)) {
-      userStatsMap.set(username, { views: [], engagements: [], topViews: 0 });
-    }
-    const stats = userStatsMap.get(username)!;
-    const views = parsed.views || 0;
-    const engagement = parseFloat(parsed.engagementRate || "0");
-    stats.views.push(views);
-    stats.engagements.push(engagement);
-    stats.topViews = Math.max(stats.topViews, views);
-  }
+    console.log(`Fetch run ${fetchRun.id} completed successfully with ${reelsToInsert.length} posts`);
 
-  if (reelsToInsert.length > 0) {
-    await storage.createReels(reelsToInsert);
-    console.log(`Inserted ${reelsToInsert.length} reels`);
-  }
-
-  const competitorStatsToInsert: InsertCompetitorStats[] = [];
-
-  for (const [username, stats] of userStatsMap) {
-    const avgViews = stats.views.length > 0 
-      ? stats.views.reduce((a, b) => a + b, 0) / stats.views.length 
-      : 0;
-    const avgEngagement = stats.engagements.length > 0
-      ? stats.engagements.reduce((a, b) => a + b, 0) / stats.engagements.length
-      : 0;
-
-    competitorStatsToInsert.push({
-      fetchRunId: fetchRun.id,
-      username,
-      followers: followersMap.get(username) || null,
-      reelsCount: stats.views.length,
-      avgViews: avgViews.toFixed(2),
-      avgEngagementRate: avgEngagement.toFixed(6),
-      topReelViews: stats.topViews,
+  } catch (error: any) {
+    console.error(`Fetch run ${fetchRun.id} failed:`, error.message);
+    await storage.updateFetchRun(fetchRun.id, {
+      status: "failed",
+      errorMessage: error.message,
     });
+    throw error;
   }
-
-  if (competitorStatsToInsert.length > 0) {
-    await storage.createCompetitorStats(competitorStatsToInsert);
-    console.log(`Inserted stats for ${competitorStatsToInsert.length} competitors`);
-  }
-
-  await storage.updateFetchRun(fetchRun.id, {
-    status: "completed",
-    completedAt: new Date(),
-  });
-
-  console.log(`Fetch run ${fetchRun.id} completed successfully`);
 }

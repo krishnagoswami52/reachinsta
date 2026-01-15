@@ -34,6 +34,7 @@ interface InstagramPostData {
   dimensionsWidth?: number;
   images?: string[];
   inputUrl?: string;
+  isPinned?: boolean;
 }
 
 interface FollowerData {
@@ -67,12 +68,28 @@ export async function processApifyFetch(
   try {
     const directUrls = usernames.map(username => `https://www.instagram.com/${username}`);
     
-    console.log("Starting Instagram Scraper actor with URLs:", directUrls);
+    const resultsLimitMap: Record<number, number> = {
+      7: 11,
+      14: 21,
+      28: 36,
+    };
+    
+    const onlyPostsNewerThanMap: Record<number, string> = {
+      7: "8 days",
+      14: "15 days",
+      28: "29 days",
+    };
+    
+    const resultsLimit = resultsLimitMap[fetchRun.timeRangeDays] || 21;
+    const onlyPostsNewerThan = onlyPostsNewerThanMap[fetchRun.timeRangeDays] || "15 days";
+    
+    console.log(`Starting Instagram Scraper with ${usernames.length} URLs, limit: ${resultsLimit}, newer than: ${onlyPostsNewerThan}`);
     
     const reelsInput = {
       directUrls: directUrls,
       resultsType: "posts",
-      resultsLimit: 200,
+      resultsLimit: resultsLimit,
+      onlyPostsNewerThan: onlyPostsNewerThan,
       searchType: "hashtag",
       searchLimit: 1,
       addParentData: false,
@@ -107,9 +124,15 @@ export async function processApifyFetch(
       topViews: number;
     }>();
 
+    let pinnedCount = 0;
     for (const item of postsData as InstagramPostData[]) {
       if ((item as any).error) {
         console.log("Skipping error item:", (item as any).error);
+        continue;
+      }
+
+      if (item.isPinned === true) {
+        pinnedCount++;
         continue;
       }
 
@@ -170,7 +193,7 @@ export async function processApifyFetch(
       stats.topViews = Math.max(stats.topViews, views);
     }
 
-    console.log(`Parsed ${reelsToInsert.length} valid posts to insert`);
+    console.log(`Parsed ${reelsToInsert.length} valid posts to insert (skipped ${pinnedCount} pinned posts)`);
 
     if (reelsToInsert.length > 0) {
       await storage.createReels(reelsToInsert);

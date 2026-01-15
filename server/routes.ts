@@ -203,9 +203,12 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Add competitors first" });
       }
       
+      const competitorUsernames = competitors.map(c => c.username);
+      
       const fetchRun = await storage.createFetchRun({
         userId,
         timeRangeDays,
+        competitorUsernames,
         status: "queued",
       });
       
@@ -225,6 +228,17 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error creating fetch:", error);
       res.status(500).json({ message: "Failed to create fetch" });
+    }
+  });
+
+  app.get("/api/fetch/history", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const fetchRuns = await storage.getAllFetchRuns(userId);
+      res.json(fetchRuns);
+    } catch (error) {
+      console.error("Error fetching history:", error);
+      res.status(500).json({ message: "Failed to fetch history" });
     }
   });
 

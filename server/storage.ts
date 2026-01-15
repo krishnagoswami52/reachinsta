@@ -28,6 +28,7 @@ export interface IStorage {
   createFetchRun(run: InsertFetchRun): Promise<FetchRun>;
   getFetchRun(id: string): Promise<FetchRun | undefined>;
   getLatestFetchRun(userId: string): Promise<FetchRun | undefined>;
+  getAllFetchRuns(userId: string): Promise<FetchRun[]>;
   updateFetchRun(id: string, updates: Partial<FetchRun>): Promise<FetchRun | undefined>;
   
   createReels(reelsList: InsertReel[]): Promise<Reel[]>;
@@ -132,6 +133,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(fetchRuns.createdAt))
       .limit(1);
     return result;
+  }
+
+  async getAllFetchRuns(userId: string): Promise<FetchRun[]> {
+    return db
+      .select()
+      .from(fetchRuns)
+      .where(eq(fetchRuns.userId, userId))
+      .orderBy(desc(fetchRuns.createdAt));
   }
 
   async updateFetchRun(id: string, updates: Partial<FetchRun>): Promise<FetchRun | undefined> {

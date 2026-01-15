@@ -45,6 +45,7 @@ export const fetchRuns = pgTable("fetch_runs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
   timeRangeDays: integer("time_range_days").notNull(),
+  competitorUsernames: text("competitor_usernames").array(),
   status: text("status").$type<FetchStatusType>().default("queued").notNull(),
   errorMessage: text("error_message"),
   startedAt: timestamp("started_at"),

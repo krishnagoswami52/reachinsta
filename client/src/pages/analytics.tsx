@@ -4,13 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+
+import { CreatorERChart } from "@/components/dashboard/charts/creator-er-chart";
+import { DurationBucketChart } from "@/components/dashboard/charts/duration-bucket-chart";
+import { VRDistributionChart } from "@/components/dashboard/charts/vr-distribution-chart";
+import { ERByHourChart } from "@/components/dashboard/charts/er-by-hour-chart";
+import { ERByWeekdayChart } from "@/components/dashboard/charts/er-by-weekday-chart";
+import { TopReelsTable } from "@/components/dashboard/charts/top-reels-table";
 import { DurationChart } from "@/components/dashboard/charts/duration-chart";
 import { LeaderboardChart } from "@/components/dashboard/charts/leaderboard-chart";
 import { HeatmapChart } from "@/components/dashboard/charts/heatmap-chart";
 import { DurationScatterChart } from "@/components/dashboard/charts/scatter-chart";
 import { ViralReelsTable } from "@/components/dashboard/viral-reels-table";
+import { QuickTips } from "@/components/dashboard/quick-tips";
+import { MetricsNotes } from "@/components/dashboard/metrics-notes";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { BarChart3, Calendar, Clock, Users, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+
+import { BarChart3, Calendar, Clock, Users, CheckCircle2, XCircle, Loader2, TrendingUp, Eye, Timer, Lightbulb } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import type { FetchRun, Reel, CompetitorStats } from "@shared/schema";
 
@@ -76,9 +86,11 @@ export default function AnalyticsPage() {
   const hasData = reels.length > 0;
 
   const totalViews = reels.reduce((sum, r) => sum + r.views, 0);
+  const avgViews = reels.length > 0 ? totalViews / reels.length : 0;
   const avgEngagement = reels.length > 0
     ? reels.reduce((sum, r) => sum + parseFloat(String(r.engagementRate)), 0) / reels.length
     : 0;
+  const topViews = reels.length > 0 ? Math.max(...reels.map(r => r.views)) : 0;
 
   return (
     <div className="space-y-6">
@@ -88,7 +100,7 @@ export default function AnalyticsPage() {
             <BarChart3 className="w-6 h-6" />
             Analytics
           </h1>
-          <p className="text-muted-foreground">Browse and analyze your past fetch history</p>
+          <p className="text-muted-foreground">Deep dive into competitor performance data</p>
         </div>
 
         {completedFetches.length > 0 && (
@@ -156,7 +168,7 @@ export default function AnalyticsPage() {
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4 text-muted-foreground" />
                       <span className="font-medium">
-                        {selectedFetch.competitorUsernames?.length || 0}
+                        {selectedFetch.competitorUsernames?.length || stats.length}
                       </span>
                     </div>
                   </div>
@@ -177,29 +189,50 @@ export default function AnalyticsPage() {
             </Card>
           )}
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Card>
               <CardContent className="pt-4">
-                <p className="text-sm text-muted-foreground">Total Reels</p>
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                  <BarChart3 className="w-4 h-4" />
+                  <p className="text-sm">Total Reels</p>
+                </div>
                 <p className="text-2xl font-bold">{reels.length}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-sm text-muted-foreground">Total Views</p>
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                  <Eye className="w-4 h-4" />
+                  <p className="text-sm">Total Views</p>
+                </div>
                 <p className="text-2xl font-bold">{formatNumber(totalViews)}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-sm text-muted-foreground">Avg Engagement</p>
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                  <Eye className="w-4 h-4" />
+                  <p className="text-sm">Avg Views</p>
+                </div>
+                <p className="text-2xl font-bold">{formatNumber(Math.round(avgViews))}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                  <TrendingUp className="w-4 h-4" />
+                  <p className="text-sm">Avg ER</p>
+                </div>
                 <p className="text-2xl font-bold">{(avgEngagement * 100).toFixed(2)}%</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-sm text-muted-foreground">Competitors</p>
-                <p className="text-2xl font-bold">{stats.length}</p>
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                  <TrendingUp className="w-4 h-4" />
+                  <p className="text-sm">Top Views</p>
+                </div>
+                <p className="text-2xl font-bold">{formatNumber(topViews)}</p>
               </CardContent>
             </Card>
           </div>
@@ -212,25 +245,39 @@ export default function AnalyticsPage() {
             />
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+              <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex">
                 <TabsTrigger value="overview" data-testid="analytics-tab-overview">Overview</TabsTrigger>
-                <TabsTrigger value="viral" data-testid="analytics-tab-viral">Viral Reels</TabsTrigger>
+                <TabsTrigger value="creators" data-testid="analytics-tab-creators">Creators</TabsTrigger>
                 <TabsTrigger value="timing" data-testid="analytics-tab-timing">Timing</TabsTrigger>
                 <TabsTrigger value="duration" data-testid="analytics-tab-duration">Duration</TabsTrigger>
+                <TabsTrigger value="reels" data-testid="analytics-tab-reels">Reels Table</TabsTrigger>
+                <TabsTrigger value="tips" data-testid="analytics-tab-tips">Tips</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6 mt-6">
                 <div className="grid lg:grid-cols-2 gap-6">
+                  <CreatorERChart stats={stats} />
                   <LeaderboardChart stats={stats} />
+                </div>
+                <div className="grid lg:grid-cols-2 gap-6">
                   <HeatmapChart reels={reels} />
+                  <DurationBucketChart reels={reels} />
                 </div>
               </TabsContent>
 
-              <TabsContent value="viral" className="mt-6">
+              <TabsContent value="creators" className="space-y-6 mt-6">
+                <div className="grid lg:grid-cols-2 gap-6">
+                  <CreatorERChart stats={stats} />
+                  <LeaderboardChart stats={stats} />
+                </div>
                 <ViralReelsTable reels={reels} />
               </TabsContent>
 
-              <TabsContent value="timing" className="mt-6">
+              <TabsContent value="timing" className="space-y-6 mt-6">
+                <div className="grid lg:grid-cols-2 gap-6">
+                  <ERByHourChart reels={reels} />
+                  <ERByWeekdayChart reels={reels} />
+                </div>
                 <div className="grid lg:grid-cols-2 gap-6">
                   <HeatmapChart reels={reels} metric="views" />
                   <HeatmapChart reels={reels} metric="engagement" />
@@ -239,9 +286,30 @@ export default function AnalyticsPage() {
 
               <TabsContent value="duration" className="space-y-6 mt-6">
                 <div className="grid lg:grid-cols-2 gap-6">
+                  <DurationBucketChart reels={reels} />
                   <DurationChart reels={reels} />
-                  <DurationScatterChart reels={reels} />
                 </div>
+                <div className="grid lg:grid-cols-2 gap-6">
+                  <DurationScatterChart reels={reels} />
+                  <VRDistributionChart reels={reels} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="reels" className="space-y-6 mt-6">
+                <div className="grid lg:grid-cols-2 gap-6">
+                  <TopReelsTable reels={reels} sortBy="views" />
+                  <TopReelsTable reels={reels} sortBy="engagement" />
+                </div>
+                <ViralReelsTable reels={reels} />
+              </TabsContent>
+
+              <TabsContent value="tips" className="space-y-6 mt-6">
+                <QuickTips 
+                  reels={reels} 
+                  stats={stats} 
+                  timeRangeDays={selectedFetch?.timeRangeDays || 7} 
+                />
+                <MetricsNotes />
               </TabsContent>
             </Tabs>
           )}

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Play, Loader2, Mail, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import type { User } from "@shared/models/auth";
 
 export default function VerifyEmailPage() {
   const [, setLocation] = useLocation();
@@ -16,6 +17,16 @@ export default function VerifyEmailPage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const token = new URLSearchParams(search).get("token");
+  
+  const { data: user } = useQuery<User | null>({
+    queryKey: ["/api/auth/user"],
+  });
+  
+  useEffect(() => {
+    if (user?.emailVerified && !token) {
+      setLocation("/dashboard");
+    }
+  }, [user, token, setLocation]);
 
   const verifyMutation = useMutation({
     mutationFn: async (token: string) => {

@@ -4,7 +4,7 @@ import connectPg from "connect-pg-simple";
 import { registerUser, loginUser, sanitizeUser } from "../../services/auth";
 import { registerSchema, loginSchema } from "@shared/models/auth";
 import { storage } from "../../storage";
-import { createAndSendVerificationEmail, verifyEmailToken } from "../../services/email";
+import { createAndSendVerificationEmail, verifyEmailToken, canResendVerification, markEmailSent } from "../../services/email";
 
 declare module "express-session" {
   interface SessionData {
@@ -58,8 +58,15 @@ export async function setupAuth(app: Express) {
         plan: "free",
       });
 
+      let emailVerificationSent = false;
       try {
-        await createAndSendVerificationEmail(user.id, user.email);
+        const emailResult = await createAndSendVerificationEmail(user.id, user.email);
+        emailVerificationSent = emailResult.success;
+        if (emailResult.success) {
+          markEmailSent(user.id);
+        } else {
+          console.warn("Email verification not sent:", emailResult.error);
+        }
       } catch (emailError) {
         console.error("Failed to send verification email:", emailError);
       }
@@ -69,7 +76,7 @@ export async function setupAuth(app: Express) {
           console.error("Session save error:", err);
           return res.status(500).json({ message: "Registration failed" });
         }
-        res.json({ ...sanitizeUser(user), emailVerificationSent: true });
+        res.json({ ...sanitizeUser(user), emailVerificationSent });
       });
     } catch (error: any) {
       if (error.message === "Email already registered") {
@@ -164,8 +171,20 @@ export async function setupAuth(app: Express) {
         return res.status(400).json({ message: "Email is already verified" });
       }
 
-      await createAndSendVerificationEmail(user.id, user.email);
-      res.json({ message: "Verification email sent" });
+      const throttleCheck = canResendVerification(userId);
+      if (!throttleCheck.allowed) {
+        return res.status(429).json({ 
+          message: `Please wait ${throttleCheck.waitSeconds} seconds before requesting another email` 
+        });
+      }
+
+      const result = await createAndSendVerificationEmail(user.id, user.email);
+      if (result.success) {
+        markEmailSent(userId);
+        res.json({ message: "Verification email sent" });
+      } else {
+        res.status(500).json({ message: result.error || "Failed to send verification email" });
+      }
     } catch (error) {
       console.error("Resend verification error:", error);
       res.status(500).json({ message: "Failed to send verification email" });

@@ -33,6 +33,7 @@ export interface IStorage {
   getVerificationTokenByHash(tokenHash: string): Promise<VerificationToken | undefined>;
   markVerificationTokenUsed(tokenId: string): Promise<void>;
   deleteVerificationTokensForUser(userId: string): Promise<void>;
+  verifyEmailAtomic(tokenHash: string): Promise<{ success: boolean; error?: string; userId?: string }>;
   
   getProfile(id: string): Promise<Profile | undefined>;
   upsertProfile(profile: InsertProfile): Promise<Profile>;
@@ -109,7 +110,11 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .select()
       .from(emailVerificationTokens)
-      .where(eq(emailVerificationTokens.tokenHash, tokenHash));
+      .where(and(
+        eq(emailVerificationTokens.tokenHash, tokenHash),
+        sql`${emailVerificationTokens.usedAt} IS NULL`,
+        sql`${emailVerificationTokens.expiresAt} > NOW()`
+      ));
     return result;
   }
 
@@ -118,6 +123,47 @@ export class DatabaseStorage implements IStorage {
       .update(emailVerificationTokens)
       .set({ usedAt: new Date() })
       .where(eq(emailVerificationTokens.id, tokenId));
+  }
+  
+  async verifyEmailAtomic(tokenHash: string): Promise<{ success: boolean; error?: string; userId?: string }> {
+    return await db.transaction(async (tx) => {
+      const [token] = await tx
+        .select()
+        .from(emailVerificationTokens)
+        .where(and(
+          eq(emailVerificationTokens.tokenHash, tokenHash),
+          sql`${emailVerificationTokens.usedAt} IS NULL`,
+          sql`${emailVerificationTokens.expiresAt} > NOW()`
+        ))
+        .for("update");
+      
+      if (!token) {
+        const [expiredOrUsed] = await tx
+          .select()
+          .from(emailVerificationTokens)
+          .where(eq(emailVerificationTokens.tokenHash, tokenHash));
+        
+        if (!expiredOrUsed) {
+          return { success: false, error: "Invalid verification token" };
+        }
+        if (expiredOrUsed.usedAt) {
+          return { success: false, error: "This verification link has already been used" };
+        }
+        return { success: false, error: "This verification link has expired" };
+      }
+      
+      await tx
+        .update(emailVerificationTokens)
+        .set({ usedAt: new Date() })
+        .where(eq(emailVerificationTokens.id, token.id));
+      
+      await tx
+        .update(users)
+        .set({ emailVerified: true, updatedAt: new Date() })
+        .where(eq(users.id, token.userId));
+      
+      return { success: true, userId: token.userId };
+    });
   }
 
   async deleteVerificationTokensForUser(userId: string): Promise<void> {

@@ -13,6 +13,7 @@ ReachInsta is a production-ready SaaS platform for Instagram competitor intellig
 - **Tiered Subscriptions**: Free, Plus, and Pro plans with different limits
 - **Background Processing**: Asynchronous data fetching via Apify API
 - **CSV Export**: Pro users can export data for external analysis
+- **Email Verification**: Mandatory email verification before accessing dashboard
 
 ## Tech Stack
 
@@ -34,6 +35,7 @@ ReachInsta is a production-ready SaaS platform for Instagram competitor intellig
 - Apify API for Instagram data scraping
   - Instagram Scraper Actor for Reels data
   - Followers Scraper Actor for follower counts
+- Resend for transactional email (verification emails)
 
 ## Project Structure
 
@@ -66,6 +68,7 @@ ReachInsta is a production-ready SaaS platform for Instagram competitor intellig
 - **competitor_stats**: Aggregated stats per competitor
 - **raw_payloads**: Raw Apify API responses
 - **jobs**: Background job queue
+- **emailVerificationTokens**: Token storage for email verification (SHA-256 hashed, 24-hour expiry)
 
 ## Environment Variables
 
@@ -73,6 +76,7 @@ Required:
 - `DATABASE_URL`: PostgreSQL connection string (auto-configured)
 - `SESSION_SECRET`: Session encryption key (auto-configured)
 - `APIFY_TOKEN`: Apify API token for data fetching
+- `RESEND_API_KEY`: Resend API key for transactional emails
 
 Optional:
 - `SUPER_ADMIN_EMAIL`: Email that can assign admin roles
@@ -104,7 +108,9 @@ Optional:
 ## API Endpoints
 
 ### Public
-- `GET /api/auth/user` - Get current authenticated user
+- `GET /api/auth/me` - Get current authenticated user
+- `GET /api/auth/verify-email?token=xxx` - Verify email with token
+- `POST /api/auth/resend-verification` - Resend verification email (60s throttle)
 
 ### Authenticated
 - `GET /api/profile` - Get user profile with plan limits
@@ -130,3 +136,7 @@ Optional:
 - Role-based access control for admin endpoints
 - Plan limits enforced on competitor adds and fetches
 - CSV export restricted to Pro users and admins
+- Email verification required before dashboard access
+- Verification tokens hashed with SHA-256, 24-hour expiry
+- Atomic verification with DB transactions (SELECT FOR UPDATE)
+- 60-second resend throttle to prevent abuse

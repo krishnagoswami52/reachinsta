@@ -180,7 +180,17 @@ export class DatabaseStorage implements IStorage {
 
   async createReels(reelsList: InsertReel[]): Promise<Reel[]> {
     if (reelsList.length === 0) return [];
-    return await db.insert(reels).values(reelsList).returning();
+    try {
+      return await db.insert(reels).values(reelsList).returning();
+    } catch (error: any) {
+      if (error.message?.includes('numeric field overflow')) {
+        console.error('Numeric overflow error. Sample reel data:', JSON.stringify(reelsList[0], null, 2));
+        for (const reel of reelsList) {
+          console.error(`Reel ${reel.reelUrl}: views=${reel.views}, likes=${reel.likes}, comments=${reel.comments}, ER=${reel.engagementRate}, VS=${reel.viralScore}`);
+        }
+      }
+      throw error;
+    }
   }
 
   async getReelsByFetchRun(fetchRunId: string): Promise<Reel[]> {
@@ -193,7 +203,14 @@ export class DatabaseStorage implements IStorage {
 
   async createCompetitorStats(stats: InsertCompetitorStats[]): Promise<CompetitorStats[]> {
     if (stats.length === 0) return [];
-    return await db.insert(competitorStats).values(stats).returning();
+    try {
+      return await db.insert(competitorStats).values(stats).returning();
+    } catch (error: any) {
+      if (error.message?.includes('numeric field overflow')) {
+        console.error('Numeric overflow in competitor stats:', JSON.stringify(stats, null, 2));
+      }
+      throw error;
+    }
   }
 
   async getCompetitorStatsByFetchRun(fetchRunId: string): Promise<CompetitorStats[]> {

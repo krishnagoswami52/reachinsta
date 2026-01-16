@@ -160,16 +160,29 @@ export async function processApifyFetch(
         continue;
       }
 
-      const views = item.videoPlayCount || item.videoViewCount || 0;
-      const likes = item.likesCount || 0;
-      const comments = item.commentsCount || 0;
-      const durationSeconds = item.videoDuration ? Math.round(item.videoDuration) : 0;
+      const rawViews = Number(item.videoPlayCount || item.videoViewCount || 0);
+      const rawLikes = Number(item.likesCount || 0);
+      const rawComments = Number(item.commentsCount || 0);
+      const rawDuration = item.videoDuration ? Math.round(Number(item.videoDuration)) : 0;
 
-      const engagementRate = views > 0 ? (likes + comments) / views : (likes > 0 ? 1 : 0);
-      const viralScore =
-        Math.log10(views + 1) * 0.7 +
-        Math.log10(likes + 1) * 0.2 +
-        Math.log10(comments + 1) * 0.1;
+      const views = Number.isFinite(rawViews) ? Math.max(0, Math.floor(rawViews)) : 0;
+      const likes = Number.isFinite(rawLikes) ? Math.max(0, Math.floor(rawLikes)) : 0;
+      const comments = Number.isFinite(rawComments) ? Math.max(0, Math.floor(rawComments)) : 0;
+      const durationSeconds = Number.isFinite(rawDuration) ? Math.min(Math.max(0, rawDuration), 86400) : 0;
+
+      let engagementRate = views > 0 ? (likes + comments) / views : 0;
+      if (!Number.isFinite(engagementRate)) engagementRate = 0;
+      engagementRate = Math.min(Math.max(0, engagementRate), 999999999);
+      
+      let viralScore = 0;
+      if (views > 0 || likes > 0 || comments > 0) {
+        viralScore = 
+          Math.log10(views + 1) * 0.7 +
+          Math.log10(likes + 1) * 0.2 +
+          Math.log10(comments + 1) * 0.1;
+      }
+      if (!Number.isFinite(viralScore)) viralScore = 0;
+      viralScore = Math.min(Math.max(0, viralScore), 9999999999999);
 
       reelsToInsert.push({
         fetchRunId: fetchRun.id,
@@ -234,21 +247,34 @@ export async function processApifyFetch(
     const competitorStatsToInsert: InsertCompetitorStats[] = [];
 
     for (const [username, stats] of userStatsMap) {
-      const avgViews = stats.views.length > 0 
+      let avgViews = stats.views.length > 0 
         ? stats.views.reduce((a, b) => a + b, 0) / stats.views.length 
         : 0;
-      const avgEngagement = stats.engagements.length > 0
+      if (!Number.isFinite(avgViews)) avgViews = 0;
+      avgViews = Math.min(Math.max(0, avgViews), 999999999999999999);
+      
+      let avgEngagement = stats.engagements.length > 0
         ? stats.engagements.reduce((a, b) => a + b, 0) / stats.engagements.length
         : 0;
+      if (!Number.isFinite(avgEngagement)) avgEngagement = 0;
+      avgEngagement = Math.min(Math.max(0, avgEngagement), 999999999);
+
+      const rawFollowers = followersMap.get(username);
+      const safeFollowers = rawFollowers && Number.isFinite(rawFollowers) 
+        ? Math.max(0, Math.floor(rawFollowers)) 
+        : null;
+      
+      const rawTopViews = stats.topViews || 0;
+      const safeTopViews = Number.isFinite(rawTopViews) ? Math.max(0, Math.floor(rawTopViews)) : 0;
 
       competitorStatsToInsert.push({
         fetchRunId: fetchRun.id,
         username,
-        followers: followersMap.get(username) || null,
-        reelsCount: stats.views.length,
+        followers: safeFollowers,
+        reelsCount: Math.min(stats.views.length, 10000),
         avgViews: avgViews.toFixed(2),
         avgEngagementRate: avgEngagement.toFixed(6),
-        topReelViews: stats.topViews,
+        topReelViews: safeTopViews,
       });
     }
 

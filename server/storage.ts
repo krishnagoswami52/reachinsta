@@ -12,12 +12,27 @@ import {
   planLimits,
   type PlanType,
 } from "@shared/schema";
-import { users, type User, type UpsertUser } from "@shared/models/auth";
+import { users, emailVerificationTokens, type User, type UpsertUser } from "@shared/models/auth";
+
+export type VerificationToken = {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+  createdAt: Date | null;
+};
 
 export interface IStorage {
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: UpsertUser): Promise<User>;
+  updateUserEmailVerified(userId: string, verified: boolean): Promise<User | undefined>;
+  
+  createVerificationToken(userId: string, tokenHash: string, expiresAt: Date): Promise<VerificationToken>;
+  getVerificationTokenByHash(tokenHash: string): Promise<VerificationToken | undefined>;
+  markVerificationTokenUsed(tokenId: string): Promise<void>;
+  deleteVerificationTokensForUser(userId: string): Promise<void>;
   
   getProfile(id: string): Promise<Profile | undefined>;
   upsertProfile(profile: InsertProfile): Promise<Profile>;
@@ -71,6 +86,44 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return result;
+  }
+
+  async updateUserEmailVerified(userId: string, verified: boolean): Promise<User | undefined> {
+    const [result] = await db
+      .update(users)
+      .set({ emailVerified: verified, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return result;
+  }
+
+  async createVerificationToken(userId: string, tokenHash: string, expiresAt: Date): Promise<VerificationToken> {
+    const [result] = await db
+      .insert(emailVerificationTokens)
+      .values({ userId, tokenHash, expiresAt })
+      .returning();
+    return result;
+  }
+
+  async getVerificationTokenByHash(tokenHash: string): Promise<VerificationToken | undefined> {
+    const [result] = await db
+      .select()
+      .from(emailVerificationTokens)
+      .where(eq(emailVerificationTokens.tokenHash, tokenHash));
+    return result;
+  }
+
+  async markVerificationTokenUsed(tokenId: string): Promise<void> {
+    await db
+      .update(emailVerificationTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(emailVerificationTokens.id, tokenId));
+  }
+
+  async deleteVerificationTokensForUser(userId: string): Promise<void> {
+    await db
+      .delete(emailVerificationTokens)
+      .where(eq(emailVerificationTokens.userId, userId));
   }
 
   async getProfile(id: string): Promise<Profile | undefined> {

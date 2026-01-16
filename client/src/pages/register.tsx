@@ -35,8 +35,8 @@ export default function RegisterPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      toast({ title: "Account created!", description: "Welcome to ReachInsta" });
-      setLocation("/dashboard");
+      toast({ title: "Account created!", description: "Please check your email to verify your account" });
+      setLocation("/verify-email");
     },
     onError: (error: Error) => {
       toast({ title: "Registration failed", description: error.message, variant: "destructive" });

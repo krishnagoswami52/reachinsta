@@ -4,6 +4,7 @@ import connectPg from "connect-pg-simple";
 import { registerUser, loginUser, sanitizeUser } from "../../services/auth";
 import { registerSchema, loginSchema } from "@shared/models/auth";
 import { storage } from "../../storage";
+import { createAndSendVerificationEmail, verifyEmailToken } from "../../services/email";
 
 declare module "express-session" {
   interface SessionData {
@@ -57,12 +58,18 @@ export async function setupAuth(app: Express) {
         plan: "free",
       });
 
+      try {
+        await createAndSendVerificationEmail(user.id, user.email);
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
+      }
+
       req.session.save((err) => {
         if (err) {
           console.error("Session save error:", err);
           return res.status(500).json({ message: "Registration failed" });
         }
-        res.json(sanitizeUser(user));
+        res.json({ ...sanitizeUser(user), emailVerificationSent: true });
       });
     } catch (error: any) {
       if (error.message === "Email already registered") {
@@ -120,6 +127,49 @@ export async function setupAuth(app: Express) {
       res.clearCookie("connect.sid");
       res.redirect("/");
     });
+  });
+
+  app.post("/api/auth/verify-email", async (req, res) => {
+    try {
+      const { token } = req.body;
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({ message: "Verification token is required" });
+      }
+
+      const result = await verifyEmailToken(token);
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.json({ message: "Email verified successfully" });
+    } catch (error) {
+      console.error("Email verification error:", error);
+      res.status(500).json({ message: "Verification failed" });
+    }
+  });
+
+  app.post("/api/auth/resend-verification", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Please log in first" });
+      }
+
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.emailVerified) {
+        return res.status(400).json({ message: "Email is already verified" });
+      }
+
+      await createAndSendVerificationEmail(user.id, user.email);
+      res.json({ message: "Verification email sent" });
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      res.status(500).json({ message: "Failed to send verification email" });
+    }
   });
 }
 

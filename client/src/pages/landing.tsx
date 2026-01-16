@@ -26,12 +26,12 @@ export default function LandingPage() {
           
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <a href="/api/login">
+            <a href="/login">
               <Button variant="outline" data-testid="button-login">
                 Log In
               </Button>
             </a>
-            <a href="/api/login">
+            <a href="/register">
               <Button data-testid="button-get-started">
                 Get Started
                 <ArrowRight className="w-4 h-4 ml-1" />
@@ -63,7 +63,7 @@ export default function LandingPage() {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <a href="/api/login">
+                  <a href="/register">
                     <Button size="lg" className="w-full sm:w-auto" data-testid="button-hero-cta">
                       Start Free Trial
                       <ArrowRight className="w-4 h-4 ml-2" />
@@ -234,7 +234,7 @@ export default function LandingPage() {
                       No CSV export
                     </li>
                   </ul>
-                  <a href="/api/login" className="block">
+                  <a href="/register" className="block">
                     <Button variant="outline" className="w-full">
                       Get Started
                     </Button>
@@ -281,7 +281,7 @@ export default function LandingPage() {
                       No CSV export
                     </li>
                   </ul>
-                  <a href="/api/login" className="block">
+                  <a href="/register" className="block">
                     <Button className="w-full">
                       Get Started
                     </Button>
@@ -325,7 +325,7 @@ export default function LandingPage() {
                       CSV export included
                     </li>
                   </ul>
-                  <a href="/api/login" className="block">
+                  <a href="/register" className="block">
                     <Button variant="outline" className="w-full">
                       Get Started
                     </Button>

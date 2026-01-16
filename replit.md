@@ -26,7 +26,8 @@ ReachInsta is a production-ready SaaS platform for Instagram competitor intellig
 ### Backend
 - Express.js with TypeScript
 - PostgreSQL with Drizzle ORM
-- Replit Auth for authentication
+- Custom email/password authentication with bcrypt
+- Session-based auth stored in PostgreSQL
 - Background worker for job processing
 
 ### External Services
@@ -56,6 +57,8 @@ ReachInsta is a production-ready SaaS platform for Instagram competitor intellig
 
 ## Database Schema
 
+- **users**: User accounts with email/password authentication
+- **sessions**: PostgreSQL session storage for auth
 - **profiles**: User settings, plan, and limits
 - **competitors**: Tracked Instagram usernames per user
 - **fetch_runs**: Data fetch job records with status

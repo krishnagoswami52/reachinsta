@@ -15,6 +15,10 @@ import {
 import { users, type User, type UpsertUser } from "@shared/models/auth";
 
 export interface IStorage {
+  getUserById(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: UpsertUser): Promise<User>;
+  
   getProfile(id: string): Promise<Profile | undefined>;
   upsertProfile(profile: InsertProfile): Promise<Profile>;
   getAllProfiles(): Promise<Profile[]>;
@@ -48,6 +52,27 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async getUserById(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    return user;
+  }
+
+  async createUser(user: UpsertUser): Promise<User> {
+    const [result] = await db
+      .insert(users)
+      .values({
+        ...user,
+        email: user.email.toLowerCase(),
+      })
+      .returning();
+    return result;
+  }
+
   async getProfile(id: string): Promise<Profile | undefined> {
     const [profile] = await db.select().from(profiles).where(eq(profiles.id, id));
     return profile;

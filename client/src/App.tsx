@@ -7,6 +7,8 @@ import { ThemeProvider } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
 
 import LandingPage from "@/pages/landing";
+import LoginPage from "@/pages/login";
+import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/dashboard";
 import CompetitorsPage from "@/pages/competitors";
 import AnalyticsPage from "@/pages/analytics";
@@ -32,19 +34,43 @@ function AuthenticatedRoutes() {
 
 function AppRouter() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
 
-  if (location === "/" && !isLoading && !isAuthenticated) {
-    return <LandingPage />;
+  if (location === "/login") {
+    if (isAuthenticated && !isLoading) {
+      setLocation("/dashboard");
+      return null;
+    }
+    return <LoginPage />;
   }
 
-  if (location === "/" && isAuthenticated) {
-    window.location.href = "/dashboard";
-    return null;
+  if (location === "/register") {
+    if (isAuthenticated && !isLoading) {
+      setLocation("/dashboard");
+      return null;
+    }
+    return <RegisterPage />;
   }
 
   if (location === "/") {
+    if (isAuthenticated && !isLoading) {
+      setLocation("/dashboard");
+      return null;
+    }
     return <LandingPage />;
+  }
+
+  if (!isAuthenticated && !isLoading) {
+    setLocation("/login");
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
   }
 
   return <AuthenticatedRoutes />;

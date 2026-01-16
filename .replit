@@ -45,3 +45,4 @@ integrations = ["javascript_log_in_with_replit:2.0.0", "javascript_database:1.0.
 
 [userenv.shared]
 APIFY_TOKEN = "apify_api_AFkfnbhdl1iIxtvAepanWdN1HkxSLm263Swh"
+RESEND_FROM_EMAIL = "ReachInsta <noreply@updates.reachinstatest.com>"

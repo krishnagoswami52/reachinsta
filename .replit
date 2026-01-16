@@ -44,4 +44,4 @@ integrations = ["javascript_log_in_with_replit:2.0.0", "javascript_database:1.0.
 [userenv]
 
 [userenv.shared]
-APIFY_TOKEN = "apify_api_4XLyigjTV5QjZNrG0fW5bVOo6jvjJs02cukt"
+APIFY_TOKEN = "apify_api_AFkfnbhdl1iIxtvAepanWdN1HkxSLm263Swh"

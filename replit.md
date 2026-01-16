@@ -80,6 +80,8 @@ Required:
 
 Optional:
 - `SUPER_ADMIN_EMAIL`: Email that can assign admin roles
+- `APP_BASE_URL`: Custom domain for verification emails (e.g., https://reachinstatest.co). Defaults to reachinstatest.co if not set.
+- `RESEND_FROM_EMAIL`: Custom sender email address (e.g., noreply@updates.reachinstatest.com)
 
 ## Plan Limits
 

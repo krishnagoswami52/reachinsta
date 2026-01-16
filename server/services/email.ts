@@ -31,11 +31,11 @@ export async function createAndSendVerificationEmail(userId: string, email: stri
     return { success: false, error: "Email service not configured" };
   }
   
-  const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-    : process.env.REPLIT_DOMAINS?.split(",")[0] 
-      ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
-      : "http://localhost:5000";
+  const baseUrl = process.env.APP_BASE_URL 
+    || (process.env.REPLIT_DEPLOYMENT === "1" && process.env.REPLIT_DOMAINS?.split(",")[0]
+        ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+        : null)
+    || "https://reachinstatest.co";
   
   const verificationUrl = `${baseUrl}/verify-email?token=${token}`;
   

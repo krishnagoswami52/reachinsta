@@ -28,6 +28,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: UpsertUser): Promise<User>;
   updateUserEmailVerified(userId: string, verified: boolean): Promise<User | undefined>;
+  updateUserEmail(userId: string, email: string): Promise<User | undefined>;
   
   createVerificationToken(userId: string, tokenHash: string, expiresAt: Date): Promise<VerificationToken>;
   getVerificationTokenByHash(tokenHash: string): Promise<VerificationToken | undefined>;
@@ -93,6 +94,15 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(users)
       .set({ emailVerified: verified, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return result;
+  }
+
+  async updateUserEmail(userId: string, email: string): Promise<User | undefined> {
+    const [result] = await db
+      .update(users)
+      .set({ email: email.toLowerCase(), updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
     return result;

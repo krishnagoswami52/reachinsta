@@ -190,6 +190,60 @@ export async function setupAuth(app: Express) {
       res.status(500).json({ message: "Failed to send verification email" });
     }
   });
+
+  app.post("/api/auth/change-email", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Please log in first" });
+      }
+
+      const { email } = req.body;
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.emailVerified) {
+        return res.status(400).json({ message: "Cannot change email after verification" });
+      }
+
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({ message: "Email is already in use" });
+      }
+
+      const throttleCheck = canResendVerification(userId);
+      if (!throttleCheck.allowed) {
+        return res.status(429).json({ 
+          message: `Please wait ${throttleCheck.waitSeconds} seconds before changing email` 
+        });
+      }
+
+      await storage.updateUserEmail(userId, email);
+      await storage.deleteVerificationTokensForUser(userId);
+
+      const result = await createAndSendVerificationEmail(userId, email);
+      if (result.success) {
+        markEmailSent(userId);
+        res.json({ message: "Email updated and verification sent", email });
+      } else {
+        res.json({ message: "Email updated but verification email failed to send", email });
+      }
+    } catch (error) {
+      console.error("Change email error:", error);
+      res.status(500).json({ message: "Failed to change email" });
+    }
+  });
 }
 
 export const isAuthenticated: RequestHandler = async (req: any, res, next) => {

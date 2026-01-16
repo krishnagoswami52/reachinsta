@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { BarChart3, Users, TrendingUp, Zap, ArrowRight, Play } from "lucide-react";
+import { BarChart3, Users, TrendingUp, Zap, ArrowRight } from "lucide-react";
+import logoImage from "@assets/ChatGPT_Image_Jan_16,_2026,_06_13_41_PM_1768567542199.png";
 
 export default function LandingPage() {
   return (
@@ -9,9 +10,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
-              <Play className="w-4 h-4 text-primary-foreground" />
-            </div>
+            <img src={logoImage} alt="ReachInsta" className="w-8 h-8 rounded-md object-cover" />
             <span className="font-semibold text-lg">ReachInsta</span>
           </div>
           
@@ -341,9 +340,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-                <Play className="w-3 h-3 text-primary-foreground" />
-              </div>
+              <img src={logoImage} alt="ReachInsta" className="w-6 h-6 rounded object-cover" />
               <span className="font-semibold">ReachInsta</span>
             </div>
             <p className="text-sm text-muted-foreground">

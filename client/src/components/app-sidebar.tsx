@@ -22,10 +22,10 @@ import {
   BarChart3,
   Download,
   Settings,
-  Play,
   LogOut,
   Shield,
 } from "lucide-react";
+import logoImage from "@assets/ChatGPT_Image_Jan_16,_2026,_06_13_41_PM_1768567542199.png";
 import type { Profile } from "@shared/schema";
 
 interface AppSidebarProps {
@@ -58,9 +58,7 @@ export function AppSidebar({ profile }: AppSidebarProps) {
       <SidebarHeader className="p-4 border-b">
         <Link href="/dashboard">
           <div className="flex items-center gap-2 cursor-pointer">
-            <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
-              <Play className="w-4 h-4 text-primary-foreground" />
-            </div>
+            <img src={logoImage} alt="ReachInsta" className="w-8 h-8 rounded-md object-cover" />
             <span className="font-semibold text-lg">ReachInsta</span>
           </div>
         </Link>

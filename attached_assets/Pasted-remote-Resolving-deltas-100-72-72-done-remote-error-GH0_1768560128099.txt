@@ -1,0 +1,91 @@
+remote: Resolving deltas: 100% (72/72), done.
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: 
+remote: - GITHUB PUSH PROTECTION
+remote:   —————————————————————————————————————————
+remote:     Resolve the following violations before pushing again
+remote: 
+remote:     - Push cannot contain secrets
+remote: 
+remote:     
+remote:      (?) Learn how to resolve a blocked push
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push
+remote:     
+remote:     
+remote:       —— Apify API Token ———————————————————————————————————
+remote:        locations:
+remote:          - commit: 4d5344efc848161fc7d0bf51f16e298b9c29ab0e
+remote:            path: .replit:47
+remote:          - commit: 3647b9a9aeede78d60b20656b2a98517535b266d
+remote:            path: .replit:47
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/krishnagoswami52/reachinsta/security/secret-scanning/unblock-secret/38Kt9Y280jYuyJomL04SshYEKV0
+remote:     
+remote:     
+remote:       —— Apify API Token ———————————————————————————————————
+remote:        locations:
+remote:          - commit: 6f1ff0b45f570e3c9a14aab69755f92e66c63668
+remote:            path: .replit:47
+remote:          - commit: ba92af54dcb1672e64f9485bf1d5bb1874eca293
+remote:            path: attached_assets/Pasted-Build-a-production-ready-MVP-web-app-called-ReachInsta-_1768406360782.txt:214
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/krishnagoswami52/reachinsta/security/secret-scanning/unblock-secret/38Kt9bwZRMG5eHXwL6xNoSFKVYK
+remote:     
+remote: 
+remote: 
+To https://github.com/krishnagoswami52/reachinsta.git
+ ! [remote rejected] main -> main (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/krishnagoswami52/reachinsta.git'
+~/workspace$ git init
+Reinitialized existing Git repository in /home/runner/workspace/.git/
+~/workspace$ git remote add origin https://github.com/krishnagoswami52/reachinsta.git
+error: remote origin already exists.
+~/workspace$ git branch -M main
+~/workspace$ git push -u origin main
+Enumerating objects: 232, done.
+Counting objects: 100% (232/232), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (217/217), done.
+Writing objects: 100% (232/232), 878.02 KiB | 22.51 MiB/s, done.
+Total 232 (delta 72), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (72/72), done.
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: 
+remote: - GITHUB PUSH PROTECTION
+remote:   —————————————————————————————————————————
+remote:     Resolve the following violations before pushing again
+remote: 
+remote:     - Push cannot contain secrets
+remote: 
+remote:     
+remote:      (?) Learn how to resolve a blocked push
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push
+remote:     
+remote:     
+remote:       —— Apify API Token ———————————————————————————————————
+remote:        locations:
+remote:          - commit: 6f1ff0b45f570e3c9a14aab69755f92e66c63668
+remote:            path: .replit:47
+remote:          - commit: ba92af54dcb1672e64f9485bf1d5bb1874eca293
+remote:            path: attached_assets/Pasted-Build-a-production-ready-MVP-web-app-called-ReachInsta-_1768406360782.txt:214
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/krishnagoswami52/reachinsta/security/secret-scanning/unblock-secret/38Kt9bwZRMG5eHXwL6xNoSFKVYK
+remote:     
+remote:     
+remote:       —— Apify API Token ———————————————————————————————————
+remote:        locations:
+remote:          - commit: 4d5344efc848161fc7d0bf51f16e298b9c29ab0e
+remote:            path: .replit:47
+remote:          - commit: 3647b9a9aeede78d60b20656b2a98517535b266d
+remote:            path: .replit:47
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/krishnagoswami52/reachinsta/security/secret-scanning/unblock-secret/38Kt9Y280jYuyJomL04SshYEKV0
+remote:     
+remote: 
+remote: 
+To https://github.com/krishnagoswami52/reachinsta.git
+ ! [remote rejected] main -> main (push declined due to repository rule violations)

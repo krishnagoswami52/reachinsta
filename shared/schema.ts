@@ -66,8 +66,8 @@ export const reels = pgTable("reels", {
   comments: bigint("comments", { mode: "number" }).default(0).notNull(),
   durationSeconds: integer("duration_seconds").default(0).notNull(),
   postedAt: timestamp("posted_at"),
-  engagementRate: numeric("engagement_rate", { precision: 10, scale: 6 }).default("0").notNull(),
-  viralScore: numeric("viral_score", { precision: 10, scale: 4 }).default("0").notNull(),
+  engagementRate: numeric("engagement_rate", { precision: 20, scale: 10 }).default("0").notNull(),
+  viralScore: numeric("viral_score", { precision: 20, scale: 6 }).default("0").notNull(),
 }, (table) => [
   index("reels_fetch_run_idx").on(table.fetchRunId),
   index("reels_username_idx").on(table.username),
@@ -80,8 +80,8 @@ export const competitorStats = pgTable("competitor_stats", {
   username: text("username").notNull(),
   followers: bigint("followers", { mode: "number" }),
   reelsCount: integer("reels_count").default(0).notNull(),
-  avgViews: numeric("avg_views", { precision: 15, scale: 2 }).default("0").notNull(),
-  avgEngagementRate: numeric("avg_engagement_rate", { precision: 10, scale: 6 }).default("0").notNull(),
+  avgViews: numeric("avg_views", { precision: 20, scale: 2 }).default("0").notNull(),
+  avgEngagementRate: numeric("avg_engagement_rate", { precision: 20, scale: 10 }).default("0").notNull(),
   topReelViews: bigint("top_reel_views", { mode: "number" }).default(0).notNull(),
 });
 

@@ -12,6 +12,7 @@ import {
   planLimits,
   type PlanType,
 } from "@shared/schema";
+import { users, type User, type UpsertUser } from "@shared/models/auth";
 
 export interface IStorage {
   getProfile(id: string): Promise<Profile | undefined>;

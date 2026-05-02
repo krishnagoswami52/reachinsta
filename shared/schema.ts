@@ -2,6 +2,7 @@ import { sql, relations } from "drizzle-orm";
 import { pgTable, text, varchar, integer, bigint, numeric, boolean, timestamp, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import type { User } from "./models/auth";
 
 export * from "./models/auth";
 
@@ -10,6 +11,9 @@ export type PlanType = typeof planTypes[number];
 
 export const roleTypes = ["user", "admin"] as const;
 export type RoleType = typeof roleTypes[number];
+
+export const subscriptionStatusTypes = ["free", "active", "past_due", "canceled", "paused"] as const;
+export type SubscriptionStatusType = typeof subscriptionStatusTypes[number];
 
 export const fetchStatusTypes = ["queued", "running", "merging", "analyzing", "completed", "failed"] as const;
 export type FetchStatusType = typeof fetchStatusTypes[number];
@@ -28,6 +32,13 @@ export const profiles = pgTable("profiles", {
   csvExport: boolean("csv_export").default(false).notNull(),
   fetchesUsed: integer("fetches_used").default(0).notNull(),
   fetchesResetAt: timestamp("fetches_reset_at"),
+  // Paddle subscription fields
+  subscriptionStatus: text("subscription_status").$type<SubscriptionStatusType>().default("free").notNull(),
+  paddleCustomerId: text("paddle_customer_id").unique(),
+  paddleSubscriptionId: text("paddle_subscription_id"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+  periodResetAt: timestamp("period_reset_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -106,6 +117,22 @@ export const jobs = pgTable("jobs", {
 }, (table) => [
   index("jobs_status_idx").on(table.status),
 ]);
+
+export const apifyKeys = pgTable("apify_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: text("token").notNull().unique(),
+  totalBudget: numeric("total_budget", { precision: 10, scale: 4 }).default("5.0000").notNull(),
+  usedBudget: numeric("used_budget", { precision: 10, scale: 4 }).default("0.0000").notNull(),
+  isExhausted: boolean("is_exhausted").default(false).notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  lastErrorAt: timestamp("last_error_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertApifyKeySchema = createInsertSchema(apifyKeys).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertApifyKey = typeof apifyKeys.$inferInsert;
+export type ApifyKey = typeof apifyKeys.$inferSelect;
 
 export const profilesRelations = relations(profiles, ({ many }) => ({
   competitors: many(competitors),
@@ -197,31 +224,42 @@ export const insertJobSchema = createInsertSchema(jobs).omit({
   updatedAt: true,
 });
 
-export type InsertProfile = z.infer<typeof insertProfileSchema>;
+export type InsertProfile = typeof profiles.$inferInsert;
 export type Profile = typeof profiles.$inferSelect;
 
-export type InsertCompetitor = z.infer<typeof insertCompetitorSchema>;
+export type InsertCompetitor = typeof competitors.$inferInsert;
 export type Competitor = typeof competitors.$inferSelect;
 
-export type InsertFetchRun = z.infer<typeof insertFetchRunSchema>;
+export type InsertFetchRun = typeof fetchRuns.$inferInsert;
 export type FetchRun = typeof fetchRuns.$inferSelect;
 
-export type InsertReel = z.infer<typeof insertReelSchema>;
+export type InsertReel = typeof reels.$inferInsert;
 export type Reel = typeof reels.$inferSelect;
 
-export type InsertCompetitorStats = z.infer<typeof insertCompetitorStatsSchema>;
+export type InsertCompetitorStats = typeof competitorStats.$inferInsert;
 export type CompetitorStats = typeof competitorStats.$inferSelect;
 
-export type InsertRawPayload = z.infer<typeof insertRawPayloadSchema>;
+export type InsertRawPayload = typeof rawPayloads.$inferInsert;
 export type RawPayload = typeof rawPayloads.$inferSelect;
 
-export type InsertJob = z.infer<typeof insertJobSchema>;
+export type InsertJob = typeof jobs.$inferInsert;
 export type Job = typeof jobs.$inferSelect;
 
 export const planLimits: Record<PlanType, { maxCompetitors: number; monthlyFetchLimit: number; timeRangeMaxDays: number; csvExport: boolean }> = {
   free: { maxCompetitors: 5, monthlyFetchLimit: 1, timeRangeMaxDays: 7, csvExport: false },
-  plus: { maxCompetitors: 50, monthlyFetchLimit: 2, timeRangeMaxDays: 28, csvExport: false },
+  plus: { maxCompetitors: 50, monthlyFetchLimit: 2, timeRangeMaxDays: 14, csvExport: false },
   pro: { maxCompetitors: 100, monthlyFetchLimit: 4, timeRangeMaxDays: 28, csvExport: true },
+};
+
+/**
+ * Shape returned by GET /api/auth/user — User fields (minus passwordHash)
+ * merged with subscription fields from the profiles table.
+ */
+export type SanitizedUser = Omit<User, "passwordHash"> & {
+  plan: PlanType;
+  subscriptionStatus: SubscriptionStatusType;
+  currentPeriodEnd: Date | null;
+  cancelAtPeriodEnd: boolean;
 };
 
 export const durationBuckets = [

@@ -19,8 +19,15 @@ async function processJob(jobId: string): Promise<void> {
       throw new Error(`Fetch run ${job.fetchRunId} not found`);
     }
 
-    const competitors = await storage.getCompetitors(job.userId);
-    const usernames = competitors.map((c) => c.username);
+    let usernames: string[] = [];
+
+    // Use competitors from fetch run if available, otherwise fetch from storage
+    if (fetchRun.competitorUsernames && fetchRun.competitorUsernames.length > 0) {
+      usernames = fetchRun.competitorUsernames;
+    } else {
+      const competitors = await storage.getCompetitors(job.userId);
+      usernames = competitors.map((c) => c.username);
+    }
 
     if (usernames.length === 0) {
       throw new Error("No competitors to fetch");

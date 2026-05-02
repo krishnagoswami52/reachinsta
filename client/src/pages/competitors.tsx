@@ -1,6 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { CompetitorList } from "@/components/dashboard/competitor-list";
 import { CompetitorCard } from "@/components/dashboard/competitor-card";
@@ -9,8 +8,6 @@ import { Users } from "lucide-react";
 import type { Profile, Competitor, FetchRun, Reel, CompetitorStats } from "@shared/schema";
 
 export default function CompetitorsPage() {
-  const { toast } = useToast();
-
   const { data: profile } = useQuery<Profile>({
     queryKey: ["/api/profile"],
   });
@@ -45,6 +42,15 @@ export default function CompetitorsPage() {
     },
   });
 
+  const clearAllCompetitorsMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", "/api/competitors");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/competitors"] });
+    },
+  });
+
   const stats = latestFetch?.stats || [];
 
   return (
@@ -66,17 +72,12 @@ export default function CompetitorsPage() {
             maxCompetitors={profile?.maxCompetitors || 5}
             onAdd={async (usernames) => {
               await addCompetitorsMutation.mutateAsync(usernames);
-              toast({
-                title: "Competitors added",
-                description: `${usernames.length} competitor(s) added successfully.`,
-              });
             }}
             onRemove={async (id) => {
               await removeCompetitorMutation.mutateAsync(id);
-              toast({
-                title: "Competitor removed",
-                description: "The competitor has been removed from your list.",
-              });
+            }}
+            onClearAll={async () => {
+              await clearAllCompetitorsMutation.mutateAsync();
             }}
           />
         </div>

@@ -1,0 +1,52 @@
+name: Deploy ReachInsta to KVM4
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/reachinsta:latest
+            ghcr.io/${{ github.repository_owner }}/reachinsta:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_PADDLE_CLIENT_TOKEN=${{ secrets.VITE_PADDLE_CLIENT_TOKEN }}
+            VITE_PADDLE_ENVIRONMENT=${{ secrets.VITE_PADDLE_ENVIRONMENT }}
+            VITE_PADDLE_PRICE_PLUS=${{ secrets.VITE_PADDLE_PRICE_PLUS }}
+            VITE_PADDLE_PRICE_PRO=${{ secrets.VITE_PADDLE_PRICE_PRO }}
+
+      - name: Deploy to KVM4 via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd ~/reachinsta
+            docker compose pull
+            docker compose up -d --force-recreate
+            docker image prune -f
+            echo "Deploy complete"

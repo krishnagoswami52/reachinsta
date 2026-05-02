@@ -34,10 +34,12 @@ export default function RegisterPage() {
       }
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    onSuccess: (user) => {
+      queryClient.clear();
+      queryClient.setQueryData(["/api/auth/user"], user);
       toast({ title: "Account created!", description: "Please check your email to verify your account" });
-      setLocation("/verify-email");
+      const next = new URLSearchParams(window.location.search).get("next");
+      setLocation(next ? `/verify-email?next=${encodeURIComponent(next)}` : "/verify-email");
     },
     onError: (error: Error) => {
       toast({ title: "Registration failed", description: error.message, variant: "destructive" });

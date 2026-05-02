@@ -17,6 +17,7 @@ const fetchDataSchema = z.object({
   timeRangeDays: z.number().refine((v) => [7, 14, 28].includes(v), {
     message: "Time range must be 7, 14, or 28 days",
   }),
+  competitors: z.array(z.string()).optional(),
 });
 
 const updatePlanSchema = z.object({
@@ -34,14 +35,15 @@ const updateRoleSchema = z.object({
   role: z.enum(["user", "admin"]),
 });
 
+const SUPER_ADMIN_EMAIL = "krishna@techcm.in";
+const ADMIN_EMAILS = [SUPER_ADMIN_EMAIL];
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   await setupAuth(app);
   registerAuthRoutes(app);
-
-  const ADMIN_EMAILS = ["krishna@techcm.in"];
   
   app.get("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
@@ -51,13 +53,24 @@ export async function registerRoutes(
       let profile = await storage.getProfile(userId);
       
       if (!profile) {
-        const isAdmin = ADMIN_EMAILS.includes(email?.toLowerCase());
+        const normalizedEmail = email?.toLowerCase() || null;
+        const isAdmin = !!normalizedEmail && ADMIN_EMAILS.includes(normalizedEmail);
         profile = await storage.upsertProfile({
           id: userId,
-          email: email,
+          email: normalizedEmail,
           role: isAdmin ? "admin" : "user",
           plan: isAdmin ? "pro" : "free",
         });
+      } else {
+        const normalizedEmail = (email || profile.email || "").toLowerCase();
+        const isAdminEmail = !!normalizedEmail && ADMIN_EMAILS.includes(normalizedEmail);
+
+        if (isAdminEmail && profile.role !== "admin") {
+          profile =
+            (await storage.updateProfile(userId, {
+              role: "admin",
+            })) || profile;
+        }
       }
       
       if (profile.fetchesResetAt && new Date() >= profile.fetchesResetAt) {
@@ -158,6 +171,19 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/competitors", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      console.log(`[DELETE /api/competitors] Removing all competitors for user: ${userId}`);
+      await storage.removeAllCompetitors(userId);
+      console.log(`[DELETE /api/competitors] Successfully removed all competitors for user: ${userId}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing all competitors:", error);
+      res.status(500).json({ message: "Failed to remove competitors" });
+    }
+  });
+
   app.delete("/api/competitors/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -183,7 +209,7 @@ export async function registerRoutes(
       if (!parseResult.success) {
         return res.status(400).json({ message: parseResult.error.errors[0]?.message || "Invalid input" });
       }
-      const { timeRangeDays } = parseResult.data;
+      const { timeRangeDays, competitors: providedCompetitors } = parseResult.data;
       
       const profile = await storage.getProfile(userId);
       if (!profile) {
@@ -198,12 +224,17 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Monthly fetch limit reached" });
       }
       
-      const competitors = await storage.getCompetitors(userId);
-      if (competitors.length === 0) {
-        return res.status(400).json({ message: "Add competitors first" });
-      }
+      let competitorUsernames: string[] = [];
       
-      const competitorUsernames = competitors.map(c => c.username);
+      if (providedCompetitors && providedCompetitors.length > 0) {
+        competitorUsernames = providedCompetitors;
+      } else {
+        const competitors = await storage.getCompetitors(userId);
+        if (competitors.length === 0) {
+          return res.status(400).json({ message: "Add competitors first" });
+        }
+        competitorUsernames = competitors.map(c => c.username);
+      }
       
       const fetchRun = await storage.createFetchRun({
         userId,
@@ -281,12 +312,73 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/fetch/:id/cancel", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      const fetchRun = await storage.getFetchRun(id);
+      if (!fetchRun || fetchRun.userId !== userId) {
+        return res.status(404).json({ message: "Fetch run not found" });
+      }
+
+      if (fetchRun.status === "completed" || fetchRun.status === "failed") {
+        return res.status(400).json({ message: "Fetch has already finished and cannot be cancelled" });
+      }
+
+      const queuedJobs = await storage.getQueuedJobs();
+      const job = queuedJobs.find((j) => j.fetchRunId === fetchRun.id && j.userId === userId);
+
+      if (job) {
+        await storage.updateJob(job.id, {
+          status: "failed",
+          attempts: job.attempts,
+          lastError: "Cancelled by user",
+        });
+      }
+
+      const updatedFetchRun = await storage.updateFetchRun(fetchRun.id, {
+        status: "failed",
+        errorMessage: "Cancelled by user",
+      });
+
+      res.json(updatedFetchRun || fetchRun);
+    } catch (error) {
+      console.error("Error cancelling fetch:", error);
+      res.status(500).json({ message: "Failed to cancel fetch" });
+    }
+  });
+
   const isAdmin = async (req: any, res: any, next: any) => {
     const userId = req.user.claims.sub;
-    const profile = await storage.getProfile(userId);
-    if (!profile || profile.role !== "admin") {
+    const email = req.user.claims.email?.toLowerCase();
+
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
+    const isAdminEmail =
+      (!!email && ADMIN_EMAILS.includes(email)) || (!!email && !!superAdminEmail && email === superAdminEmail);
+
+    let profile = await storage.getProfile(userId);
+
+    if (!profile) {
+      profile = await storage.upsertProfile({
+        id: userId,
+        email,
+        role: isAdminEmail ? "admin" : "user",
+        plan: isAdminEmail ? "pro" : "free",
+      });
+    } else if (isAdminEmail && profile.role !== "admin") {
+      profile = (await storage.updateProfile(userId, {
+        role: "admin",
+        plan: "pro",
+      })) || profile;
+    }
+
+    const hasAdminRole = profile.role === "admin";
+
+    if (!hasAdminRole) {
       return res.status(403).json({ message: "Admin access required" });
     }
+
     next();
   };
 
@@ -374,10 +466,10 @@ export async function registerRoutes(
       }
       const { role } = parseResult.data;
       
-      const adminEmail = process.env.SUPER_ADMIN_EMAIL;
-      const requestingUser = req.user.claims.email;
+      const requestingUser = (req.user.claims.email || "").toLowerCase();
+      const isSuperAdmin = requestingUser === SUPER_ADMIN_EMAIL;
       
-      if (role === "admin" && adminEmail && requestingUser !== adminEmail) {
+      if (role === "admin" && !isSuperAdmin) {
         return res.status(403).json({ message: "Only super admin can assign admin role" });
       }
       

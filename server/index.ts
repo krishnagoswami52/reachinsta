@@ -1,8 +1,20 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { startWorker } from "./worker";
+import { initApifyKeys } from "./services/keyManager";
+import paddleWebhookRouter from "./routes/paddleWebhook";
+
+console.log('[Env Check]', {
+  db: !!process.env.DATABASE_URL,
+  session: !!process.env.SESSION_SECRET,
+  apify: !!process.env.APIFY_TOKEN,
+  resend: !!process.env.RESEND_API_KEY,
+  paddle_api: !!process.env.PADDLE_API_KEY,
+  paddle_webhook: !!process.env.PADDLE_WEBHOOK_SECRET,
+});
 
 const app = express();
 const httpServer = createServer(app);
@@ -12,6 +24,11 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+// CRITICAL: Paddle webhook BEFORE express.json()
+// — uses its own express.raw() to get the unparsed body for signature verification
+app.use(paddleWebhookRouter);
+console.log('[Startup] Paddle webhook routes registered');
 
 app.use(
   express.json({
@@ -81,19 +98,17 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
     },
     () => {
       log(`serving on port ${port}`);
+      initApifyKeys().catch((err) => {
+        log(`Failed to initialize Apify keys: ${err.message}`);
+      });
       startWorker().catch((err) => {
         log(`Failed to start worker: ${err.message}`);
       });

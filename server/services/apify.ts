@@ -1,10 +1,37 @@
 import { ApifyClient } from 'apify-client';
 import { storage } from "../storage";
 import type { FetchRun, InsertReel, InsertCompetitorStats } from "@shared/schema";
+import { getBestKey, isBudgetError, markExhausted, recordUsage } from "./keyManager";
 
-const APIFY_TOKEN = process.env.APIFY_TOKEN;
 const INSTAGRAM_SCRAPER_ACTOR_ID = "shu8hvrXbJbY3Eb9W";
 const FOLLOWERS_SCRAPER_ACTOR_ID = "7RQ4RlfRihUhflQtJ";
+const MAX_KEY_ATTEMPTS = 10; // max keys to try before giving up
+
+async function runActorWithRotation<T>(
+  fn: (client: ApifyClient) => Promise<T>,
+): Promise<{ result: T; token: string }> {
+  let lastError: Error = new Error("No Apify keys available");
+
+  for (let attempt = 0; attempt < MAX_KEY_ATTEMPTS; attempt++) {
+    const token = await getBestKey();
+    const client = new ApifyClient({ token });
+
+    try {
+      const result = await fn(client);
+      return { result, token };
+    } catch (error: any) {
+      if (isBudgetError(error)) {
+        console.warn(`[KeyManager] Budget exhausted on key ...${token.slice(-8)}, rotating to next`);
+        await markExhausted(token);
+        lastError = error;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError;
+}
 
 interface InstagramPostData {
   id?: string;
@@ -52,13 +79,7 @@ export async function processApifyFetch(
   fetchRun: FetchRun,
   usernames: string[]
 ): Promise<void> {
-  if (!APIFY_TOKEN) {
-    throw new Error("APIFY_TOKEN is not configured");
-  }
-
   console.log(`Starting Apify fetch for run ${fetchRun.id} with ${usernames.length} usernames: ${usernames.join(', ')}`);
-
-  const client = new ApifyClient({ token: APIFY_TOKEN });
 
   await storage.updateFetchRun(fetchRun.id, {
     status: "running",
@@ -67,24 +88,24 @@ export async function processApifyFetch(
 
   try {
     const directUrls = usernames.map(username => `https://www.instagram.com/${username}`);
-    
+
     const resultsLimitMap: Record<number, number> = {
       7: 11,
       14: 21,
       28: 36,
     };
-    
+
     const onlyPostsNewerThanMap: Record<number, string> = {
       7: "8 days",
       14: "15 days",
       28: "29 days",
     };
-    
+
     const resultsLimit = resultsLimitMap[fetchRun.timeRangeDays] || 21;
     const onlyPostsNewerThan = onlyPostsNewerThanMap[fetchRun.timeRangeDays] || "15 days";
-    
+
     console.log(`Starting Instagram Scraper with ${usernames.length} URLs, limit: ${resultsLimit}, newer than: ${onlyPostsNewerThan}`);
-    
+
     const reelsInput = {
       directUrls: directUrls,
       resultsType: "posts",
@@ -95,11 +116,17 @@ export async function processApifyFetch(
       addParentData: false,
     };
 
-    const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR_ID).call(reelsInput);
-    console.log(`Instagram Scraper run completed with status: ${run.status}`);
+    const { result: postsRun, token: postsToken } = await runActorWithRotation((client) =>
+      client.actor(INSTAGRAM_SCRAPER_ACTOR_ID).call(reelsInput)
+    );
+    console.log(`Instagram Scraper run completed with status: ${postsRun.status}`);
 
-    const { items: postsData } = await client.dataset(run.defaultDatasetId).listItems();
+    const { items: postsData } = await new ApifyClient({ token: postsToken })
+      .dataset(postsRun.defaultDatasetId)
+      .listItems();
     console.log(`Got ${postsData.length} items from Instagram Scraper`);
+
+    await recordUsage(postsToken, postsData.length, 0);
 
     if (postsData.length > 0) {
       console.log("Sample post data:", JSON.stringify(postsData[0], null, 2).slice(0, 2000));
@@ -213,18 +240,27 @@ export async function processApifyFetch(
       console.log(`Inserted ${reelsToInsert.length} reels`);
     }
 
-    const uniqueUsernames = [...userStatsMap.keys()];
+    const uniqueUsernames: string[] = [];
+    userStatsMap.forEach((_stats, username) => {
+      uniqueUsernames.push(username);
+    });
     let followersMap = new Map<string, number>();
 
     if (uniqueUsernames.length > 0) {
       console.log(`Fetching followers for ${uniqueUsernames.length} usernames...`);
-      
+
       try {
         const followersInput = { usernames: uniqueUsernames };
-        const followersRun = await client.actor(FOLLOWERS_SCRAPER_ACTOR_ID).call(followersInput);
-        const { items: followersData } = await client.dataset(followersRun.defaultDatasetId).listItems();
+        const { result: followersRun, token: followersToken } = await runActorWithRotation((client) =>
+          client.actor(FOLLOWERS_SCRAPER_ACTOR_ID).call(followersInput)
+        );
+        const { items: followersData } = await new ApifyClient({ token: followersToken })
+          .dataset(followersRun.defaultDatasetId)
+          .listItems();
 
         console.log(`Got ${followersData.length} follower records`);
+
+        await recordUsage(followersToken, 0, followersData.length);
 
         await storage.createRawPayload({
           fetchRunId: fetchRun.id,
@@ -246,16 +282,20 @@ export async function processApifyFetch(
 
     const competitorStatsToInsert: InsertCompetitorStats[] = [];
 
-    for (const [username, stats] of userStatsMap) {
-      let avgViews = stats.views.length > 0 
-        ? stats.views.reduce((a, b) => a + b, 0) / stats.views.length 
-        : 0;
+    userStatsMap.forEach((stats, username) => {
+      let avgViews = 0;
+      if (stats.views.length > 0) {
+        const sumViews = stats.views.reduce((a: number, b: number) => a + b, 0);
+        avgViews = sumViews / stats.views.length;
+      }
       if (!Number.isFinite(avgViews)) avgViews = 0;
       avgViews = Math.min(Math.max(0, avgViews), 999999999999999999);
       
-      let avgEngagement = stats.engagements.length > 0
-        ? stats.engagements.reduce((a, b) => a + b, 0) / stats.engagements.length
-        : 0;
+      let avgEngagement = 0;
+      if (stats.engagements.length > 0) {
+        const sumEngagement = stats.engagements.reduce((a: number, b: number) => a + b, 0);
+        avgEngagement = sumEngagement / stats.engagements.length;
+      }
       if (!Number.isFinite(avgEngagement)) avgEngagement = 0;
       avgEngagement = Math.min(Math.max(0, avgEngagement), 999999999);
 
@@ -276,7 +316,7 @@ export async function processApifyFetch(
         avgEngagementRate: avgEngagement.toFixed(6),
         topReelViews: safeTopViews,
       });
-    }
+    });
 
     if (competitorStatsToInsert.length > 0) {
       await storage.createCompetitorStats(competitorStatsToInsert);

@@ -37,7 +37,17 @@ export function ViralReelsTable({ reels, competitors = [], isLoading }: ViralRee
   const [minViews, setMinViews] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const uniqueCompetitors = [...new Set(reels.map((r) => r.username))];
+  const uniqueCompetitors = (() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const reel of reels) {
+      if (!seen.has(reel.username)) {
+        seen.add(reel.username);
+        list.push(reel.username);
+      }
+    }
+    return list;
+  })();
 
   const filteredReels = reels
     .filter((reel) => {

@@ -1,10 +1,19 @@
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
-import { registerUser, loginUser, sanitizeUser } from "../../services/auth";
-import { registerSchema, loginSchema } from "@shared/models/auth";
+import { registerUser, loginUser, sanitizeUser, hashPassword } from "../../services/auth";
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/models/auth";
 import { storage } from "../../storage";
-import { createAndSendVerificationEmail, verifyEmailToken, canResendVerification, markEmailSent } from "../../services/email";
+import {
+  createAndSendVerificationEmail,
+  verifyEmailCode,
+  canResendVerification,
+  markEmailSent,
+  createAndSendPasswordResetCode,
+  canResendPasswordReset,
+  markPasswordResetSent,
+  resetPasswordWithCode,
+} from "../../services/email";
 
 declare module "express-session" {
   interface SessionData {
@@ -119,9 +128,11 @@ export async function setupAuth(app: Express) {
     req.session.destroy((err) => {
       if (err) {
         console.error("Session destroy error:", err);
-        return res.status(500).json({ message: "Logout failed" });
       }
       res.clearCookie("connect.sid");
+      res.clearCookie("connect.sid", { path: "/" });
+      res.clearCookie("connect.sid", { path: "/", sameSite: "lax", secure: false });
+      res.clearCookie("connect.sid", { path: "/", sameSite: "lax", secure: true });
       res.json({ message: "Logged out successfully" });
     });
   });
@@ -132,18 +143,21 @@ export async function setupAuth(app: Express) {
         console.error("Session destroy error:", err);
       }
       res.clearCookie("connect.sid");
+      res.clearCookie("connect.sid", { path: "/" });
+      res.clearCookie("connect.sid", { path: "/", sameSite: "lax", secure: false });
+      res.clearCookie("connect.sid", { path: "/", sameSite: "lax", secure: true });
       res.redirect("/");
     });
   });
 
   app.post("/api/auth/verify-email", async (req, res) => {
     try {
-      const { token } = req.body;
-      if (!token || typeof token !== "string") {
-        return res.status(400).json({ message: "Verification token is required" });
+      const { code } = req.body;
+      if (!code || typeof code !== "string") {
+        return res.status(400).json({ message: "Verification code is required" });
       }
 
-      const result = await verifyEmailToken(token);
+      const result = await verifyEmailCode(code);
       if (!result.success) {
         return res.status(400).json({ message: result.error });
       }
@@ -242,6 +256,78 @@ export async function setupAuth(app: Express) {
     } catch (error) {
       console.error("Change email error:", error);
       res.status(500).json({ message: "Failed to change email" });
+    }
+  });
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const parseResult = forgotPasswordSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: parseResult.error.errors[0]?.message || "Invalid input",
+        });
+      }
+
+      const { email } = parseResult.data;
+      const user = await storage.getUserByEmail(email);
+
+      // Always return 200 to prevent user enumeration — never reveal whether an email exists
+      if (!user || !user.passwordHash || !user.emailVerified) {
+        return res.json({ message: "If that email is registered, a reset code has been sent." });
+      }
+
+      const throttleCheck = canResendPasswordReset(user.id);
+      if (!throttleCheck.allowed) {
+        return res.status(429).json({
+          message: `Please wait ${throttleCheck.waitSeconds} seconds before requesting another reset code`,
+        });
+      }
+
+      const result = await createAndSendPasswordResetCode(user.id, user.email);
+      if (!result.success) {
+        return res.status(500).json({ message: result.error || "Failed to send reset code" });
+      }
+
+      markPasswordResetSent(user.id);
+      res.json({ message: "If that email is registered, a reset code has been sent." });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ message: "Failed to send reset code" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const parseResult = resetPasswordSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: parseResult.error.errors[0]?.message || "Invalid input",
+        });
+      }
+
+      const { email, code, password } = parseResult.data;
+      const confirmPassword = typeof req.body?.confirmPassword === "string" ? req.body.confirmPassword : undefined;
+      if (confirmPassword !== undefined && confirmPassword !== password) {
+        return res.status(400).json({ message: "Passwords do not match" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+
+      // Return a generic error — do not confirm whether the email exists
+      if (!user || !user.passwordHash || !user.emailVerified) {
+        return res.status(400).json({ message: "Invalid or expired reset code" });
+      }
+
+      const newPasswordHash = await hashPassword(password);
+      const result = await resetPasswordWithCode(user.id, code, newPasswordHash);
+      if (!result.success) {
+        return res.status(400).json({ message: result.error || "Failed to reset password" });
+      }
+
+      res.json({ message: "Password reset successful" });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
     }
   });
 }

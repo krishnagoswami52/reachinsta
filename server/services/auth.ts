@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { storage } from "../storage";
 import type { User, RegisterInput, LoginInput } from "@shared/models/auth";
+import type { Profile, SanitizedUser } from "@shared/schema";
 
 const SALT_ROUNDS = 12;
 
@@ -51,4 +52,16 @@ export async function loginUser(input: LoginInput): Promise<User> {
 export function sanitizeUser(user: User): Omit<User, "passwordHash"> {
   const { passwordHash, ...safeUser } = user;
   return safeUser;
+}
+
+/** Merges auth user with profile subscription fields into one response object. */
+export function buildSanitizedUser(user: User, profile: Profile | undefined): SanitizedUser {
+  const { passwordHash, ...safeUser } = user;
+  return {
+    ...safeUser,
+    plan: profile?.plan ?? "free",
+    subscriptionStatus: profile?.subscriptionStatus ?? "free",
+    currentPeriodEnd: profile?.currentPeriodEnd ?? null,
+    cancelAtPeriodEnd: profile?.cancelAtPeriodEnd ?? false,
+  };
 }

@@ -1,5 +1,6 @@
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -21,12 +22,13 @@ import {
   Users,
   BarChart3,
   Download,
-  Settings,
   LogOut,
   Shield,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import logoImage from "@assets/ChatGPT_Image_Jan_16,_2026,_06_13_41_PM_1768567542199.png";
-import type { Profile } from "@shared/schema";
+import type { Profile, Competitor } from "@shared/schema";
 
 interface AppSidebarProps {
   profile?: Profile | null;
@@ -35,6 +37,11 @@ interface AppSidebarProps {
 export function AppSidebar({ profile }: AppSidebarProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+
+  const { data: competitors = [] } = useQuery<Competitor[]>({
+    queryKey: ["/api/competitors"],
+    enabled: !!profile,
+  });
 
   const isAdmin = profile?.role === "admin";
 
@@ -109,6 +116,19 @@ export function AppSidebar({ profile }: AppSidebarProps) {
           </SidebarGroup>
         )}
 
+        {profile && profile.plan !== "pro" && (
+          <SidebarGroup>
+            <SidebarGroupContent className="px-3">
+              <Link href="/pricing">
+                <Button size="sm" className="w-full gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  Upgrade Plan
+                </Button>
+              </Link>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {profile && (
           <SidebarGroup className="mt-auto">
             <SidebarGroupLabel>Usage</SidebarGroupLabel>
@@ -124,7 +144,7 @@ export function AppSidebar({ profile }: AppSidebarProps) {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Competitors</span>
-                <span className="font-medium">0/{profile.maxCompetitors}</span>
+                <span className="font-medium">{competitors.length}/{profile.maxCompetitors}</span>
               </div>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -141,15 +161,25 @@ export function AppSidebar({ profile }: AppSidebarProps) {
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">
-              {user?.firstName ? `${user.firstName} ${user.lastName || ""}` : user?.email}
+              {user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : user?.email}
             </p>
             {profile && <PlanBadge plan={profile.plan} className="mt-0.5" />}
           </div>
+          <Link href="/profile">
+            <Button
+              variant="ghost"
+              size="icon"
+              title="View profile"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </Link>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => logout()}
             data-testid="button-logout"
+            title="Log out"
           >
             <LogOut className="w-4 h-4" />
           </Button>

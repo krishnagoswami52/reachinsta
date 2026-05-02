@@ -11,6 +11,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -24,6 +35,7 @@ interface CompetitorListProps {
   maxCompetitors: number;
   onAdd: (usernames: string[]) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
+  onClearAll?: () => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -32,6 +44,7 @@ export function CompetitorList({
   maxCompetitors,
   onAdd,
   onRemove,
+  onClearAll,
   isLoading,
 }: CompetitorListProps) {
   const { toast } = useToast();
@@ -39,9 +52,38 @@ export function CompetitorList({
   const [bulkText, setBulkText] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const remainingSlots = maxCompetitors - competitors.length;
+
+  const handleClearAll = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!onClearAll) return;
+    
+    setIsClearing(true);
+    try {
+      console.log("Initiating clear all competitors...");
+      await onClearAll();
+      console.log("Clear all successful");
+      
+      toast({
+        title: "All competitors cleared",
+        description: "Your competitor list is now empty",
+      });
+      setIsClearDialogOpen(false);
+    } catch (error) {
+      console.error("Clear all failed:", error);
+      toast({
+        title: "Failed to clear competitors",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   const handleAddSingle = async () => {
     const username = parseInstagramUsername(newUsername);
@@ -175,7 +217,7 @@ export function CompetitorList({
       <CardContent className="space-y-4">
         <div className="flex gap-2">
           <Input
-            placeholder="@username"
+            placeholder="Competitor username"
             value={newUsername}
             onChange={(e) => setNewUsername(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddSingle()}
@@ -288,6 +330,38 @@ export function CompetitorList({
               </div>
             </DialogContent>
           </Dialog>
+
+          {onClearAll && competitors.length > 0 && (
+            <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="destructive" 
+                  disabled={isClearing} 
+                  data-testid="button-clear-all"
+                >
+                  Clear All
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear all competitors?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove all {competitors.length} competitors from your list. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleClearAll} 
+                    disabled={isClearing}
+                    className="bg-destructive hover:bg-destructive/90"
+                  >
+                    {isClearing ? "Clearing..." : "Clear All"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
 
         <ScrollArea className="h-[300px]">

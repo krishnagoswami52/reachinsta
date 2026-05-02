@@ -1,7 +1,7 @@
 import { eq, desc, and, sql, count } from "drizzle-orm";
 import { db } from "./db";
 import {
-  profiles, competitors, fetchRuns, reels, competitorStats, rawPayloads, jobs,
+  profiles, competitors, fetchRuns, reels, competitorStats, rawPayloads, jobs, apifyKeys,
   type Profile, type InsertProfile,
   type Competitor, type InsertCompetitor,
   type FetchRun, type InsertFetchRun,
@@ -9,10 +9,11 @@ import {
   type CompetitorStats, type InsertCompetitorStats,
   type RawPayload, type InsertRawPayload,
   type Job, type InsertJob,
+  type ApifyKey,
   planLimits,
   type PlanType,
 } from "@shared/schema";
-import { users, emailVerificationTokens, type User, type UpsertUser } from "@shared/models/auth";
+import { users, emailVerificationTokens, passwordResetTokens, type User, type UpsertUser } from "@shared/models/auth";
 
 export type VerificationToken = {
   id: string;
@@ -29,23 +30,40 @@ export interface IStorage {
   createUser(user: UpsertUser): Promise<User>;
   updateUserEmailVerified(userId: string, verified: boolean): Promise<User | undefined>;
   updateUserEmail(userId: string, email: string): Promise<User | undefined>;
+  updateUser(userId: string, updates: { firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null }): Promise<User | undefined>;
   
   createVerificationToken(userId: string, tokenHash: string, expiresAt: Date): Promise<VerificationToken>;
   getVerificationTokenByHash(tokenHash: string): Promise<VerificationToken | undefined>;
   markVerificationTokenUsed(tokenId: string): Promise<void>;
   deleteVerificationTokensForUser(userId: string): Promise<void>;
   verifyEmailAtomic(tokenHash: string): Promise<{ success: boolean; error?: string; userId?: string }>;
+
+  createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<VerificationToken>;
+  deletePasswordResetTokensForUser(userId: string): Promise<void>;
+  resetPasswordAtomic(userId: string, tokenHash: string, newPasswordHash: string): Promise<{ success: boolean; error?: string }>;
   
   getProfile(id: string): Promise<Profile | undefined>;
   upsertProfile(profile: InsertProfile): Promise<Profile>;
   getAllProfiles(): Promise<Profile[]>;
   updateProfile(id: string, updates: Partial<InsertProfile>): Promise<Profile | undefined>;
+  getProfileByPaddleCustomerId(customerId: string): Promise<Profile | undefined>;
+  updateProfileSubscription(userId: string, data: {
+    paddleCustomerId?: string;
+    paddleSubscriptionId?: string;
+    subscriptionStatus?: string;
+    plan?: string;
+    currentPeriodEnd?: Date | null;
+    cancelAtPeriodEnd?: boolean;
+    fetchesUsed?: number;
+    periodResetAt?: Date | null;
+  }): Promise<void>;
   
   getCompetitors(userId: string): Promise<Competitor[]>;
   getCompetitorCount(userId: string): Promise<number>;
   addCompetitor(competitor: InsertCompetitor): Promise<Competitor>;
   addCompetitors(competitors: InsertCompetitor[]): Promise<Competitor[]>;
   removeCompetitor(id: string, userId: string): Promise<boolean>;
+  removeAllCompetitors(userId: string): Promise<void>;
   
   createFetchRun(run: InsertFetchRun): Promise<FetchRun>;
   getFetchRun(id: string): Promise<FetchRun | undefined>;
@@ -66,6 +84,13 @@ export interface IStorage {
   getJob(id: string): Promise<Job | undefined>;
   updateJob(id: string, updates: Partial<Job>): Promise<Job | undefined>;
   claimJob(jobId: string): Promise<Job | undefined>;
+
+  // Apify key management
+  upsertApifyKey(data: { token: string; totalBudget?: string }): Promise<ApifyKey>;
+  getBestApifyKey(): Promise<ApifyKey | undefined>;
+  recordApifyKeyUsage(token: string, cost: number): Promise<void>;
+  markApifyKeyExhausted(token: string): Promise<void>;
+  getAllApifyKeys(): Promise<ApifyKey[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -103,6 +128,15 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(users)
       .set({ email: email.toLowerCase(), updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return result;
+  }
+
+  async updateUser(userId: string, updates: { firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null }): Promise<User | undefined> {
+    const [result] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
     return result;
@@ -154,12 +188,12 @@ export class DatabaseStorage implements IStorage {
           .where(eq(emailVerificationTokens.tokenHash, tokenHash));
         
         if (!expiredOrUsed) {
-          return { success: false, error: "Invalid verification token" };
+          return { success: false, error: "Invalid verification code" };
         }
         if (expiredOrUsed.usedAt) {
-          return { success: false, error: "This verification link has already been used" };
+          return { success: false, error: "This verification code has already been used" };
         }
-        return { success: false, error: "This verification link has expired" };
+        return { success: false, error: "This verification code has expired" };
       }
       
       await tx
@@ -180,6 +214,69 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(emailVerificationTokens)
       .where(eq(emailVerificationTokens.userId, userId));
+  }
+
+  async createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<VerificationToken> {
+    const [result] = await db
+      .insert(passwordResetTokens)
+      .values({ userId, tokenHash, expiresAt })
+      .returning();
+    return result;
+  }
+
+  async deletePasswordResetTokensForUser(userId: string): Promise<void> {
+    await db
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.userId, userId));
+  }
+
+  async resetPasswordAtomic(
+    userId: string,
+    tokenHash: string,
+    newPasswordHash: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    return await db.transaction(async (tx) => {
+      const [token] = await tx
+        .select()
+        .from(passwordResetTokens)
+        .where(and(
+          eq(passwordResetTokens.userId, userId),
+          eq(passwordResetTokens.tokenHash, tokenHash),
+          sql`${passwordResetTokens.usedAt} IS NULL`,
+          sql`${passwordResetTokens.expiresAt} > NOW()`
+        ))
+        .for("update");
+
+      if (!token) {
+        const [expiredOrUsed] = await tx
+          .select()
+          .from(passwordResetTokens)
+          .where(and(
+            eq(passwordResetTokens.userId, userId),
+            eq(passwordResetTokens.tokenHash, tokenHash),
+          ));
+
+        if (!expiredOrUsed) {
+          return { success: false, error: "Invalid reset code" };
+        }
+        if (expiredOrUsed.usedAt) {
+          return { success: false, error: "This reset code has already been used" };
+        }
+        return { success: false, error: "This reset code has expired" };
+      }
+
+      await tx
+        .update(passwordResetTokens)
+        .set({ usedAt: new Date() })
+        .where(eq(passwordResetTokens.id, token.id));
+
+      await tx
+        .update(users)
+        .set({ passwordHash: newPasswordHash, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+
+      return { success: true };
+    });
   }
 
   async getProfile(id: string): Promise<Profile | undefined> {
@@ -223,6 +320,56 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async getProfileByPaddleCustomerId(customerId: string): Promise<Profile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.paddleCustomerId, customerId));
+    return profile;
+  }
+
+  async updateProfileSubscription(
+    userId: string,
+    data: {
+      paddleCustomerId?: string;
+      paddleSubscriptionId?: string;
+      subscriptionStatus?: string;
+      plan?: string;
+      currentPeriodEnd?: Date | null;
+      cancelAtPeriodEnd?: boolean;
+      fetchesUsed?: number;
+      periodResetAt?: Date | null;
+    },
+  ): Promise<void> {
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+
+    if (data.paddleCustomerId !== undefined) updates.paddleCustomerId = data.paddleCustomerId;
+    if (data.paddleSubscriptionId !== undefined) updates.paddleSubscriptionId = data.paddleSubscriptionId;
+    if (data.subscriptionStatus !== undefined) updates.subscriptionStatus = data.subscriptionStatus;
+    if (data.currentPeriodEnd !== undefined) updates.currentPeriodEnd = data.currentPeriodEnd;
+    if (data.cancelAtPeriodEnd !== undefined) updates.cancelAtPeriodEnd = data.cancelAtPeriodEnd;
+    if (data.fetchesUsed !== undefined) updates.fetchesUsed = data.fetchesUsed;
+    if (data.periodResetAt !== undefined) updates.periodResetAt = data.periodResetAt;
+
+    // When plan changes, also update the derived limit columns
+    if (data.plan !== undefined) {
+      const newPlan = data.plan as PlanType;
+      updates.plan = newPlan;
+      if (planLimits[newPlan]) {
+        const limits = planLimits[newPlan];
+        updates.maxCompetitors = limits.maxCompetitors;
+        updates.monthlyFetchLimit = limits.monthlyFetchLimit;
+        updates.timeRangeMaxDays = limits.timeRangeMaxDays;
+        updates.csvExport = limits.csvExport;
+      }
+    }
+
+    await db
+      .update(profiles)
+      .set(updates)
+      .where(eq(profiles.id, userId));
+  }
+
   async getCompetitors(userId: string): Promise<Competitor[]> {
     return await db.select().from(competitors).where(eq(competitors.userId, userId));
   }
@@ -243,11 +390,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async removeCompetitor(id: string, userId: string): Promise<boolean> {
-    const result = await db
+    const [result] = await db
       .delete(competitors)
       .where(and(eq(competitors.id, id), eq(competitors.userId, userId)))
       .returning();
-    return result.length > 0;
+    return !!result;
+  }
+
+  async removeAllCompetitors(userId: string): Promise<void> {
+    console.log(`[Storage] Removing all competitors for userId: ${userId}`);
+    await db
+      .delete(competitors)
+      .where(eq(competitors.userId, userId));
+    console.log(`[Storage] Removed all competitors for userId: ${userId}`);
   }
 
   async createFetchRun(run: InsertFetchRun): Promise<FetchRun> {
@@ -369,6 +524,55 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(jobs.id, jobId), eq(jobs.status, "queued")))
       .returning();
     return result;
+  }
+
+  // Apify key management
+
+  async upsertApifyKey(data: { token: string; totalBudget?: string }): Promise<ApifyKey> {
+    const [result] = await db
+      .insert(apifyKeys)
+      .values({
+        token: data.token,
+        totalBudget: data.totalBudget ?? "5.0000",
+      })
+      .onConflictDoNothing({ target: apifyKeys.token })
+      .returning();
+    if (result) return result;
+    // Already exists — return current row
+    const [existing] = await db.select().from(apifyKeys).where(eq(apifyKeys.token, data.token));
+    return existing;
+  }
+
+  async getBestApifyKey(): Promise<ApifyKey | undefined> {
+    const [result] = await db
+      .select()
+      .from(apifyKeys)
+      .where(eq(apifyKeys.isExhausted, false))
+      .orderBy(desc(sql`${apifyKeys.totalBudget}::numeric - ${apifyKeys.usedBudget}::numeric`))
+      .limit(1);
+    return result;
+  }
+
+  async recordApifyKeyUsage(token: string, cost: number): Promise<void> {
+    await db
+      .update(apifyKeys)
+      .set({
+        usedBudget: sql`${apifyKeys.usedBudget}::numeric + ${cost.toFixed(4)}::numeric`,
+        lastUsedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(apifyKeys.token, token));
+  }
+
+  async markApifyKeyExhausted(token: string): Promise<void> {
+    await db
+      .update(apifyKeys)
+      .set({ isExhausted: true, lastErrorAt: new Date(), updatedAt: new Date() })
+      .where(eq(apifyKeys.token, token));
+  }
+
+  async getAllApifyKeys(): Promise<ApifyKey[]> {
+    return await db.select().from(apifyKeys).orderBy(desc(sql`${apifyKeys.totalBudget}::numeric - ${apifyKeys.usedBudget}::numeric`));
   }
 }
 

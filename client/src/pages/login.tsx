@@ -31,8 +31,9 @@ export default function LoginPage() {
       }
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    onSuccess: (user) => {
+      queryClient.clear();
+      queryClient.setQueryData(["/api/auth/user"], user);
       toast({ title: "Welcome back!", description: "Login successful" });
       setLocation("/dashboard");
     },
@@ -111,6 +112,12 @@ export default function LoginPage() {
               <span className="text-muted-foreground">Don't have an account? </span>
               <a href="/register" className="text-primary hover:underline" data-testid="link-register">
                 Create one
+              </a>
+            </div>
+
+            <div className="mt-3 text-center text-sm">
+              <a href="/forgot-password" className="text-primary hover:underline">
+                Forgot password?
               </a>
             </div>
 

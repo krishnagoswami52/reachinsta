@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -32,8 +31,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { PlanBadge } from "@/components/dashboard/plan-badge";
-import { Search, Shield, Users, MoreVertical, Settings } from "lucide-react";
+import { Search, Shield, Users, Settings } from "lucide-react";
 import type { Profile, PlanType, RoleType } from "@shared/schema";
+import { useLocation } from "wouter";
 
 interface AdminUser extends Profile {
   competitorsCount?: number;
@@ -41,12 +41,28 @@ interface AdminUser extends Profile {
 
 export default function AdminPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    maxCompetitors: 5,
+    monthlyFetchLimit: 1,
+    timeRangeMaxDays: 7,
+    csvExport: false,
+  });
+
+  // ── All queries / mutations must be called unconditionally (Rules of Hooks) ──
+
+  const { data: profile, isLoading: isProfileLoading } = useQuery<Profile>({
+    queryKey: ["/api/profile"],
+  });
+
+  const isAdmin = profile?.role === "admin";
 
   const { data: users = [], isLoading } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
+    enabled: isAdmin,
   });
 
   const updatePlanMutation = useMutation({
@@ -107,18 +123,20 @@ export default function AdminPage() {
     },
   });
 
+  // Redirect non-admins after profile loads
+  useEffect(() => {
+    if (!isProfileLoading && profile && !isAdmin) {
+      setLocation("/dashboard");
+    }
+  }, [isAdmin, isProfileLoading, profile, setLocation]);
+
+  // ── Computed values ──────────────────────────────────────────────────────────
+
   const filteredUsers = users.filter(
     (user) =>
       user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const [editForm, setEditForm] = useState({
-    maxCompetitors: 5,
-    monthlyFetchLimit: 1,
-    timeRangeMaxDays: 7,
-    csvExport: false,
-  });
 
   const openEditDialog = (user: AdminUser) => {
     setSelectedUser(user);
@@ -130,6 +148,22 @@ export default function AdminPage() {
     });
     setIsEditDialogOpen(true);
   };
+
+  // ── Early returns (only after all hooks are declared) ────────────────────────
+
+  if (isProfileLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!profile || !isAdmin) {
+    return null;
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">

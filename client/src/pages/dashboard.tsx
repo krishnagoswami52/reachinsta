@@ -19,7 +19,9 @@ import { DurationScatterChart } from "@/components/dashboard/charts/scatter-char
 import { CompetitorCard } from "@/components/dashboard/competitor-card";
 import { EmptyState } from "@/components/dashboard/empty-state";
 
-import { RefreshCw, TrendingUp, Eye, Users, BarChart3, Play, Clock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { RefreshCw, TrendingUp, Eye, Users, BarChart3, Play, Clock, Sparkles } from "lucide-react";
+import { Link } from "wouter";
 import { formatNumber, getTimeAgo } from "@/lib/utils";
 import type { Profile, Competitor, FetchRun, Reel, CompetitorStats } from "@shared/schema";
 
@@ -69,6 +71,27 @@ export default function DashboardPage() {
     },
   });
 
+  const cancelFetchMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("POST", `/api/fetch/${id}/cancel`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/fetch/latest"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      toast({
+        title: "Fetch cancelled",
+        description: "You can start a new fetch at any time.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to cancel fetch",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+
   const addCompetitorsMutation = useMutation({
     mutationFn: async (usernames: string[]) => {
       if (usernames.length === 1) {
@@ -109,6 +132,21 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {profile?.plan === "free" && (
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+          <span>
+            You're on the <strong>Free</strong> plan.{" "}
+            Upgrade to unlock 50 competitors and 28-day analytics.
+          </span>
+          <Link href="/pricing">
+            <Button size="sm" variant="outline" className="shrink-0 gap-1">
+              <Sparkles className="w-3 h-3" />
+              Upgrade
+            </Button>
+          </Link>
+        </div>
+      )}
+
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
@@ -130,14 +168,31 @@ export default function DashboardPage() {
             disabled={isProcessing}
           />
           
-          <Button
-            onClick={() => fetchMutation.mutate()}
-            disabled={!canFetch || fetchMutation.isPending}
-            data-testid="button-fetch-data"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${fetchMutation.isPending ? "animate-spin" : ""}`} />
-            Fetch Data
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={!canFetch ? 0 : undefined}>
+                  <Button
+                    onClick={() => fetchMutation.mutate()}
+                    disabled={!canFetch || fetchMutation.isPending}
+                    data-testid="button-fetch-data"
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${fetchMutation.isPending ? "animate-spin" : ""}`} />
+                    Fetch Data
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!canFetch && (
+                <TooltipContent>
+                  {competitors.length === 0
+                    ? "Add at least one competitor first"
+                    : isProcessing
+                    ? "A fetch is already in progress"
+                    : "Monthly fetch limit reached — upgrade your plan"}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -148,6 +203,17 @@ export default function DashboardPage() {
             <p className="text-center text-sm text-muted-foreground mt-4">
               Estimated time: 3-5 minutes. Please wait while we fetch your data.
             </p>
+            <div className="mt-4 flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => cancelFetchMutation.mutate(fetchRun.id)}
+                disabled={cancelFetchMutation.isPending}
+                data-testid="button-stop-fetching"
+              >
+                {cancelFetchMutation.isPending ? "Stopping..." : "Stop Fetching"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

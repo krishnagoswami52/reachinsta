@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useSearch, Link } from "wouter";
+import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,37 +9,37 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, CheckCircle, XCircle, RefreshCw, LogOut, ChevronDown, ChevronUp, LogIn } from "lucide-react";
 import logoImage from "@assets/ChatGPT_Image_Jan_16,_2026,_06_13_41_PM_1768567542199.png";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import type { User } from "@shared/models/auth";
 
 export default function VerifyEmailPage() {
   const [, setLocation] = useLocation();
-  const search = useSearch();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { logout, isLoggingOut } = useAuth();
   const [verificationStatus, setVerificationStatus] = useState<"pending" | "verifying" | "success" | "error">("pending");
   const [errorMessage, setErrorMessage] = useState("");
   const [showChangeEmail, setShowChangeEmail] = useState(false);
   const [newEmail, setNewEmail] = useState("");
-
-  const token = new URLSearchParams(search).get("token");
+  const [code, setCode] = useState("");
   
   const { data: user, refetch: refetchUser } = useQuery<User | null>({
     queryKey: ["/api/auth/user"],
   });
   
   useEffect(() => {
-    if (user?.emailVerified && !token) {
-      setLocation("/dashboard");
+    if (user?.emailVerified) {
+      const next = new URLSearchParams(window.location.search).get("next");
+      setLocation(next || "/dashboard");
     }
-  }, [user, token, setLocation]);
+  }, [user, setLocation]);
 
   const verifyMutation = useMutation({
-    mutationFn: async (token: string) => {
+    mutationFn: async (code: string) => {
       const response = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ code }),
         credentials: "include",
       });
       if (!response.ok) {
@@ -52,7 +52,8 @@ export default function VerifyEmailPage() {
       setVerificationStatus("success");
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Email verified!", description: "Your account is now active" });
-      setTimeout(() => setLocation("/dashboard"), 2000);
+      const next = new URLSearchParams(window.location.search).get("next");
+      setTimeout(() => setLocation(next || "/dashboard"), 2000);
     },
     onError: (error: Error) => {
       setVerificationStatus("error");
@@ -73,7 +74,7 @@ export default function VerifyEmailPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Email sent!", description: "Check your inbox for the verification link" });
+      toast({ title: "Email sent!", description: "Check your inbox for the verification code" });
     },
     onError: (error: Error) => {
       toast({ title: "Failed to send", description: error.message, variant: "destructive" });
@@ -105,27 +106,14 @@ export default function VerifyEmailPage() {
     },
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Logout failed");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      setLocation("/");
-    },
-  });
-
-  useEffect(() => {
-    if (token && verificationStatus === "pending") {
-      setVerificationStatus("verifying");
-      verifyMutation.mutate(token);
+  const handleVerify = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code || code.length !== 6) {
+      return;
     }
-  }, [token]);
+    setVerificationStatus("verifying");
+    verifyMutation.mutate(code);
+  };
 
   const handleChangeEmail = (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,7 +127,7 @@ export default function VerifyEmailPage() {
       <nav className="border-b">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
           <button
-            onClick={() => logoutMutation.mutate()}
+            onClick={() => setLocation("/")}
             className="flex items-center gap-2 hover-elevate rounded-md px-2 py-1"
             data-testid="button-logo-home"
           >
@@ -150,8 +138,8 @@ export default function VerifyEmailPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => logoutMutation.mutate()}
-              disabled={logoutMutation.isPending}
+              onClick={() => logout()}
+              disabled={isLoggingOut}
               data-testid="button-logout"
             >
               <LogOut className="w-4 h-4 mr-2" />
@@ -192,14 +180,14 @@ export default function VerifyEmailPage() {
                 <CardDescription>{errorMessage}</CardDescription>
               </>
             )}
-            {verificationStatus === "pending" && !token && (
+            {verificationStatus === "pending" && (
               <>
                 <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                   <Mail className="w-8 h-8 text-primary" />
                 </div>
-                <CardTitle className="text-2xl">Check Your Email</CardTitle>
+                <CardTitle className="text-2xl">Verify Your Email</CardTitle>
                 <CardDescription>
-                  We sent a verification link to{" "}
+                  We sent a verification code to{" "}
                   <span className="font-medium text-foreground" data-testid="text-user-email">
                     {user?.email || "your email"}
                   </span>
@@ -208,11 +196,44 @@ export default function VerifyEmailPage() {
             )}
           </CardHeader>
           <CardContent className="space-y-4">
-            {verificationStatus === "pending" && !token && (
+            {verificationStatus !== "success" && (
+              <form onSubmit={handleVerify} className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="code">Verification code</Label>
+                  <Input
+                    id="code"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="Enter 6-digit code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                    disabled={verificationStatus === "verifying"}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={verificationStatus === "verifying" || code.length !== 6}
+                  data-testid="button-verify-email-code"
+                >
+                  {verificationStatus === "verifying" ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    <>Verify Email</>
+                  )}
+                </Button>
+              </form>
+            )}
+
+            {verificationStatus === "pending" && (
               <>
                 <div className="text-center text-sm text-muted-foreground">
                   <p>Didn't receive the email?</p>
-                  <p className="mt-1">Check your spam folder or request a new link below.</p>
+                  <p className="mt-1">Check your spam folder or request a new code below.</p>
                 </div>
                 <Button
                   variant="outline"
@@ -288,12 +309,12 @@ export default function VerifyEmailPage() {
                   <Button
                     variant="ghost"
                     className="w-full"
-                    onClick={() => logoutMutation.mutate()}
-                    disabled={logoutMutation.isPending}
+                    onClick={() => logout()}
+                    disabled={isLoggingOut}
                     data-testid="button-go-to-login"
                   >
                     <LogIn className="w-4 h-4 mr-2" />
-                    {logoutMutation.isPending ? "Signing out..." : "Sign out & Login with different account"}
+                    {isLoggingOut ? "Signing out..." : "Sign out & Login with different account"}
                   </Button>
                 </div>
               </>

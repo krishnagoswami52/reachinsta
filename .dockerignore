@@ -1,0 +1,14 @@
+node_modules
+.env
+.env.local
+.env.development
+.env.production
+.git
+.github
+dist
+build
+*.log
+.DS_Store
+README.md
+.vscode
+.idea

@@ -104,7 +104,7 @@ export default function ProfilePage() {
   const planInfo = planDetails[currentPlan];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 p-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Profile</h1>
         <p className="text-muted-foreground text-sm mt-1">Manage your account settings and preferences.</p>

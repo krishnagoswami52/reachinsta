@@ -155,27 +155,28 @@ export function ViralReelsTable({ reels, competitors = [], isLoading }: ViralRee
       </CardHeader>
       <CardContent>
         <div className="rounded-lg border overflow-hidden">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="w-12">#</TableHead>
+                <TableHead className="w-10">#</TableHead>
                 <TableHead>Competitor</TableHead>
                 <TableHead className="text-right">
                   <SortableHeader field="views">Views</SortableHeader>
                 </TableHead>
-                <TableHead className="text-right">Likes</TableHead>
-                <TableHead className="text-right">Comments</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">Likes</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">Comments</TableHead>
                 <TableHead className="text-right">
-                  <SortableHeader field="engagementRate">Engagement</SortableHeader>
+                  <SortableHeader field="engagementRate">ER</SortableHeader>
                 </TableHead>
-                <TableHead className="text-center">Duration</TableHead>
+                <TableHead className="text-center hidden md:table-cell">Duration</TableHead>
                 <TableHead className="text-right">
-                  <SortableHeader field="viralScore">Viral Score</SortableHeader>
+                  <SortableHeader field="viralScore">Score</SortableHeader>
                 </TableHead>
-                <TableHead className="text-right">
+                <TableHead className="text-right hidden sm:table-cell">
                   <SortableHeader field="postedAt">Posted</SortableHeader>
                 </TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -187,8 +188,8 @@ export function ViralReelsTable({ reels, competitors = [], isLoading }: ViralRee
                 </TableRow>
               ) : (
                 filteredReels.map((reel, index) => (
-                  <TableRow 
-                    key={reel.id} 
+                  <TableRow
+                    key={reel.id}
                     className="hover-elevate"
                     data-testid={`reel-row-${index}`}
                   >
@@ -201,28 +202,28 @@ export function ViralReelsTable({ reels, competitors = [], isLoading }: ViralRee
                     <TableCell className="text-right font-mono font-medium">
                       {formatNumber(reel.views)}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono hidden sm:table-cell">
                       {formatNumber(reel.likes)}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono hidden sm:table-cell">
                       {formatNumber(reel.comments)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge variant="outline" className="font-mono">
+                      <Badge variant="outline" className="font-mono text-xs">
                         {formatPercentage(parseFloat(String(reel.engagementRate)))}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center hidden md:table-cell">
                       <Badge variant="secondary" className="font-mono text-xs">
                         {getDurationBucket(reel.durationSeconds)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge className="font-mono bg-primary/10 text-primary hover:bg-primary/20">
+                      <Badge className="font-mono text-xs bg-primary/10 text-primary hover:bg-primary/20">
                         {parseFloat(String(reel.viralScore)).toFixed(2)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
+                    <TableCell className="text-right text-sm text-muted-foreground hidden sm:table-cell">
                       {reel.postedAt ? new Date(reel.postedAt).toLocaleDateString() : "—"}
                     </TableCell>
                     <TableCell>
@@ -247,6 +248,7 @@ export function ViralReelsTable({ reels, competitors = [], isLoading }: ViralRee
               )}
             </TableBody>
           </Table>
+          </div>
         </div>
       </CardContent>
     </Card>

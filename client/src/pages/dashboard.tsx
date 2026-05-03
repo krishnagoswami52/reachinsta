@@ -133,13 +133,13 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {profile?.plan === "free" && (
-        <div className="flex items-center justify-between gap-4 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
           <span>
             You're on the <strong>Free</strong> plan.{" "}
             Upgrade to unlock 50 competitors and 28-day analytics.
           </span>
           <Link href="/pricing">
-            <Button size="sm" variant="outline" className="shrink-0 gap-1">
+            <Button size="sm" variant="outline" className="shrink-0 gap-1 w-full sm:w-auto">
               <Sparkles className="w-3 h-3" />
               Upgrade
             </Button>
@@ -267,10 +267,10 @@ export default function DashboardPage() {
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:w-auto lg:inline-flex">
                   <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
                   <TabsTrigger value="viral" data-testid="tab-viral">Viral Reels</TabsTrigger>
-                  <TabsTrigger value="timing" data-testid="tab-timing">Duration & Timing</TabsTrigger>
+                  <TabsTrigger value="timing" data-testid="tab-timing">Timing</TabsTrigger>
                   <TabsTrigger value="competitors" data-testid="tab-competitors">Competitors</TabsTrigger>
                 </TabsList>
 

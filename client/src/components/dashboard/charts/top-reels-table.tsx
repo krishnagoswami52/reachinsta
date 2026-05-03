@@ -41,15 +41,15 @@ export function TopReelsTable({ reels, sortBy }: TopReelsTableProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12">#</TableHead>
+                <TableHead className="w-8">#</TableHead>
                 <TableHead>Username</TableHead>
                 <TableHead className="text-right">Views</TableHead>
-                <TableHead className="text-right">Likes</TableHead>
-                <TableHead className="text-right">Comments</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">Likes</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">Comments</TableHead>
                 <TableHead className="text-right">ER %</TableHead>
-                <TableHead className="text-right">VR</TableHead>
-                <TableHead className="text-right">Duration</TableHead>
-                <TableHead>Posted</TableHead>
+                <TableHead className="text-right hidden md:table-cell">VR</TableHead>
+                <TableHead className="text-right hidden md:table-cell">Duration</TableHead>
+                <TableHead className="hidden lg:table-cell">Posted</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -61,12 +61,12 @@ export function TopReelsTable({ reels, sortBy }: TopReelsTableProps) {
                     <TableCell className="font-medium">{index + 1}</TableCell>
                     <TableCell className="font-medium">@{reel.username}</TableCell>
                     <TableCell className="text-right">{formatNumber(reel.views)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(reel.likes)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(reel.comments)}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell">{formatNumber(reel.likes)}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell">{formatNumber(reel.comments)}</TableCell>
                     <TableCell className="text-right">{er.toFixed(2)}%</TableCell>
-                    <TableCell className="text-right">{vr}</TableCell>
-                    <TableCell className="text-right">{reel.durationSeconds}s</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-right hidden md:table-cell">{vr}</TableCell>
+                    <TableCell className="text-right hidden md:table-cell">{reel.durationSeconds}s</TableCell>
+                    <TableCell className="text-sm text-muted-foreground hidden lg:table-cell">
                       {formatDate(reel.postedAt)}
                     </TableCell>
                   </TableRow>

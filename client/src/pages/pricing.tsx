@@ -16,7 +16,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-12">
         {isAuthenticated && (
           <div className="mb-10">
             <Link href="/dashboard">

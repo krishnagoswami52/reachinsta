@@ -189,7 +189,7 @@ export default function AnalyticsPage() {
             </Card>
           )}
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -245,12 +245,12 @@ export default function AnalyticsPage() {
             />
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex">
+              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 lg:w-auto lg:inline-flex">
                 <TabsTrigger value="overview" data-testid="analytics-tab-overview">Overview</TabsTrigger>
                 <TabsTrigger value="creators" data-testid="analytics-tab-creators">Creators</TabsTrigger>
                 <TabsTrigger value="timing" data-testid="analytics-tab-timing">Timing</TabsTrigger>
                 <TabsTrigger value="duration" data-testid="analytics-tab-duration">Duration</TabsTrigger>
-                <TabsTrigger value="reels" data-testid="analytics-tab-reels">Reels Table</TabsTrigger>
+                <TabsTrigger value="reels" data-testid="analytics-tab-reels">Reels</TabsTrigger>
                 <TabsTrigger value="tips" data-testid="analytics-tab-tips">Tips</TabsTrigger>
               </TabsList>
 

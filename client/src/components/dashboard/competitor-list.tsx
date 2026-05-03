@@ -215,6 +215,7 @@ export function CompetitorList({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="space-y-2">
         <div className="flex gap-2">
           <Input
             placeholder="Competitor username"
@@ -231,13 +232,15 @@ export function CompetitorList({
           >
             <Plus className="w-4 h-4" />
           </Button>
+        </div>
+        <div className="flex gap-2">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" disabled={remainingSlots <= 0} data-testid="button-bulk-add">
+              <Button variant="outline" disabled={remainingSlots <= 0} data-testid="button-bulk-add" className="flex-1">
                 Bulk Add
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="w-full max-w-2xl mx-4 sm:mx-auto">
               <DialogHeader>
                 <DialogTitle>Add Multiple Competitors</DialogTitle>
               </DialogHeader>
@@ -362,6 +365,7 @@ export function CompetitorList({
               </AlertDialogContent>
             </AlertDialog>
           )}
+        </div>
         </div>
 
         <ScrollArea className="h-[300px]">

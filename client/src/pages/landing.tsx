@@ -9,7 +9,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <img src={logoImage} alt="ReachInsta" className="w-8 h-8 rounded-md object-cover" />
             <span className="font-semibold text-lg">ReachInsta</span>
@@ -27,12 +27,12 @@ export default function LandingPage() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <a href="/login">
-              <Button variant="outline" data-testid="button-login">
+              <Button variant="outline" size="sm" data-testid="button-login">
                 Log In
               </Button>
             </a>
-            <a href="/register">
-              <Button data-testid="button-get-started">
+            <a href="/register" className="hidden sm:block">
+              <Button size="sm" data-testid="button-get-started">
                 Get Started
                 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
@@ -42,8 +42,8 @@ export default function LandingPage() {
       </nav>
 
       <main className="pt-16">
-        <section className="py-24 md:py-32">
-          <div className="max-w-7xl mx-auto px-6">
+        <section className="py-14 md:py-24 lg:py-32">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-8">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
@@ -131,8 +131,8 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="features" className="py-24 bg-muted/30">
-          <div className="max-w-7xl mx-auto px-6">
+        <section id="features" className="py-16 md:py-24 bg-muted/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
                 Everything You Need to Win on Instagram
@@ -186,8 +186,8 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="pricing" className="py-24">
-          <div className="max-w-7xl mx-auto px-6">
+        <section id="pricing" className="py-16 md:py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <PricingSection />
           </div>
         </section>

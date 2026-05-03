@@ -60,6 +60,7 @@ function getStatusIcon(status: string) {
 }
 
 export default function AnalyticsPage() {
+  useEffect(() => { document.title = "Analytics - ReachInsta"; }, []);
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedFetchId, setSelectedFetchId] = useState<string | null>(null);
 

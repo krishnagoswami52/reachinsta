@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
@@ -7,6 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import type { Profile } from "@shared/schema";
 
 export default function PricingPage() {
+  useEffect(() => { document.title = "Pricing - ReachInsta"; }, []);
   const { isAuthenticated } = useAuth();
 
   const { data: profile } = useQuery<Profile>({

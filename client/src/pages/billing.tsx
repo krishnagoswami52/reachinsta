@@ -12,6 +12,7 @@ import { queryClient } from "@/lib/queryClient";
 import type { Profile } from "@shared/schema";
 
 export default function BillingPage() {
+  useEffect(() => { document.title = "Billing - ReachInsta"; }, []);
   const { toast } = useToast();
   const toastedRef = useRef(false);
 

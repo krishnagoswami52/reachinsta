@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card"; // used in features section
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -6,6 +7,7 @@ import logoImage from "@assets/ChatGPT_Image_Jan_16,_2026,_06_13_41_PM_176856754
 import { PricingSection } from "@/components/PricingSection";
 
 export default function LandingPage() {
+  useEffect(() => { document.title = "ReachInsta - Track Competitors. Discover Viral Reels"; }, []);
   return (
     <div className="min-h-screen bg-background">
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">

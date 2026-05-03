@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 type Step = "request" | "reset";
 
 export default function ForgotPasswordPage() {
+  useEffect(() => { document.title = "Reset Password - ReachInsta"; }, []);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("request");

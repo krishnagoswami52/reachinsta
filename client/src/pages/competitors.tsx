@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -8,6 +9,7 @@ import { Users } from "lucide-react";
 import type { Profile, Competitor, FetchRun, Reel, CompetitorStats } from "@shared/schema";
 
 export default function CompetitorsPage() {
+  useEffect(() => { document.title = "Competitors - ReachInsta"; }, []);
   const { data: profile } = useQuery<Profile>({
     queryKey: ["/api/profile"],
   });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import { formatNumber, getTimeAgo } from "@/lib/utils";
 import type { Profile, Competitor, FetchRun, Reel, CompetitorStats } from "@shared/schema";
 
 export default function DashboardPage() {
+  useEffect(() => { document.title = "Dashboard - ReachInsta"; }, []);
   const { toast } = useToast();
   const [timeRange, setTimeRange] = useState(7);
   const [activeTab, setActiveTab] = useState("overview");

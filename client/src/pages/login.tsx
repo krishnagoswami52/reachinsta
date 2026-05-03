@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import logoImage from "@assets/ChatGPT_Image_Jan_16,_2026,_06_13_41_PM_176856754
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LoginPage() {
+  useEffect(() => { document.title = "Login - ReachInsta"; }, []);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();

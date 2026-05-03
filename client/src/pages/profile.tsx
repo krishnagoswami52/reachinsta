@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -14,6 +14,7 @@ import { Camera, Check, Loader2, User, CreditCard, BarChart3 } from "lucide-reac
 import type { Profile, Competitor } from "@shared/schema";
 
 export default function ProfilePage() {
+  useEffect(() => { document.title = "My Profile - ReachInsta"; }, []);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();

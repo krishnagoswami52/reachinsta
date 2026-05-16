@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Lock } from "lucide-react";
@@ -11,50 +10,48 @@ interface TimeRangeSelectorProps {
 }
 
 const ranges = [
-  { days: 7, label: "7 days" },
+  { days: 7,  label: "7 days"  },
   { days: 14, label: "14 days" },
   { days: 28, label: "28 days" },
 ];
 
 export function TimeRangeSelector({ value, onChange, maxDays, disabled }: TimeRangeSelectorProps) {
   return (
-    <div className="inline-flex items-center rounded-lg border bg-muted/50 p-1">
+    <div className="inline-flex bg-bg-surface border border-border-subtle rounded-md p-1">
       {ranges.map((range) => {
-        const isLocked = range.days > maxDays;
+        const isLocked   = range.days > maxDays;
         const isSelected = value === range.days;
-        
+
         const button = (
-          <Button
+          <button
             key={range.days}
-            variant="ghost"
-            size="sm"
             disabled={disabled || isLocked}
             onClick={() => onChange(range.days)}
             className={cn(
-              "relative px-4",
-              isSelected && "bg-background shadow-sm",
-              isLocked && "opacity-50"
+              "px-3 py-1.5 text-[13px] font-medium rounded transition-colors inline-flex items-center gap-1",
+              isSelected
+                ? "bg-bg-elevated text-text-primary"
+                : "text-text-secondary hover:text-text-primary",
+              isLocked && "opacity-50 cursor-not-allowed"
             )}
             data-testid={`button-range-${range.days}`}
           >
             {range.label}
-            {isLocked && <Lock className="w-3 h-3 ml-1" />}
-          </Button>
+            {isLocked && <Lock className="w-3 h-3" />}
+          </button>
         );
-        
+
         if (isLocked) {
           return (
             <Tooltip key={range.days}>
-              <TooltipTrigger asChild>
-                {button}
-              </TooltipTrigger>
+              <TooltipTrigger asChild>{button}</TooltipTrigger>
               <TooltipContent>
                 <p>Upgrade your plan to access {range.days}-day range</p>
               </TooltipContent>
             </Tooltip>
           );
         }
-        
+
         return button;
       })}
     </div>

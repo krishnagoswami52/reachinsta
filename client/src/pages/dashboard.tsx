@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -31,13 +30,8 @@ export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState(7);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const { data: profile } = useQuery<Profile>({
-    queryKey: ["/api/profile"],
-  });
-
-  const { data: competitors = [] } = useQuery<Competitor[]>({
-    queryKey: ["/api/competitors"],
-  });
+  const { data: profile } = useQuery<Profile>({ queryKey: ["/api/profile"] });
+  const { data: competitors = [] } = useQuery<Competitor[]>({ queryKey: ["/api/competitors"] });
 
   const { data: latestFetch, isLoading: isFetchLoading } = useQuery<{ fetchRun: FetchRun; reels: Reel[]; stats: CompetitorStats[] } | null>({
     queryKey: ["/api/fetch/latest"],
@@ -58,38 +52,22 @@ export default function DashboardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/fetch/latest"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-      toast({
-        title: "Fetch started",
-        description: "Your data is being processed. This may take a few minutes.",
-      });
+      toast({ title: "Fetch started", description: "Your data is being processed. This may take a few minutes." });
     },
     onError: (error) => {
-      toast({
-        title: "Failed to start fetch",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
+      toast({ title: "Failed to start fetch", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
     },
   });
 
   const cancelFetchMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("POST", `/api/fetch/${id}/cancel`);
-    },
+    mutationFn: async (id: string) => { await apiRequest("POST", `/api/fetch/${id}/cancel`); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/fetch/latest"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-      toast({
-        title: "Fetch cancelled",
-        description: "You can start a new fetch at any time.",
-      });
+      toast({ title: "Fetch cancelled", description: "You can start a new fetch at any time." });
     },
     onError: (error) => {
-      toast({
-        title: "Failed to cancel fetch",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
+      toast({ title: "Failed to cancel fetch", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
     },
   });
 
@@ -101,64 +79,63 @@ export default function DashboardPage() {
         await apiRequest("POST", "/api/competitors/bulk", { usernames });
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/competitors"] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/competitors"] }); },
   });
 
   const removeCompetitorMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/competitors/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/competitors"] });
-    },
+    mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/competitors/${id}`); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/competitors"] }); },
   });
 
-  const reels = latestFetch?.reels || [];
-  const stats = latestFetch?.stats || [];
+  const reels   = latestFetch?.reels  || [];
+  const stats   = latestFetch?.stats  || [];
   const fetchRun = latestFetch?.fetchRun;
   const isProcessing = fetchRun && ["queued", "running", "merging", "analyzing"].includes(fetchRun.status);
 
-  const totalViews = reels.reduce((sum, r) => sum + r.views, 0);
-  const avgViews = reels.length > 0 ? totalViews / reels.length : 0;
+  const totalViews    = reels.reduce((sum, r) => sum + r.views, 0);
+  const avgViews      = reels.length > 0 ? totalViews / reels.length : 0;
   const avgEngagement = reels.length > 0
     ? reels.reduce((sum, r) => sum + parseFloat(String(r.engagementRate)), 0) / reels.length
     : 0;
+  const topViews = reels.length > 0 ? Math.max(...reels.map(r => r.views)) : 0;
 
-  const canFetch = profile && 
-    profile.fetchesUsed < profile.monthlyFetchLimit && 
+  const canFetch = profile &&
+    profile.fetchesUsed < profile.monthlyFetchLimit &&
     competitors.length > 0 &&
     !isProcessing;
 
   return (
     <div className="space-y-6">
+      {/* Free-plan upgrade nudge */}
       {profile?.plan === "free" && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
-          <span>
-            You're on the <strong>Free</strong> plan.{" "}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-md border border-border-subtle bg-bg-elevated px-4 py-3 text-sm">
+          <span className="text-text-secondary">
+            You're on the <span className="text-text-primary font-medium">Free</span> plan.{" "}
             Upgrade to unlock 50 competitors and 28-day analytics.
           </span>
           <Link href="/pricing">
-            <Button size="sm" variant="outline" className="shrink-0 gap-1 w-full sm:w-auto">
-              <Sparkles className="w-3 h-3" />
+            <button className="shrink-0 w-full sm:w-auto inline-flex items-center gap-1.5 border border-border-subtle hover:border-mint text-text-secondary hover:text-mint text-[13px] px-3 py-1.5 rounded-md transition-colors">
+              <Sparkles className="w-3 h-3" strokeWidth={1.5} />
               Upgrade
-            </Button>
+            </button>
           </Link>
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold">Dashboard</h1>
+      {/* Page header */}
+      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-12">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="font-tight font-bold text-[36px] tracking-tightest text-text-primary">
+              Dashboard
+            </h1>
             {profile && <PlanBadge plan={profile.plan} />}
           </div>
-          {fetchRun?.completedAt && (
-            <p className="text-sm text-muted-foreground">
-              Last updated {getTimeAgo(fetchRun.completedAt)}
-            </p>
-          )}
+          <p className="font-mono text-[12px] text-text-muted">
+            {fetchRun?.completedAt
+              ? `Last updated ${getTimeAgo(fetchRun.completedAt)}`
+              : "No data fetched yet"}
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -166,21 +143,22 @@ export default function DashboardPage() {
             value={timeRange}
             onChange={setTimeRange}
             maxDays={profile?.timeRangeMaxDays || 7}
-            disabled={isProcessing}
+            disabled={!!isProcessing}
           />
-          
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span tabIndex={!canFetch ? 0 : undefined}>
-                  <Button
+                  <button
                     onClick={() => fetchMutation.mutate()}
                     disabled={!canFetch || fetchMutation.isPending}
+                    className="bg-mint hover:bg-mint-hover text-bg-base font-semibold text-[14px] px-5 py-2.5 rounded-md inline-flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid="button-fetch-data"
                   >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${fetchMutation.isPending ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`w-4 h-4 ${fetchMutation.isPending ? "animate-spin" : ""}`} strokeWidth={1.5} />
                     Fetch Data
-                  </Button>
+                  </button>
                 </span>
               </TooltipTrigger>
               {!canFetch && (
@@ -197,26 +175,24 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Fetch in progress */}
       {isProcessing && fetchRun && (
-        <Card>
-          <CardContent className="py-6">
-            <FetchStatusStepper status={fetchRun.status} />
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              Estimated time: 3-5 minutes. Please wait while we fetch your data.
-            </p>
-            <div className="mt-4 flex justify-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => cancelFetchMutation.mutate(fetchRun.id)}
-                disabled={cancelFetchMutation.isPending}
-                data-testid="button-stop-fetching"
-              >
-                {cancelFetchMutation.isPending ? "Stopping..." : "Stop Fetching"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
+          <FetchStatusStepper status={fetchRun.status} />
+          <p className="text-center text-[13px] text-text-muted mt-4">
+            Estimated time: 3–5 minutes. Please wait while we fetch your data.
+          </p>
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={() => cancelFetchMutation.mutate(fetchRun.id)}
+              disabled={cancelFetchMutation.isPending}
+              className="border border-border-subtle hover:border-danger text-text-secondary hover:text-danger text-[13px] px-4 py-2 rounded-md transition-colors disabled:opacity-50"
+              data-testid="button-stop-fetching"
+            >
+              {cancelFetchMutation.isPending ? "Stopping..." : "Stop Fetching"}
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="grid lg:grid-cols-4 gap-6">
@@ -224,18 +200,19 @@ export default function DashboardPage() {
           {competitors.length === 0 ? (
             <EmptyState
               icon={Users}
-              title="Add Competitors to Get Started"
-              description="Add Instagram usernames to track their Reels performance and discover viral content."
+              title="No competitors tracked yet."
+              description="Drop an Instagram handle on the right and we'll start pulling their Reels. Up to 100 competitors, refreshed when you say so."
               action={{
-                label: "Add Your First Competitor",
+                label: "Add your first competitor",
                 onClick: () => document.querySelector<HTMLInputElement>('[data-testid="input-add-competitor"]')?.focus(),
               }}
+              footnote="PS: Your competitors won't be notified. Pinky promise."
             />
           ) : reels.length === 0 && !isProcessing ? (
             <EmptyState
               icon={BarChart3}
-              title="No Data Yet"
-              description="Click 'Fetch Data' to start analyzing your competitors' Reels."
+              title="No data yet."
+              description='Run your first fetch to see the magic.'
               action={canFetch ? {
                 label: "Fetch Data Now",
                 onClick: () => fetchMutation.mutate(),
@@ -243,36 +220,20 @@ export default function DashboardPage() {
             />
           ) : (
             <>
+              {/* KPI cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <KPICard
-                  title="Competitors Tracked"
-                  value={competitors.length}
-                  subtitle={`of ${profile?.maxCompetitors || 5} max`}
-                  icon={Users}
-                />
-                <KPICard
-                  title="Reels Analyzed"
-                  value={reels.length}
-                  icon={Play}
-                />
-                <KPICard
-                  title="Total Views"
-                  value={totalViews}
-                  icon={Eye}
-                />
-                <KPICard
-                  title="Avg Engagement"
-                  value={`${(avgEngagement * 100).toFixed(2)}%`}
-                  icon={TrendingUp}
-                />
+                <KPICard title="competitors tracked" value={competitors.length} subtitle={`of ${profile?.maxCompetitors || 5} max`} icon={Users} />
+                <KPICard title="reels analyzed" value={reels.length} icon={Play} />
+                <KPICard title="total views" value={totalViews} icon={Eye} />
+                <KPICard title="avg engagement" value={`${(avgEngagement * 100).toFixed(2)}%`} icon={TrendingUp} highlight />
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:w-auto lg:inline-flex">
-                  <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
-                  <TabsTrigger value="viral" data-testid="tab-viral">Viral Reels</TabsTrigger>
-                  <TabsTrigger value="timing" data-testid="tab-timing">Timing</TabsTrigger>
-                  <TabsTrigger value="competitors" data-testid="tab-competitors">Competitors</TabsTrigger>
+                <TabsList className="w-full sm:w-auto">
+                  <TabsTrigger value="overview"     data-testid="tab-overview">Overview</TabsTrigger>
+                  <TabsTrigger value="viral"        data-testid="tab-viral">Viral Reels</TabsTrigger>
+                  <TabsTrigger value="timing"       data-testid="tab-timing">Timing</TabsTrigger>
+                  <TabsTrigger value="competitors"  data-testid="tab-competitors">Competitors</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-6 mt-6">
@@ -292,26 +253,21 @@ export default function DashboardPage() {
                     <DurationChart reels={reels} />
                     <DurationScatterChart reels={reels} />
                   </div>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-primary" />
-                        Best Posting Windows
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid md:grid-cols-3 gap-4">
-                        {["Monday 9:00 AM", "Wednesday 6:00 PM", "Saturday 12:00 PM"].map((time, i) => (
-                          <div key={i} className="p-4 rounded-lg bg-muted/50 text-center">
-                            <p className="text-2xl font-bold text-primary">#{i + 1}</p>
-                            <p className="font-medium mt-1">{time}</p>
-                            <p className="text-sm text-muted-foreground">High engagement window</p>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                      <Clock className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
+                      <h3 className="font-tight font-semibold text-[16px] text-text-primary">Best Posting Windows</h3>
+                    </div>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      {["Monday 9:00 AM", "Wednesday 6:00 PM", "Saturday 12:00 PM"].map((time, i) => (
+                        <div key={i} className="p-4 rounded-md bg-bg-elevated border border-border-subtle text-center">
+                          <p className="font-mono text-[22px] font-medium text-mint">#{i + 1}</p>
+                          <p className="text-[14px] text-text-primary mt-1">{time}</p>
+                          <p className="font-mono text-[11px] text-text-muted mt-1">High engagement window</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="competitors" className="mt-6">
@@ -322,11 +278,7 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   ) : (
-                    <EmptyState
-                      icon={Users}
-                      title="No Competitor Data"
-                      description="Fetch data to see detailed competitor analytics."
-                    />
+                    <EmptyState icon={Users} title="No competitor data" description="Fetch data to see detailed competitor analytics." />
                   )}
                 </TabsContent>
               </Tabs>
@@ -334,43 +286,70 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="space-y-6">
+        {/* Right sidebar */}
+        <div className="space-y-4">
           <CompetitorList
             competitors={competitors}
             maxCompetitors={profile?.maxCompetitors || 5}
-            onAdd={async (usernames) => {
-              await addCompetitorsMutation.mutateAsync(usernames);
-            }}
-            onRemove={async (id) => {
-              await removeCompetitorMutation.mutateAsync(id);
-            }}
+            onAdd={async (usernames) => { await addCompetitorsMutation.mutateAsync(usernames); }}
+            onRemove={async (id) => { await removeCompetitorMutation.mutateAsync(id); }}
           />
 
           {profile && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Plan Usage</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Fetches this month</span>
-                  <span className="font-medium">{profile.fetchesUsed}/{profile.monthlyFetchLimit}</span>
+            <div className="bg-bg-surface border border-border-subtle rounded-lg p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-tight font-semibold text-[15px] text-text-primary">Plan Usage</h3>
+                <PlanBadge plan={profile.plan} />
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[13px] text-text-secondary">Fetches used</span>
+                    <span className="font-mono text-[12px] text-text-primary">
+                      {profile.fetchesUsed}/{profile.monthlyFetchLimit}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-bg-base rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-mint transition-all"
+                      style={{ width: `${Math.min((profile.fetchesUsed / profile.monthlyFetchLimit) * 100, 100)}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Time range</span>
-                  <span className="font-medium">{profile.timeRangeMaxDays} days</span>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[13px] text-text-secondary">Competitors</span>
+                    <span className="font-mono text-[12px] text-text-primary">
+                      {competitors.length}/{profile.maxCompetitors}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-bg-base rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-mint transition-all"
+                      style={{ width: `${Math.min((competitors.length / profile.maxCompetitors) * 100, 100)}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">CSV Export</span>
-                  <span className="font-medium">{profile.csvExport ? "Enabled" : "Upgrade to Pro"}</span>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-text-secondary">CSV Export</span>
+                    <span className="font-mono text-[12px] text-text-primary">
+                      {profile.csvExport ? "Enabled" : "Pro only"}
+                    </span>
+                  </div>
                 </div>
-                {profile.plan !== "pro" && (
-                  <Button variant="outline" className="w-full mt-4" data-testid="button-upgrade">
+              </div>
+              <div className="mt-5 pt-4 border-t border-border-subtle">
+                <p className="font-mono text-[10px] text-text-muted">Resets on the 1st of each month.</p>
+              </div>
+              {profile.plan !== "pro" && (
+                <Link href="/pricing">
+                  <button className="w-full mt-3 border border-border-subtle hover:border-mint text-text-secondary hover:text-mint text-[13px] py-2 rounded-md transition-colors" data-testid="button-upgrade">
                     Upgrade Plan
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+                  </button>
+                </Link>
+              )}
+            </div>
           )}
         </div>
       </div>

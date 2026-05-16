@@ -1,9 +1,4 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -61,25 +56,13 @@ export function CompetitorList({
   const handleClearAll = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!onClearAll) return;
-    
     setIsClearing(true);
     try {
-      console.log("Initiating clear all competitors...");
       await onClearAll();
-      console.log("Clear all successful");
-      
-      toast({
-        title: "All competitors cleared",
-        description: "Your competitor list is now empty",
-      });
+      toast({ title: "All competitors cleared", description: "Your competitor list is now empty" });
       setIsClearDialogOpen(false);
     } catch (error) {
-      console.error("Clear all failed:", error);
-      toast({
-        title: "Failed to clear competitors",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
+      toast({ title: "Failed to clear competitors", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
     } finally {
       setIsClearing(false);
     }
@@ -88,46 +71,24 @@ export function CompetitorList({
   const handleAddSingle = async () => {
     const username = parseInstagramUsername(newUsername);
     if (!username) {
-      toast({
-        title: "Invalid username",
-        description: "Please enter a valid Instagram username",
-        variant: "destructive",
-      });
+      toast({ title: "Invalid username", description: "Please enter a valid Instagram username", variant: "destructive" });
       return;
     }
-
     if (competitors.some((c) => c.username.toLowerCase() === username.toLowerCase())) {
-      toast({
-        title: "Duplicate username",
-        description: "This competitor is already in your list",
-        variant: "destructive",
-      });
+      toast({ title: "Duplicate username", description: "This competitor is already in your list", variant: "destructive" });
       return;
     }
-
     if (remainingSlots <= 0) {
-      toast({
-        title: "Limit reached",
-        description: "Upgrade your plan to add more competitors",
-        variant: "destructive",
-      });
+      toast({ title: "Limit reached", description: "Upgrade your plan to add more competitors", variant: "destructive" });
       return;
     }
-
     setIsAdding(true);
     try {
       await onAdd([username]);
       setNewUsername("");
-      toast({
-        title: "Competitor added",
-        description: `@${username} has been added to your list`,
-      });
+      toast({ title: "Competitor added", description: `@${username} has been added to your list` });
     } catch (error) {
-      toast({
-        title: "Failed to add competitor",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
+      toast({ title: "Failed to add competitor", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
     } finally {
       setIsAdding(false);
     }
@@ -135,21 +96,13 @@ export function CompetitorList({
 
   const handleBulkAdd = async () => {
     const { valid, invalid } = validateInstagramUsernames(bulkText);
-    
     const existingUsernames = new Set(competitors.map((c) => c.username.toLowerCase()));
     const newUsernames = valid.filter((u) => !existingUsernames.has(u.toLowerCase()));
-    
     const toAdd = newUsernames.slice(0, remainingSlots);
-    
     if (toAdd.length === 0) {
-      toast({
-        title: "No new usernames",
-        description: "All usernames are duplicates or invalid",
-        variant: "destructive",
-      });
+      toast({ title: "No new usernames", description: "All usernames are duplicates or invalid", variant: "destructive" });
       return;
     }
-
     setIsAdding(true);
     try {
       await onAdd(toAdd);
@@ -160,11 +113,7 @@ export function CompetitorList({
         description: `${toAdd.length} competitors added${invalid.length > 0 ? `, ${invalid.length} invalid entries skipped` : ""}`,
       });
     } catch (error) {
-      toast({
-        title: "Failed to add competitors",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
+      toast({ title: "Failed to add competitors", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
     } finally {
       setIsAdding(false);
     }
@@ -173,12 +122,8 @@ export function CompetitorList({
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      setBulkText(content);
-    };
+    reader.onload = (e) => setBulkText(e.target?.result as string);
     reader.readAsText(file);
   };
 
@@ -186,245 +131,196 @@ export function CompetitorList({
     setRemovingId(id);
     try {
       await onRemove(id);
-      toast({
-        title: "Competitor removed",
-        description: "The competitor has been removed from your list",
-      });
+      toast({ title: "Competitor removed", description: "The competitor has been removed from your list" });
     } catch (error) {
-      toast({
-        title: "Failed to remove competitor",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
+      toast({ title: "Failed to remove competitor", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
     } finally {
       setRemovingId(null);
     }
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Competitors
-          </CardTitle>
-          <span className="text-sm text-muted-foreground">
-            {competitors.length}/{maxCompetitors}
-          </span>
+    <div className="bg-bg-surface border border-border-subtle rounded-lg p-5">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Users className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
+          <h3 className="font-tight font-semibold text-[15px] text-text-primary">Competitors</h3>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-        <div className="flex gap-2">
-          <Input
-            placeholder="Competitor username"
-            value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddSingle()}
-            disabled={isAdding || remainingSlots <= 0}
-            data-testid="input-add-competitor"
-          />
-          <Button
-            onClick={handleAddSingle}
-            disabled={isAdding || !newUsername.trim() || remainingSlots <= 0}
-            data-testid="button-add-competitor"
-          >
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
-        <div className="flex gap-2">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" disabled={remainingSlots <= 0} data-testid="button-bulk-add" className="flex-1">
-                Bulk Add
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="w-full max-w-2xl mx-4 sm:mx-auto">
-              <DialogHeader>
-                <DialogTitle>Add Multiple Competitors</DialogTitle>
-              </DialogHeader>
-              <Tabs defaultValue="paste">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="paste">Paste Text</TabsTrigger>
-                  <TabsTrigger value="txt">Upload .txt</TabsTrigger>
-                  <TabsTrigger value="csv">Upload .csv</TabsTrigger>
-                </TabsList>
-                <TabsContent value="paste" className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Enter usernames (one per line or comma-separated)</Label>
-                    <Textarea
-                      placeholder="@creator1&#10;@creator2&#10;@creator3"
-                      className="h-64 font-mono text-sm"
-                      value={bulkText}
-                      onChange={(e) => setBulkText(e.target.value)}
-                      data-testid="textarea-bulk-usernames"
-                    />
-                  </div>
-                </TabsContent>
-                <TabsContent value="txt" className="space-y-4">
-                  <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                    <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-4" />
-                    <Label
-                      htmlFor="txt-upload"
-                      className="cursor-pointer text-primary hover:underline"
-                    >
-                      Click to upload .txt file
-                    </Label>
-                    <input
-                      id="txt-upload"
-                      type="file"
-                      accept=".txt"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      One username per line
-                    </p>
-                  </div>
-                  {bulkText && (
-                    <Textarea
-                      className="h-32 font-mono text-sm"
-                      value={bulkText}
-                      onChange={(e) => setBulkText(e.target.value)}
-                    />
-                  )}
-                </TabsContent>
-                <TabsContent value="csv" className="space-y-4">
-                  <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                    <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-4" />
-                    <Label
-                      htmlFor="csv-upload"
-                      className="cursor-pointer text-primary hover:underline"
-                    >
-                      Click to upload .csv file
-                    </Label>
-                    <input
-                      id="csv-upload"
-                      type="file"
-                      accept=".csv"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Single column with usernames
-                    </p>
-                  </div>
-                  {bulkText && (
-                    <Textarea
-                      className="h-32 font-mono text-sm"
-                      value={bulkText}
-                      onChange={(e) => setBulkText(e.target.value)}
-                    />
-                  )}
-                </TabsContent>
-              </Tabs>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-muted-foreground">
-                  {remainingSlots} slots remaining
-                </p>
-                <Button
-                  onClick={handleBulkAdd}
-                  disabled={isAdding || !bulkText.trim()}
-                  data-testid="button-confirm-bulk"
-                >
-                  {isAdding ? "Adding..." : "Add Competitors"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+        <span className="font-mono text-[11px] text-text-muted">
+          {competitors.length}/{maxCompetitors}
+        </span>
+      </div>
 
-          {onClearAll && competitors.length > 0 && (
-            <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="destructive" 
-                  disabled={isClearing} 
-                  data-testid="button-clear-all"
-                >
-                  Clear All
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Clear all competitors?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will remove all {competitors.length} competitors from your list. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={handleClearAll} 
-                    disabled={isClearing}
-                    className="bg-destructive hover:bg-destructive/90"
-                  >
-                    {isClearing ? "Clearing..." : "Clear All"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
-        </div>
+      {/* Input + add button */}
+      <div className="flex gap-2 mb-3">
+        <input
+          type="text"
+          placeholder="@competitor_handle"
+          value={newUsername}
+          onChange={(e) => setNewUsername(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAddSingle()}
+          disabled={isAdding || remainingSlots <= 0}
+          className="flex-1 bg-bg-base border border-border-subtle rounded-md px-3 py-2 text-[13px] font-mono text-text-primary placeholder:text-text-muted focus:border-mint focus:outline-none focus:shadow-[0_0_0_3px_rgba(124,255,178,0.1)] transition-all"
+          data-testid="input-add-competitor"
+        />
+        <button
+          onClick={handleAddSingle}
+          disabled={isAdding || !newUsername.trim() || remainingSlots <= 0}
+          className="bg-mint hover:bg-mint-hover text-bg-base px-3 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          data-testid="button-add-competitor"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
 
-        <ScrollArea className="h-[300px]">
-          {competitors.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p className="text-sm">No competitors added yet</p>
-              <p className="text-xs mt-1">Add competitors to start tracking</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {competitors.map((competitor) => (
-                <div
-                  key={competitor.id}
-                  className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50 hover-elevate"
-                  data-testid={`competitor-item-${competitor.username}`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar className="w-8 h-8">
-                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                        {competitor.username.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="font-mono text-sm truncate">
-                      @{competitor.username}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      asChild
-                      className="h-8 w-8"
-                    >
-                      <a
-                        href={`https://instagram.com/${competitor.username}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleRemove(competitor.id)}
-                      disabled={removingId === competitor.id}
-                      data-testid={`button-remove-${competitor.username}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+      {/* Bulk add + clear */}
+      <div className="flex gap-2 mb-3">
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <button
+              disabled={remainingSlots <= 0}
+              className="flex-1 border border-border-subtle hover:border-border-soft text-text-secondary hover:text-text-primary text-[13px] py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid="button-bulk-add"
+            >
+              Bulk Add
+            </button>
+          </DialogTrigger>
+          <DialogContent className="w-full max-w-2xl mx-4 sm:mx-auto">
+            <DialogHeader>
+              <DialogTitle>Add Multiple Competitors</DialogTitle>
+            </DialogHeader>
+            <Tabs defaultValue="paste">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="paste">Paste Text</TabsTrigger>
+                <TabsTrigger value="txt">Upload .txt</TabsTrigger>
+                <TabsTrigger value="csv">Upload .csv</TabsTrigger>
+              </TabsList>
+              <TabsContent value="paste" className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Enter usernames (one per line or comma-separated)</Label>
+                  <Textarea
+                    placeholder="@creator1&#10;@creator2&#10;@creator3"
+                    className="h-64 font-mono text-sm"
+                    value={bulkText}
+                    onChange={(e) => setBulkText(e.target.value)}
+                    data-testid="textarea-bulk-usernames"
+                  />
                 </div>
-              ))}
+              </TabsContent>
+              <TabsContent value="txt" className="space-y-4">
+                <div className="border-2 border-dashed border-border-subtle rounded-lg p-8 text-center">
+                  <Upload className="w-8 h-8 mx-auto text-text-muted mb-4" strokeWidth={1.5} />
+                  <Label htmlFor="txt-upload" className="cursor-pointer text-mint hover:underline">
+                    Click to upload .txt file
+                  </Label>
+                  <input id="txt-upload" type="file" accept=".txt" className="hidden" onChange={handleFileUpload} />
+                  <p className="text-xs text-text-muted mt-2">One username per line</p>
+                </div>
+                {bulkText && <Textarea className="h-32 font-mono text-sm" value={bulkText} onChange={(e) => setBulkText(e.target.value)} />}
+              </TabsContent>
+              <TabsContent value="csv" className="space-y-4">
+                <div className="border-2 border-dashed border-border-subtle rounded-lg p-8 text-center">
+                  <Upload className="w-8 h-8 mx-auto text-text-muted mb-4" strokeWidth={1.5} />
+                  <Label htmlFor="csv-upload" className="cursor-pointer text-mint hover:underline">
+                    Click to upload .csv file
+                  </Label>
+                  <input id="csv-upload" type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+                  <p className="text-xs text-text-muted mt-2">Single column with usernames</p>
+                </div>
+                {bulkText && <Textarea className="h-32 font-mono text-sm" value={bulkText} onChange={(e) => setBulkText(e.target.value)} />}
+              </TabsContent>
+            </Tabs>
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-text-muted">{remainingSlots} slots remaining</p>
+              <button
+                onClick={handleBulkAdd}
+                disabled={isAdding || !bulkText.trim()}
+                className="bg-mint hover:bg-mint-hover text-bg-base font-semibold text-[14px] px-5 py-2.5 rounded-md transition-colors disabled:opacity-50"
+                data-testid="button-confirm-bulk"
+              >
+                {isAdding ? "Adding..." : "Add Competitors"}
+              </button>
             </div>
-          )}
-        </ScrollArea>
-      </CardContent>
-    </Card>
+          </DialogContent>
+        </Dialog>
+
+        {onClearAll && competitors.length > 0 && (
+          <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <button
+                disabled={isClearing}
+                className="border border-border-subtle hover:border-danger text-text-muted hover:text-danger text-[13px] px-3 py-2 rounded-md transition-colors disabled:opacity-50"
+                data-testid="button-clear-all"
+              >
+                Clear
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear all competitors?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will remove all {competitors.length} competitors. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleClearAll} disabled={isClearing} className="bg-destructive hover:bg-destructive/90">
+                  {isClearing ? "Clearing..." : "Clear All"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+
+      {/* Competitor list */}
+      <div className="max-h-[280px] overflow-y-auto space-y-1.5 mt-4 pt-4 border-t border-border-subtle">
+        {competitors.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-10 h-10 rounded-full bg-bg-elevated border border-border-subtle flex items-center justify-center mx-auto mb-3">
+              <Users className="w-4 h-4 text-text-muted" strokeWidth={1.5} />
+            </div>
+            <p className="text-[13px] text-text-primary mb-1">No competitors yet</p>
+            <p className="font-mono text-[11px] text-text-muted">Drop a handle to begin</p>
+          </div>
+        ) : (
+          competitors.map((competitor) => (
+            <div
+              key={competitor.id}
+              className="flex items-center justify-between gap-3 p-2.5 rounded-md bg-bg-elevated hover:bg-bg-base transition-colors"
+              data-testid={`competitor-item-${competitor.username}`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-bg-base border border-border-subtle flex items-center justify-center text-[10px] font-semibold text-text-secondary shrink-0">
+                  {competitor.username.slice(0, 2).toUpperCase()}
+                </div>
+                <span className="font-mono text-[13px] text-text-primary truncate">
+                  @{competitor.username}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <a
+                  href={`https://instagram.com/${competitor.username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-text-muted hover:text-mint transition-colors p-1 rounded hover:bg-bg-surface"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.5} />
+                </a>
+                <button
+                  onClick={() => handleRemove(competitor.id)}
+                  disabled={removingId === competitor.id}
+                  className="text-text-muted hover:text-danger transition-colors p-1 rounded hover:bg-bg-surface disabled:opacity-50"
+                  data-testid={`button-remove-${competitor.username}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   );
 }

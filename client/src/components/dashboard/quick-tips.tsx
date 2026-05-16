@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import type { Reel, CompetitorStats } from "@shared/schema";
@@ -56,7 +55,7 @@ export function QuickTips({ reels, stats, timeRangeDays }: QuickTipsProps) {
   ];
 
   const bucketPerformance = durationBuckets.map(bucket => {
-    const bucketReels = reels.filter(r => 
+    const bucketReels = reels.filter(r =>
       r.durationSeconds >= bucket.min && r.durationSeconds < bucket.max
     );
     const avgViews = bucketReels.length > 0
@@ -66,7 +65,7 @@ export function QuickTips({ reels, stats, timeRangeDays }: QuickTipsProps) {
   }).filter(b => b.count >= 2);
 
   if (bucketPerformance.length > 0) {
-    const bestDuration = bucketPerformance.reduce((best, curr) => 
+    const bestDuration = bucketPerformance.reduce((best, curr) =>
       curr.avgViews > best.avgViews ? curr : best
     );
     tips.push(`Keep reels near ${bestDuration.label} - this length gets more views.`);
@@ -99,26 +98,25 @@ export function QuickTips({ reels, stats, timeRangeDays }: QuickTipsProps) {
   tips.push("Start tagging formats (tutorial, meme, story) to see what works.");
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Lightbulb className="w-5 h-5 text-yellow-500" />
-          Quick Tips - Last {timeRangeDays} days
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Plain-language tips based on recent data. Great for beginners.
-        </p>
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-2">
-          {tips.map((tip, index) => (
-            <li key={index} className="flex items-start gap-2">
-              <span className="text-muted-foreground mt-1">•</span>
-              <span>{tip}</span>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+    <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Lightbulb className="w-4 h-4 text-mint" strokeWidth={1.5} />
+          <h3 className="font-tight font-semibold text-[16px] text-text-primary">Quick Tips — Last {timeRangeDays} days</h3>
+        </div>
+        <p className="font-mono text-[11px] text-text-muted">Plain-language insights based on recent data.</p>
+      </div>
+      <ul className="space-y-3">
+        {tips.map((tip, index) => (
+          <li key={index} className="flex items-start gap-3">
+            <span className="font-mono text-[11px] text-mint mt-0.5 shrink-0">→</span>
+            <span className="font-mono text-[12px] text-text-secondary leading-relaxed">{tip}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="font-mono text-[10px] text-text-muted mt-6 pt-4 border-t border-border-subtle">
+        Numbers update in real-time after each fetch. No cache.
+      </p>
+    </div>
   );
 }

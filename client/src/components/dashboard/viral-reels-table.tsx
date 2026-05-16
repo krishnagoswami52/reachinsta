@@ -7,8 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -16,8 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { formatNumber, formatPercentage, getDurationBucket } from "@/lib/utils";
 import { ExternalLink, TrendingUp, ArrowUpDown, Search, Filter } from "lucide-react";
 import type { Reel } from "@shared/schema";
@@ -95,81 +91,81 @@ export function ViralReelsTable({ reels, competitors = [], isLoading }: ViralRee
   };
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-8 -ml-3 font-medium"
+    <button
+      className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors"
       onClick={() => toggleSort(field)}
     >
       {children}
-      <ArrowUpDown className="ml-1 h-3 w-3" />
-    </Button>
+      <ArrowUpDown className="h-3 w-3" />
+    </button>
   );
 
   return (
-    <Card>
-      <CardHeader className="pb-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            Top 25 Viral Reels
-          </CardTitle>
-          
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-[150px]"
-                data-testid="input-search-reels"
-              />
-            </div>
-            
-            <Select value={filterCompetitor} onValueChange={setFilterCompetitor}>
-              <SelectTrigger className="w-[150px]" data-testid="select-filter-competitor">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="All competitors" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All competitors</SelectItem>
-                {uniqueCompetitors.map((username) => (
-                  <SelectItem key={username} value={username}>
-                    @{username}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Input
-              type="number"
-              placeholder="Min views"
-              value={minViews}
-              onChange={(e) => setMinViews(e.target.value)}
-              className="w-[120px]"
-              data-testid="input-min-views"
+    <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="w-4 h-4 text-mint" strokeWidth={1.5} />
+            <h3 className="font-tight font-semibold text-[16px] text-text-primary">Top 25 Viral Reels</h3>
+          </div>
+          <p className="font-mono text-[11px] text-text-muted">Ranked by viral score — views, engagement, and recency</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 w-[150px] h-8 bg-bg-base border border-border-subtle rounded-md font-mono text-[12px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-mint focus:shadow-[0_0_0_3px_rgba(124,255,178,0.1)] transition-all"
+              data-testid="input-search-reels"
             />
           </div>
+
+          <Select value={filterCompetitor} onValueChange={setFilterCompetitor}>
+            <SelectTrigger className="w-[150px] h-8 bg-bg-base border-border-subtle font-mono text-[12px] text-text-primary" data-testid="select-filter-competitor">
+              <Filter className="w-3.5 h-3.5 mr-2 text-text-muted" />
+              <SelectValue placeholder="All competitors" />
+            </SelectTrigger>
+            <SelectContent className="bg-bg-elevated border-border-subtle">
+              <SelectItem value="all" className="font-mono text-[12px]">All competitors</SelectItem>
+              {uniqueCompetitors.map((username) => (
+                <SelectItem key={username} value={username} className="font-mono text-[12px]">
+                  @{username}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <input
+            type="number"
+            placeholder="Min views"
+            value={minViews}
+            onChange={(e) => setMinViews(e.target.value)}
+            className="w-[120px] h-8 bg-bg-base border border-border-subtle rounded-md font-mono text-[12px] text-text-primary placeholder:text-text-muted px-3 focus:outline-none focus:border-mint focus:shadow-[0_0_0_3px_rgba(124,255,178,0.1)] transition-all"
+            data-testid="input-min-views"
+          />
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-lg border overflow-hidden">
-          <div className="overflow-x-auto">
+      </div>
+
+      <div className="rounded-lg border border-border-subtle overflow-hidden">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-10">#</TableHead>
-                <TableHead>Competitor</TableHead>
+              <TableRow className="bg-bg-elevated border-border-subtle hover:bg-bg-elevated">
+                <TableHead className="w-10 font-mono text-[10px] uppercase tracking-wider text-text-muted">#</TableHead>
+                <TableHead className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Competitor</TableHead>
                 <TableHead className="text-right">
                   <SortableHeader field="views">Views</SortableHeader>
                 </TableHead>
-                <TableHead className="text-right hidden sm:table-cell">Likes</TableHead>
-                <TableHead className="text-right hidden sm:table-cell">Comments</TableHead>
+                <TableHead className="text-right hidden sm:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">Likes</TableHead>
+                <TableHead className="text-right hidden sm:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">Comments</TableHead>
                 <TableHead className="text-right">
                   <SortableHeader field="engagementRate">ER</SortableHeader>
                 </TableHead>
-                <TableHead className="text-center hidden md:table-cell">Duration</TableHead>
+                <TableHead className="text-center hidden md:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">Duration</TableHead>
                 <TableHead className="text-right">
                   <SortableHeader field="viralScore">Score</SortableHeader>
                 </TableHead>
@@ -181,76 +177,72 @@ export function ViralReelsTable({ reels, competitors = [], isLoading }: ViralRee
             </TableHeader>
             <TableBody>
               {filteredReels.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                <TableRow className="border-border-subtle">
+                  <TableCell colSpan={10} className="text-center py-8 font-mono text-[12px] text-text-muted">
                     {isLoading ? "Loading reels..." : "No reels found"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredReels.map((reel, index) => (
-                  <TableRow
-                    key={reel.id}
-                    className="hover-elevate"
-                    data-testid={`reel-row-${index}`}
-                  >
-                    <TableCell className="font-medium text-muted-foreground">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono text-sm">@{reel.username}</span>
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-medium">
-                      {formatNumber(reel.views)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono hidden sm:table-cell">
-                      {formatNumber(reel.likes)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono hidden sm:table-cell">
-                      {formatNumber(reel.comments)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {formatPercentage(parseFloat(String(reel.engagementRate)))}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center hidden md:table-cell">
-                      <Badge variant="secondary" className="font-mono text-xs">
-                        {getDurationBucket(reel.durationSeconds)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="font-mono text-xs bg-primary/10 text-primary hover:bg-primary/20">
-                        {parseFloat(String(reel.viralScore)).toFixed(2)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground hidden sm:table-cell">
-                      {reel.postedAt ? new Date(reel.postedAt).toLocaleDateString() : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        asChild
-                      >
+                filteredReels.map((reel, index) => {
+                  const er = parseFloat(String(reel.engagementRate)) * 100;
+                  return (
+                    <TableRow
+                      key={reel.id}
+                      className="border-border-subtle hover:bg-bg-elevated"
+                      data-testid={`reel-row-${index}`}
+                    >
+                      <TableCell className="font-mono text-[12px] text-text-muted">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-[13px] text-text-primary">@{reel.username}</span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-[13px] text-text-primary">
+                        {formatNumber(reel.views)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-[13px] text-text-secondary hidden sm:table-cell">
+                        {formatNumber(reel.likes)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-[13px] text-text-secondary hidden sm:table-cell">
+                        {formatNumber(reel.comments)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={`font-mono text-[13px] ${er >= 3 ? "text-mint" : "text-text-primary"}`}>
+                          {formatPercentage(parseFloat(String(reel.engagementRate)))}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center hidden md:table-cell">
+                        <span className="font-mono text-[11px] px-2 py-0.5 bg-bg-base border border-border-subtle rounded text-text-muted">
+                          {getDurationBucket(reel.durationSeconds)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-mono text-[13px] text-mint">
+                          {parseFloat(String(reel.viralScore)).toFixed(2)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-[11px] text-text-muted hidden sm:table-cell">
+                        {reel.postedAt ? new Date(reel.postedAt).toLocaleDateString() : "—"}
+                      </TableCell>
+                      <TableCell>
                         <a
                           href={reel.reelUrl}
                           target="_blank"
                           rel="noopener noreferrer"
+                          className="flex items-center justify-center w-8 h-8 rounded-md text-text-muted hover:text-mint hover:bg-mint-dim transition-colors"
                           data-testid={`link-reel-${index}`}
                         >
-                          <ExternalLink className="w-4 h-4" />
+                          <ExternalLink className="w-3.5 h-3.5" />
                         </a>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
-          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Timer } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
@@ -41,69 +40,37 @@ export function DurationChart({ reels }: DurationChartProps) {
   const maxViews = Math.max(...data.map((d) => d.avgViews));
   const bestBucket = data.find((d) => d.avgViews === maxViews);
 
-  const COLORS = [
-    "hsl(var(--chart-1))",
-    "hsl(var(--chart-2))",
-    "hsl(var(--chart-3))",
-    "hsl(var(--chart-4))",
-    "hsl(var(--chart-5))",
-    "hsl(var(--primary))",
-  ];
+  const COLORS = ["#7CFFB2", "#8B9199", "#5A6069", "#2A2D32", "#1F2227", "#7CFFB2"];
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Timer className="w-5 h-5 text-primary" />
-          Duration Performance
-        </CardTitle>
-        {bestBucket && bestBucket.avgViews > 0 && (
-          <p className="text-sm text-muted-foreground">
-            Best performing: <span className="font-medium text-primary">{bestBucket.name}</span> with{" "}
-            <span className="font-medium">{formatNumber(bestBucket.avgViews)}</span> avg views
-          </p>
-        )}
-      </CardHeader>
-      <CardContent>
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis 
-                dataKey="name" 
-                tick={{ fontSize: 12 }}
-                className="fill-muted-foreground"
-              />
-              <YAxis 
-                tick={{ fontSize: 12 }}
-                className="fill-muted-foreground"
-                tickFormatter={(value) => formatNumber(value)}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-                labelStyle={{ color: "hsl(var(--foreground))" }}
-                formatter={(value: number, name: string) => [
-                  name === "avgViews" ? formatNumber(value) : `${value}%`,
-                  name === "avgViews" ? "Avg Views" : "Avg Engagement",
-                ]}
-              />
-              <Bar dataKey="avgViews" radius={[4, 4, 0, 0]}>
-                {data.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={COLORS[index % COLORS.length]}
-                    className="transition-opacity hover:opacity-80"
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <Timer className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
+        <h3 className="font-tight font-semibold text-[16px] text-text-primary">Duration Performance</h3>
+      </div>
+      {bestBucket && bestBucket.avgViews > 0 && (
+        <p className="font-mono text-[11px] text-text-muted mb-4">
+          Best: <span className="text-mint">{bestBucket.name}</span> — {formatNumber(bestBucket.avgViews)} avg views
+        </p>
+      )}
+      <div className="h-[300px] mt-4">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1F2227" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontFamily: "JetBrains Mono", fontSize: 11, fill: "#5A6069" }} axisLine={{ stroke: "#1F2227" }} tickLine={false} />
+            <YAxis tick={{ fontFamily: "JetBrains Mono", fontSize: 11, fill: "#5A6069" }} axisLine={{ stroke: "#1F2227" }} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
+            <Tooltip
+              contentStyle={{ backgroundColor: "#111316", border: "1px solid #1F2227", borderRadius: "6px", fontFamily: "JetBrains Mono", fontSize: "12px" }}
+              labelStyle={{ color: "#8B9199" }}
+              itemStyle={{ color: "#7CFFB2" }}
+              formatter={(value: number, name: string) => [name === "avgViews" ? formatNumber(value) : `${value}%`, name === "avgViews" ? "Avg Views" : "Avg ER"]}
+            />
+            <Bar dataKey="avgViews" radius={[4, 4, 0, 0]}>
+              {data.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
 }

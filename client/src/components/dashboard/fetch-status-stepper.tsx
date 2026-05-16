@@ -31,11 +31,11 @@ export function FetchStatusStepper({ status, className }: FetchStatusStepperProp
   return (
     <div className={cn("w-full", className)}>
       {isFailed ? (
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-          <AlertCircle className="w-5 h-5 text-destructive" />
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-danger/10 border border-danger/20">
+          <AlertCircle className="w-5 h-5 text-danger" />
           <div>
-            <p className="font-medium text-destructive">Fetch Failed</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="font-mono text-[13px] text-danger">Fetch Failed</p>
+            <p className="font-mono text-[11px] text-text-muted">
               Something went wrong. Please try again.
             </p>
           </div>
@@ -45,30 +45,30 @@ export function FetchStatusStepper({ status, className }: FetchStatusStepperProp
           {steps.map((step, index) => {
             const isCompleted = currentStep > index;
             const isCurrent = currentStep === index;
-            
+
             return (
               <div key={step.key} className="flex items-center flex-1">
                 <div className="flex flex-col items-center gap-2">
                   <div
                     className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all",
-                      isCompleted && "bg-primary border-primary text-primary-foreground",
-                      isCurrent && "border-primary bg-primary/10",
-                      !isCompleted && !isCurrent && "border-muted bg-muted/50 text-muted-foreground"
+                      "w-8 h-8 rounded-md flex items-center justify-center border transition-all",
+                      isCompleted && "bg-mint border-mint text-bg-base",
+                      isCurrent && "border-mint bg-mint-dim text-mint",
+                      !isCompleted && !isCurrent && "border-border-subtle bg-bg-elevated text-text-muted"
                     )}
                   >
                     {isCompleted ? (
-                      <Check className="w-5 h-5" />
+                      <Check className="w-4 h-4" />
                     ) : isCurrent ? (
-                      <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Clock className="w-4 h-4" />
+                      <Clock className="w-3.5 h-3.5" />
                     )}
                   </div>
                   <span
                     className={cn(
-                      "text-xs font-medium text-center",
-                      (isCompleted || isCurrent) ? "text-foreground" : "text-muted-foreground"
+                      "font-mono text-[10px] text-center",
+                      (isCompleted || isCurrent) ? "text-text-primary" : "text-text-muted"
                     )}
                   >
                     {step.label}
@@ -77,8 +77,8 @@ export function FetchStatusStepper({ status, className }: FetchStatusStepperProp
                 {index < steps.length - 1 && (
                   <div
                     className={cn(
-                      "h-0.5 flex-1 mx-2",
-                      isCompleted ? "bg-primary" : "bg-muted"
+                      "h-px flex-1 mx-2 mb-5",
+                      isCompleted ? "bg-mint" : "bg-border-subtle"
                     )}
                   />
                 )}

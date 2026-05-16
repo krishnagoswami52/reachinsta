@@ -6,12 +6,12 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: ".5625rem", /* 9px */
-        md: ".375rem", /* 6px */
-        sm: ".1875rem", /* 3px */
+        lg: ".5625rem",
+        md: ".375rem",
+        sm: ".1875rem",
       },
       colors: {
-        // Flat / base colors (regular buttons)
+        // shadcn CSS-var-based tokens (keep for UI primitives)
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
         border: "hsl(var(--border) / <alpha-value>)",
@@ -41,6 +41,7 @@ export default {
           foreground: "hsl(var(--muted-foreground) / <alpha-value>)",
           border: "var(--muted-border)",
         },
+        // shadcn accent — kept as CSS-var (dark elevated, used for hover states)
         accent: {
           DEFAULT: "hsl(var(--accent) / <alpha-value>)",
           foreground: "hsl(var(--accent-foreground) / <alpha-value>)",
@@ -73,7 +74,7 @@ export default {
         "sidebar-accent": {
           DEFAULT: "hsl(var(--sidebar-accent) / <alpha-value>)",
           foreground: "hsl(var(--sidebar-accent-foreground) / <alpha-value>)",
-          border: "var(--sidebar-accent-border)"
+          border: "var(--sidebar-accent-border)",
         },
         status: {
           online: "rgb(34 197 94)",
@@ -81,11 +82,29 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        // ── Dark/mint design-system tokens ──────────────────────────────
+        "bg-base":       "#0A0B0D",
+        "bg-surface":    "#111316",
+        "bg-elevated":   "#16191D",
+        "border-subtle": "#1F2227",
+        "border-soft":   "#2A2D32",
+        "text-primary":  "#E8EAED",
+        "text-secondary":"#8B9199",
+        "text-muted":    "#5A6069",
+        "mint":          "#7CFFB2",
+        "mint-hover":    "#5DEB97",
+        "mint-dim":      "rgba(124,255,178,0.1)",
+        "danger":        "#FF6B6B",
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
+        sans:  ["var(--font-sans)"],
         serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
+        mono:  ["var(--font-mono)"],
+        tight: ["var(--font-tight)"],
+      },
+      letterSpacing: {
+        tightest:  "-0.03em",
+        "tighter-2": "-0.02em",
       },
       keyframes: {
         "accordion-down": {

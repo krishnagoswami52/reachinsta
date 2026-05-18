@@ -259,6 +259,49 @@
       #0A0B0D;
   }
 
+  /* Landing page */
+  @keyframes draw-path-anim { from { stroke-dashoffset: 200; } to { stroke-dashoffset: 0; } }
+  .draw-path { stroke-dasharray: 200; stroke-dashoffset: 200; animation: draw-path-anim 1.4s ease-out 0.6s forwards; }
+
+  @keyframes bar-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  .bar-rise { transform-origin: bottom; animation: bar-rise 0.6s ease-out forwards; }
+
+  @keyframes spark-glow { 0%, 100% { opacity: 0.9; } 50% { opacity: 1; } }
+  .spark { animation: spark-glow 3s ease-in-out infinite; }
+
+  .glow-bl {
+    box-shadow: -20px 30px 80px -20px rgba(124, 255, 178, 0.18), 0 0 0 1px #1F2227;
+  }
+
+  /* Features page */
+  @keyframes dash-flow { to { stroke-dashoffset: -16; } }
+  .dash-line { stroke-dasharray: 4 4; animation: dash-flow 1s linear infinite; }
+
+  @keyframes box-pulse { 0%, 100% { border-color: #1F2227; } 50% { border-color: rgba(124, 255, 178, 0.4); } }
+  .formula-box { animation: box-pulse 2.5s ease-in-out infinite; }
+
+  @keyframes handle-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+  .handle-row { opacity: 0; animation: handle-in 0.5s ease-out forwards; }
+
+  @keyframes check-pop-anim { from { transform: scale(0); } to { transform: scale(1); } }
+  .check-pop { transform-origin: center; animation: check-pop-anim 0.3s ease-out forwards; }
+
+  @keyframes progress-fill-anim { from { width: 0%; } to { width: 87%; } }
+  .progress-fill { animation: progress-fill-anim 2.5s ease-out infinite alternate; }
+
+  /* Chip component */
+  .chip {
+    @apply bg-bg-surface border border-border-subtle text-text-secondary font-mono text-[12px] px-3.5 py-2 rounded-md transition-colors;
+    &:hover { border-color: #7CFFB2; color: #7CFFB2; }
+  }
+
+  /* FAQ accordion */
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  details summary .faq-chev { transition: transform 0.2s ease; }
+  details[open] summary .faq-chev { transform: rotate(45deg); }
+  details[open] summary .faq-q { color: #7CFFB2; }
+
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
   }

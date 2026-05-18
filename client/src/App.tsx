@@ -11,6 +11,8 @@ import LandingPage from "@/pages/landing";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
+import FeaturesPage from "@/pages/features";
 import VerifyEmailPage from "@/pages/verify-email";
 import DashboardPage from "@/pages/dashboard";
 import CompetitorsPage from "@/pages/competitors";
@@ -61,7 +63,7 @@ function AppRouter() {
     return <LoginPage />;
   }
 
-  if (location === "/register") {
+  if (location === "/register" || location === "/signup") {
     if (isAuthenticated && !isLoading) {
       if (!isEmailVerified) {
         const next = new URLSearchParams(window.location.search).get("next");
@@ -72,6 +74,14 @@ function AppRouter() {
       return null;
     }
     return <RegisterPage />;
+  }
+
+  if (location === "/reset-password" || location.startsWith("/reset-password?")) {
+    return <ResetPasswordPage />;
+  }
+
+  if (location === "/features") {
+    return <FeaturesPage />;
   }
 
   if (location === "/forgot-password") {

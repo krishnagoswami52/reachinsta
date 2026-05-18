@@ -51,9 +51,9 @@ export function AppSidebar({ profile }: AppSidebarProps) {
   const initials = (user?.firstName?.charAt(0) ?? user?.email?.charAt(0) ?? "U").toUpperCase();
 
   return (
-    <aside className="bg-bg-base border-r border-border-subtle w-[240px] min-h-screen flex flex-col shrink-0">
+    <aside className="bg-bg-base border-r border-border-subtle w-[240px] h-screen lg:fixed lg:left-0 lg:top-0 flex flex-col lg:z-40">
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-border-subtle">
+      <div className="shrink-0 px-6 py-5 border-b border-border-subtle">
         <Link href="/dashboard">
           <div className="flex items-center gap-2 cursor-pointer">
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
@@ -68,7 +68,7 @@ export function AppSidebar({ profile }: AppSidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-6 space-y-6">
+      <nav className="flex-1 overflow-y-auto px-3 py-6 space-y-6">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted px-3 mb-2">
             // NAVIGATION
@@ -135,7 +135,7 @@ export function AppSidebar({ profile }: AppSidebarProps) {
 
       {/* Usage */}
       {profile && (
-        <div className="px-6 py-4 border-t border-border-subtle space-y-3">
+        <div className="shrink-0 px-6 py-4 border-t border-border-subtle space-y-3">
           <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
             // USAGE
           </div>
@@ -161,8 +161,8 @@ export function AppSidebar({ profile }: AppSidebarProps) {
       )}
 
       {/* User card */}
-      <div className="px-4 py-4 border-t border-border-subtle flex items-center justify-between">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="shrink-0 px-4 py-4 border-t border-border-subtle flex items-center justify-between gap-2">
+        <Link href="/profile" className="flex items-center gap-2.5 min-w-0 flex-1 hover:bg-bg-surface rounded-md p-1 -m-1 transition-colors">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-border-soft to-border-subtle flex items-center justify-center text-[12px] font-semibold border border-border-subtle text-text-primary shrink-0">
             {initials}
           </div>
@@ -174,7 +174,7 @@ export function AppSidebar({ profile }: AppSidebarProps) {
               </div>
             )}
           </div>
-        </div>
+        </Link>
         <button
           className="text-text-muted hover:text-mint transition-colors p-1.5 rounded hover:bg-bg-surface shrink-0"
           onClick={() => logout()}

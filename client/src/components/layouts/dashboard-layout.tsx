@@ -44,9 +44,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-bg-base">
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex">
+    <div className="min-h-screen w-full bg-bg-base">
+      {/* Desktop sidebar — fixed, rendered outside flow */}
+      <div className="hidden lg:block">
         <AppSidebar profile={profile} />
       </div>
 
@@ -60,7 +60,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       )}
 
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 lg:ml-[240px]">
         {/* Mobile header */}
         <header className="lg:hidden sticky top-0 z-40 flex items-center gap-3 border-b border-border-subtle bg-bg-base px-4 py-3">
           <button

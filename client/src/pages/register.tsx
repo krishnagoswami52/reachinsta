@@ -1,25 +1,40 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft } from "lucide-react";
-import logoImage from "@assets/ChatGPT_Image_Jan_16,_2026,_06_13_41_PM_1768567542199.png";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function RegisterPage() {
-  useEffect(() => { document.title = "Sign Up - ReachInsta"; }, []);
+  useEffect(() => { document.title = "Sign up - ReachInsta"; }, []);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const plan = new URLSearchParams(window.location.search).get("plan");
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const pwdStrength = useMemo(() => {
+    if (!password) return 0;
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    return score;
+  }, [password]);
+
+  const pwdHelperText = useMemo(() => {
+    if (!password) return "8+ characters. We never email it back to you.";
+    if (password.length < 8) return "a bit short — add a few more chars";
+    const msgs = ["weak — try mixing cases", "okay — add a number", "good — one symbol away from great", "great. you're set."];
+    return msgs[pwdStrength - 1] ?? "8+ characters. We never email it back to you.";
+  }, [password, pwdStrength]);
 
   const registerMutation = useMutation({
     mutationFn: async (data: { email: string; password: string; firstName?: string; lastName?: string }) => {
@@ -61,116 +76,253 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <nav className="border-b">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          <a href="/" className="flex items-center gap-2">
-            <img src={logoImage} alt="ReachInsta" className="w-8 h-8 rounded-md object-cover" />
-            <span className="font-semibold text-lg">ReachInsta</span>
-          </a>
-          <ThemeToggle />
-        </div>
-      </nav>
+    <div className="min-h-screen bg-bg-base text-text-primary grid grid-cols-1 lg:grid-cols-[60fr_40fr]">
 
-      <main className="flex-1 flex items-center justify-center p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Create Your Account</CardTitle>
-            <CardDescription>Start tracking competitor Reels for free</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+      {/* LEFT 60% */}
+      <div className="auth-bg relative flex flex-col px-6 lg:px-16 py-8 lg:py-12">
+        <div className="mb-12">
+          <a href="/" className="inline-flex items-center gap-2">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="0.5" y="0.5" width="21" height="21" rx="5.5" stroke="#7CFFB2"/>
+              <path d="M8 6L16 11L8 16V6Z" fill="#7CFFB2"/>
+            </svg>
+            <span className="font-tight font-semibold text-[18px] tracking-tighter-2">ReachInsta</span>
+          </a>
+        </div>
+
+        <div className="flex-1 flex items-center">
+          <div className="w-full max-w-[440px]">
+            {(plan === "plus" || plan === "pro") && (
+              <div className="inline-block font-mono text-[11px] uppercase tracking-wider px-2.5 py-1 rounded bg-mint-dim text-mint border border-mint/30 mb-6">
+                Signing up for {plan.charAt(0).toUpperCase() + plan.slice(1)}
+              </div>
+            )}
+
+            <div className="font-mono text-[11px] uppercase tracking-wider text-mint mb-5">
+              // 30 SECONDS TO YOUR FIRST FETCH
+            </div>
+            <h1 className="font-tight font-bold text-[44px] lg:text-[56px] leading-[1.05] tracking-tightest mb-5">
+              Create your account.
+            </h1>
+            <p className="text-[16px] text-text-secondary leading-relaxed mb-10 max-w-[420px]">
+              No credit card. 1 free fetch on the house. Cancel without writing us a breakup email.
+            </p>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
+                <div>
+                  <label className="block font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-2" htmlFor="firstName">
+                    // FIRST NAME
+                  </label>
+                  <input
                     id="firstName"
-                    placeholder="John"
+                    type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    data-testid="input-first-name"
+                    placeholder="Krishna"
+                    autoComplete="given-name"
+                    className="auth-input"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
+                <div>
+                  <label className="block font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-2" htmlFor="lastName">
+                    // LAST NAME
+                  </label>
+                  <input
                     id="lastName"
-                    placeholder="Doe"
+                    type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    data-testid="input-last-name"
+                    placeholder="Kumar"
+                    autoComplete="family-name"
+                    className="auth-input"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
+
+              <div>
+                <label className="block font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-2" htmlFor="email">
+                  // EMAIL
+                </label>
+                <input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@yourdomain.com"
+                  autoComplete="email"
                   required
-                  data-testid="input-email"
+                  className="auth-input"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="At least 8 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  data-testid="input-password"
-                />
+
+              <div>
+                <label className="block font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-2" htmlFor="password">
+                  // PASSWORD
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"
+                    autoComplete="new-password"
+                    required
+                    className="auth-input pr-16"
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[11px] uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">
+                    {showPassword ? "hide" : "show"}
+                  </button>
+                </div>
+                {/* Strength bar */}
+                <div className="flex gap-1 mt-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className={`h-[3px] flex-1 rounded-sm transition-colors ${
+                      password.length > 0 && i === 1 && password.length < 8 ? "bg-danger" :
+                      i <= pwdStrength ? "bg-mint" : "bg-border-subtle"
+                    }`} />
+                  ))}
+                </div>
+                <p className={`font-mono text-[11px] mt-2 ${pwdStrength === 4 ? "text-mint" : password.length > 0 && password.length < 8 ? "text-danger" : "text-text-muted"}`}>
+                  {pwdHelperText}
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  data-testid="input-confirm-password"
-                />
+
+              <div>
+                <label className="block font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-2" htmlFor="confirmPassword">
+                  // CONFIRM PASSWORD
+                </label>
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    type={showConfirm ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"
+                    autoComplete="new-password"
+                    required
+                    className="auth-input pr-16"
+                  />
+                  <button type="button" onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[11px] uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">
+                    {showConfirm ? "hide" : "show"}
+                  </button>
+                </div>
               </div>
-              <Button 
-                type="submit" 
-                className="w-full" 
+
+              <button
+                type="submit"
                 disabled={registerMutation.isPending}
                 data-testid="button-submit-register"
+                className="w-full bg-mint hover:bg-mint-hover text-bg-base font-semibold text-[14px] py-3.5 rounded-md inline-flex items-center justify-center gap-2 mt-2 transition-all disabled:opacity-60"
               >
                 {registerMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating account...
-                  </>
+                  <><span className="spinner" />Creating account...</>
                 ) : (
-                  "Create Account"
+                  <>Create my account <ArrowIcon /></>
                 )}
-              </Button>
+              </button>
+
+              <p className="text-[12px] text-text-muted leading-relaxed">
+                By signing up, you agree to our{" "}
+                <a href="/terms" className="text-mint hover:underline">Terms</a> &amp;{" "}
+                <a href="/privacy" className="text-mint hover:underline">Privacy</a>.
+                {" "}Both readable in under 4 minutes. We checked.
+              </p>
             </form>
 
-            <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">Already have an account? </span>
-              <a href="/login" className="text-primary hover:underline" data-testid="link-login">
-                Sign in
-              </a>
+            <div className="mt-8 pt-6 border-t border-border-subtle">
+              <p className="text-[14px] text-text-secondary">
+                Already have an account?{" "}
+                <a href="/login" className="text-mint hover:underline ml-1 font-medium">Sign in &rarr;</a>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-12 space-y-3">
+          <a href="/" className="font-mono text-[12px] text-text-muted hover:text-text-secondary transition-colors inline-flex items-center gap-1">
+            &larr; Back to home
+          </a>
+          <p className="font-mono text-[11px] text-text-muted max-w-[400px] leading-relaxed">
+            PS: We don&apos;t store your password &mdash; it&apos;s hashed with bcrypt before it hits our DB. Nerdy but true.
+          </p>
+        </div>
+      </div>
+
+      {/* RIGHT 40% — Social proof */}
+      <div className="bg-bg-surface relative flex flex-col px-6 lg:px-12 py-12 lg:py-16 border-l border-border-subtle min-h-[400px] lg:min-h-screen">
+        <div className="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-12">
+          // why creators switched
+        </div>
+
+        <div className="flex-1 flex flex-col justify-center max-w-[420px]">
+          <div className="bg-bg-base border border-border-subtle rounded-lg p-7 relative">
+            <div className="absolute top-4 right-6 font-tight text-[80px] leading-[0.5] text-border-subtle font-bold select-none">&ldquo;</div>
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2A2D32] to-[#1F2227] flex items-center justify-center text-[14px] font-semibold border border-border-subtle">L</div>
+              <div>
+                <div className="font-mono text-[13px] text-text-primary">@latenightcoder</div>
+                <div className="font-mono text-[10px] text-text-muted">1.2M followers &middot; tech niche</div>
+              </div>
             </div>
 
-            <div className="mt-4 text-center">
-              <a href="/" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-                <ArrowLeft className="w-3 h-3" />
-                Back to home
-              </a>
+            <p className="text-[16px] text-text-primary leading-relaxed italic mb-6 relative z-10">
+              I was paying $200/mo for a tool that did 1/3 of this. Switched in November. My viral hit rate doubled.
+            </p>
+
+            <div className="space-y-3 pt-5 border-t border-border-subtle">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted mb-1">hit rate &middot; before / after</div>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[10px] text-text-muted w-12 shrink-0">before</span>
+                <div className="flex-1 h-2 bg-bg-elevated rounded-full overflow-hidden">
+                  <div className="bar-before h-full bg-[#5A6069] rounded-full" />
+                </div>
+                <span className="font-mono text-[11px] text-text-muted w-10 text-right">12%</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[10px] text-mint w-12 shrink-0">after</span>
+                <div className="flex-1 h-2 bg-bg-elevated rounded-full overflow-hidden">
+                  <div className="bar-after h-full bg-mint rounded-full" />
+                </div>
+                <span className="font-mono text-[11px] text-mint w-10 text-right">27%</span>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </main>
+
+            <div className="mt-5 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-mint pulse-dot" />
+              <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">verified user</span>
+            </div>
+          </div>
+
+          <div className="mt-10 flex items-center gap-2.5 px-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-mint pulse-dot" />
+            <p className="font-mono text-[11px] text-text-secondary">
+              <span className="text-mint">1,847</span> creators tracking{" "}
+              <span className="text-mint">28,431</span> competitors right now
+            </p>
+          </div>
+
+          <p className="font-mono text-[10px] text-text-muted mt-4 italic max-w-[360px] leading-relaxed">
+            live count, updated every minute. yes this is real, we didn&apos;t fake it.
+          </p>
+        </div>
+
+        <div className="mt-12 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+          // built in udaipur &#9749;
+        </div>
+      </div>
     </div>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M3 7H11M11 7L7 3M11 7L7 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
   );
 }

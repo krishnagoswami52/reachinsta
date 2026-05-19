@@ -134,7 +134,7 @@ export default function LandingPage() {
 
               <div className="mt-4 pt-4 border-t border-border-subtle flex items-center justify-between">
                 <span className="font-mono text-[10px] text-text-muted">fetched 47 competitors</span>
-                <span className="font-mono text-[10px] text-mint">8.3s</span>
+                <span className="font-mono text-[10px] text-mint">~2m</span>
               </div>
             </div>
           </div>
@@ -182,7 +182,7 @@ export default function LandingPage() {
               <div className="font-mono text-[28px] text-mint font-medium mb-8">02</div>
               <h3 className="font-tight font-semibold text-[22px] tracking-tighter-2 mb-3">We fetch the data</h3>
               <p className="text-[15px] text-text-secondary leading-relaxed">
-                Our scraper pulls last 28 days of Reels &mdash; views, likes, comments, timestamps, captions. ~8 seconds end-to-end.
+                Our scraper pulls last 28 days of Reels &mdash; views, likes, comments, timestamps, captions. ~2 minutes end-to-end.
               </p>
               <svg className="absolute bottom-6 right-6 opacity-30" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7CFFB2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>

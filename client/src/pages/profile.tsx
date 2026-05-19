@@ -285,7 +285,7 @@ export default function ProfilePage() {
         {currentPlan === "free" && (
           <p className="font-mono text-[11px] text-text-muted mt-5 italic">
             PS: Annual billing? Email{" "}
-            <a href="mailto:kk@reachinsta.com" className="text-mint hover:underline">kk@reachinsta.com</a>
+            <a href="mailto:krishna@reachinsta.co" className="text-mint hover:underline">krishna@reachinsta.co</a>
             {" "}&mdash; we&apos;ll knock 20% off.
           </p>
         )}
@@ -334,7 +334,7 @@ export default function ProfilePage() {
 
       <p className="font-mono text-[11px] text-text-muted italic mt-8 text-center">
         PS: Want to delete your account? Email{" "}
-        <a href="mailto:kk@reachinsta.com" className="text-mint hover:underline">kk@reachinsta.com</a>
+        <a href="mailto:krishna@reachinsta.co" className="text-mint hover:underline">krishna@reachinsta.co</a>
         {" "}&mdash; we&apos;ll wipe everything within 24 hours.
       </p>
     </div>

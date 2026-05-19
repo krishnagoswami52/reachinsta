@@ -133,7 +133,7 @@ export default function FeaturesPage() {
                   { step: "step 01", desc: "Paste competitor handles" },
                   { step: "step 02", desc: "Apify fetches last 28 days of Reels" },
                   { step: "step 03", desc: "Algorithm weighs velocity + engagement" },
-                  { step: "step 04", desc: "Ranked Reels, ready in ~8s", highlight: true },
+                  { step: "step 04", desc: "Ranked Reels, ready in ~2m", highlight: true },
                 ].map(({ step, desc, highlight }) => (
                   <div key={step}>
                     <div className={`font-mono text-[10px] uppercase tracking-wider mb-1 ${highlight ? "text-mint" : "text-text-muted"}`}>{step}</div>
@@ -143,12 +143,9 @@ export default function FeaturesPage() {
               </div>
             </div>
 
-            <div className="mt-10 pt-8 border-t border-border-subtle flex flex-wrap items-center justify-between gap-4">
+            <div className="mt-10 pt-8 border-t border-border-subtle">
               <p className="font-mono text-[12px] text-text-muted">
-                Average end-to-end fetch time: <span className="text-mint">8.3 seconds</span> for 50 competitors. Tested daily.
-              </p>
-              <p className="font-mono text-[11px] text-text-muted italic">
-                *if it ever crosses 15s, we refund the month
+                Average end-to-end fetch time: <span className="text-mint">2 minutes</span> for 50 competitors. Tested daily.
               </p>
             </div>
           </div>
@@ -257,9 +254,6 @@ export default function FeaturesPage() {
               <p className="text-[16px] text-text-secondary leading-relaxed max-w-[480px]">
                 A Reel doing 100K views in 6 hours is more replicable than one doing 500K in 2 weeks. Our algorithm factors in views/hour, engagement rate, comment-to-view ratio, and time since posted.
               </p>
-              <p className="font-mono text-[12px] text-text-muted mt-6 italic">
-                PS: the exact formula is on our public GitHub. We&apos;re not gatekeeping math.
-              </p>
             </div>
           </div>
         </div>
@@ -334,60 +328,12 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* SECTION D: Hook Library */}
-      <section className="py-24 border-t border-border-subtle">
-        <div className="max-w-[1200px] mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            {/* Diagram LEFT */}
-            <div className="order-2 lg:order-1">
-              <div className="bg-bg-surface border border-border-subtle rounded-lg p-7">
-                <div className="flex items-center gap-3 bg-bg-base border border-border-subtle rounded-md px-3 py-2.5 mb-5">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5A6069" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                  </svg>
-                  <span className="font-mono text-[13px] text-text-primary">&ldquo;the 3 reasons you&apos;re<span className="text-mint">|</span>&rdquo;</span>
-                  <span className="font-mono text-[10px] text-text-muted ml-auto">142 results</span>
-                </div>
-                <div className="space-y-2.5">
-                  {[
-                    { hook: "\"The 3 reasons you're not gaining followers — and what to fix tonight.\"", handle: "@minusonefriday", views: "2.4M views", vs: "VS 94" },
-                    { hook: "\"The 3 reasons you're burned out — number 2 will surprise you.\"", handle: "@danceswithdrones", views: "1.8M views", vs: "VS 87" },
-                    { hook: "\"The 3 reasons you're still using ChatGPT wrong in 2026.\"", handle: "@latenightcoder", views: "1.2M views", vs: "VS 81" },
-                  ].map(({ hook, handle, views, vs }) => (
-                    <div key={handle} className="bg-bg-base border border-border-subtle rounded-md p-3 hover:border-border-soft transition-colors">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <p className="text-[13px] text-text-primary leading-relaxed">{hook}</p>
-                        <span className="font-mono text-[10px] text-mint bg-mint-dim px-1.5 py-0.5 rounded shrink-0">{vs}</span>
-                      </div>
-                      <div className="flex items-center gap-3 font-mono text-[10px] text-text-muted">
-                        <span>{handle}</span><span>&middot;</span><span>{views}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Text RIGHT */}
-            <div className="order-1 lg:order-2">
-              <div className="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-4">// 04 &mdash; hooks</div>
-              <h2 className="font-tight font-bold text-[36px] lg:text-[42px] leading-[1.1] tracking-tightest mb-5 max-w-[440px]">
-                Search the first 3 seconds of every viral reel.
-              </h2>
-              <p className="text-[16px] text-text-secondary leading-relaxed max-w-[480px]">
-                We auto-transcribe the hook (first 3 seconds) of every reel above 100K views. Search by phrase, filter by niche, see what&apos;s working RIGHT NOW. No more rewatching reels with the sound off at the gym.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION E: Export */}
+      {/* SECTION D: Export */}
       <section className="py-24 border-t border-border-subtle">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <div className="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-4">// 05 &mdash; export</div>
+              <div className="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-4">// 04 &mdash; export</div>
               <h2 className="font-tight font-bold text-[36px] lg:text-[42px] leading-[1.1] tracking-tightest mb-5 max-w-[440px]">
                 Your data, your spreadsheet.
               </h2>
@@ -453,40 +399,12 @@ export default function FeaturesPage() {
                 <div className="font-mono text-[11px] uppercase tracking-wider text-mint mb-3">// the new way</div>
                 <h3 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-4">With ReachInsta</h3>
                 <ul className="space-y-2 font-mono text-[13px] text-mint">
-                  <li>8 seconds</li>
+                  <li>~2 minutes</li>
                   <li>up to 100 competitors</li>
                   <li>ranked by viral score</li>
                   <li>exportable</li>
                 </ul>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ROADMAP */}
-      <section className="py-24 border-t border-border-subtle">
-        <div className="max-w-[1200px] mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-            <div>
-              <div className="w-20 h-px bg-mint mb-6" />
-              <h2 className="font-tight font-bold text-[36px] lg:text-[42px] leading-[1.1] tracking-tightest mb-4">
-                On the roadmap (not vaporware).
-              </h2>
-              <p className="text-[16px] text-text-secondary max-w-[420px] mb-6">
-                Public Trello. Vote on what we build next.
-              </p>
-              <a href="/roadmap" className="font-mono text-[13px] text-mint hover:underline inline-flex items-center gap-1">
-                See full public roadmap
-                <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                  <path d="M3 7H11M11 7L7 3M11 7L7 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </a>
-            </div>
-            <div className="flex flex-wrap gap-2.5">
-              {["Audio trend tracking — Q2", "Caption sentiment — Q2", "TikTok support — Q3 (maybe)", "Public API — Q4", "Mobile app — TBD"].map((item) => (
-                <span key={item} className="chip">{item}</span>
-              ))}
             </div>
           </div>
         </div>

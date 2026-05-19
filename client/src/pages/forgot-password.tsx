@@ -170,7 +170,7 @@ export default function ForgotPasswordPage() {
           </a>
           <p className="font-mono text-[11px] text-text-muted leading-relaxed">
             Didn&apos;t get the code in 2 minutes? Check spam &mdash; sometimes Gmail is moody. Or email{" "}
-            <a href="mailto:kk@reachinsta.com" className="text-mint hover:underline">kk@reachinsta.com</a>{" "}
+            <a href="mailto:krishna@reachinsta.co" className="text-mint hover:underline">krishna@reachinsta.co</a>{" "}
             and I&apos;ll reset it manually.
           </p>
           <p className="font-mono text-[11px] text-text-muted italic leading-relaxed">
@@ -204,9 +204,6 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
 
-        <div className="mt-12 font-mono text-[10px] uppercase tracking-wider text-text-muted">
-          // built in udaipur &#9749;
-        </div>
       </div>
     </div>
   );

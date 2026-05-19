@@ -160,7 +160,7 @@ export default function LoginPage() {
           </a>
           <p className="font-mono text-[11px] text-text-muted max-w-[420px] leading-relaxed">
             Trouble logging in? Email{" "}
-            <a href="mailto:kk@reachinsta.com" className="text-mint hover:underline">kk@reachinsta.com</a>
+            <a href="mailto:krishna@reachinsta.co" className="text-mint hover:underline">krishna@reachinsta.co</a>
             {" "}&mdash; a real human (me) replies within 12 hours.
           </p>
         </div>
@@ -224,9 +224,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="mt-12 font-mono text-[10px] uppercase tracking-wider text-text-muted">
-          // built in udaipur &#9749;
-        </div>
       </div>
     </div>
   );

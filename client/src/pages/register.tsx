@@ -311,9 +311,6 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <div className="mt-12 font-mono text-[10px] uppercase tracking-wider text-text-muted">
-          // built in udaipur &#9749;
-        </div>
       </div>
     </div>
   );

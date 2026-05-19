@@ -403,7 +403,7 @@ export default function ResetPasswordPage() {
             Code expires in <span className="text-text-secondary">15 minutes</span>. Didn&apos;t work?{" "}
             <a href="/forgot-password" className="text-mint hover:underline">Request a new one</a>{" "}
             or email{" "}
-            <a href="mailto:kk@reachinsta.com" className="text-mint hover:underline">kk@reachinsta.com</a>.
+            <a href="mailto:krishna@reachinsta.co" className="text-mint hover:underline">krishna@reachinsta.co</a>.
           </p>
           <p className="font-mono text-[11px] text-text-muted italic leading-relaxed">
             PS: Codes are single-use. Once you set a new password, that code is dead.
@@ -438,9 +438,6 @@ export default function ResetPasswordPage() {
           </div>
         </div>
 
-        <div className="mt-12 font-mono text-[10px] uppercase tracking-wider text-text-muted">
-          // built in udaipur &#9749;
-        </div>
       </div>
     </div>
   );

@@ -364,7 +364,7 @@ export default function LandingPage() {
 
           <p className="font-mono text-[12px] text-text-muted mt-10 max-w-[600px]">
             Annual billing? Email{" "}
-            <a href="mailto:kk@reachinsta.com" className="text-mint hover:underline">kk@reachinsta.com</a>{" "}
+            <a href="mailto:krishna@reachinsta.co" className="text-mint hover:underline">krishna@reachinsta.co</a>{" "}
             &mdash; we&apos;ll knock 20% off.
           </p>
         </div>
@@ -381,7 +381,7 @@ export default function LandingPage() {
               </h2>
               <p className="text-[15px] text-text-secondary max-w-[280px]">
                 Still curious?{" "}
-                <a href="mailto:kk@reachinsta.com" className="text-mint hover:underline">Email me</a>{" "}
+                <a href="mailto:krishna@reachinsta.co" className="text-mint hover:underline">Email me</a>{" "}
                 directly.
               </p>
             </div>
@@ -476,19 +476,15 @@ export default function LandingPage() {
             <div>
               <div className="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-4">// company</div>
               <ul className="space-y-2.5 text-[14px]">
-                <li><a href="/about" className="text-text-secondary hover:text-text-primary transition-colors">About</a></li>
-                <li><a href="mailto:kk@reachinsta.com" className="text-text-secondary hover:text-text-primary transition-colors">Contact</a></li>
+                <li><a href="/contact" className="text-text-secondary hover:text-text-primary transition-colors">Contact</a></li>
                 <li><a href="/privacy" className="text-text-secondary hover:text-text-primary transition-colors">Privacy</a></li>
                 <li><a href="/terms" className="text-text-secondary hover:text-text-primary transition-colors">Terms</a></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-border-subtle pt-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="border-t border-border-subtle pt-8">
             <p className="font-mono text-[12px] text-text-muted">
-              &copy; 2026 ReachInsta. Built in Udaipur, India &#9749; &mdash; by a creator, for creators.
-            </p>
-            <p className="font-mono text-[11px] text-text-muted italic">
-              P.S. If you&apos;re reading the footer, you&apos;re our kind of person.
+              &copy; 2026 ReachInsta. All rights reserved.
             </p>
           </div>
         </div>

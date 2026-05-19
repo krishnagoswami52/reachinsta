@@ -190,22 +190,21 @@ export default function LoginPage() {
 
             <div className="slide-in bg-bg-base border border-border-subtle rounded-lg p-5 hover:border-border-soft hover:translate-x-0.5 transition-all" style={{ animationDelay: "0.4s" }}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="font-mono text-[10px] text-text-muted">released mar 22</span>
+                <span className="font-mono text-[10px] text-text-muted">released may 15</span>
               </div>
-              <h3 className="font-tight font-semibold text-[16px] tracking-tighter-2 mb-1.5">Hook library v2 &mdash; now searchable</h3>
+              <h3 className="font-tight font-semibold text-[16px] tracking-tighter-2 mb-1.5">Frontend update</h3>
               <p className="text-[13px] text-text-secondary leading-relaxed">
-                First 3 seconds of every viral reel, transcribed. Search by phrase.
+                Whole new look. Faster, darker, less clutter &mdash; same data.
               </p>
             </div>
 
             <div className="slide-in bg-bg-base border border-border-subtle rounded-lg p-5 hover:border-border-soft hover:translate-x-0.5 transition-all" style={{ animationDelay: "0.6s" }}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="font-mono text-[10px] text-text-muted">released mar 14</span>
+                <span className="font-mono text-[10px] text-text-muted">released may 19</span>
               </div>
-              <h3 className="font-tight font-semibold text-[16px] tracking-tighter-2 mb-1.5">Faster fetches</h3>
+              <h3 className="font-tight font-semibold text-[16px] tracking-tighter-2 mb-1.5">Faster backend</h3>
               <p className="text-[13px] text-text-secondary leading-relaxed">
-                Avg fetch time: <span className="font-mono text-text-muted line-through">8.3s</span>{" "}
-                <span className="font-mono text-mint">&rarr; 6.1s</span>
+                Upgraded server infra. Fetches feel snappier across the board.
               </p>
             </div>
           </div>
@@ -214,13 +213,6 @@ export default function LoginPage() {
             <a href="/changelog" className="font-mono text-[12px] text-mint hover:underline inline-flex items-center gap-1">
               See full changelog <ArrowIcon />
             </a>
-          </div>
-
-          <div className="mt-10 pt-6 border-t border-border-subtle flex items-center gap-2.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-mint pulse-dot" />
-            <p className="font-mono text-[11px] text-text-secondary">
-              <span className="text-mint">1,847</span> creators online right now
-            </p>
           </div>
         </div>
 

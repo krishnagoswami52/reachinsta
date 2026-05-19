@@ -210,11 +210,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="mt-6">
-            <a href="/changelog" className="font-mono text-[12px] text-mint hover:underline inline-flex items-center gap-1">
-              See full changelog <ArrowIcon />
-            </a>
-          </div>
         </div>
 
       </div>

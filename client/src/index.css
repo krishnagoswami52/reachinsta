@@ -293,6 +293,20 @@
   @keyframes progress-fill-anim { from { width: 0%; } to { width: 87%; } }
   .progress-fill { animation: progress-fill-anim 2.5s ease-out infinite alternate; }
 
+  /* Changelog card badge */
+  .new-badge {
+    background: rgba(124, 255, 178, 0.12);
+    border: 1px solid rgba(124, 255, 178, 0.3);
+    color: #7CFFB2;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+
   /* Signup flow diagram animations */
   @keyframes flow-in {
     from { opacity: 0; transform: translateY(8px); }

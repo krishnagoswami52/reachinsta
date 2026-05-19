@@ -179,17 +179,18 @@ export default function LoginPage() {
           <div className="space-y-3">
             <div className="slide-in bg-bg-base border border-border-subtle rounded-lg p-5 hover:border-border-soft hover:translate-x-0.5 transition-all" style={{ animationDelay: "0.2s" }}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="bg-mint-dim border border-mint/30 text-mint font-mono text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider">&#9679; new</span>
-                <span className="font-mono text-[10px] text-text-muted">released apr 8</span>
+                <span className="new-badge">&#9679; new</span>
+                <span className="font-mono text-[10px] text-text-muted">released may 19</span>
               </div>
-              <h3 className="font-tight font-semibold text-[16px] tracking-tighter-2 mb-1.5">Posting time heatmap</h3>
+              <h3 className="font-tight font-semibold text-[16px] tracking-tighter-2 mb-1.5">Faster backend</h3>
               <p className="text-[13px] text-text-secondary leading-relaxed">
-                Stop guessing your best posting hour. We mapped every viral reel onto a 7&times;24 grid.
+                Upgraded server infra. Fetches feel snappier across the board.
               </p>
             </div>
 
             <div className="slide-in bg-bg-base border border-border-subtle rounded-lg p-5 hover:border-border-soft hover:translate-x-0.5 transition-all" style={{ animationDelay: "0.4s" }}>
               <div className="flex items-center gap-2 mb-2">
+                <span className="new-badge">&#9679; new</span>
                 <span className="font-mono text-[10px] text-text-muted">released may 15</span>
               </div>
               <h3 className="font-tight font-semibold text-[16px] tracking-tighter-2 mb-1.5">Frontend update</h3>
@@ -200,11 +201,11 @@ export default function LoginPage() {
 
             <div className="slide-in bg-bg-base border border-border-subtle rounded-lg p-5 hover:border-border-soft hover:translate-x-0.5 transition-all" style={{ animationDelay: "0.6s" }}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="font-mono text-[10px] text-text-muted">released may 19</span>
+                <span className="font-mono text-[10px] text-text-muted">released apr 8</span>
               </div>
-              <h3 className="font-tight font-semibold text-[16px] tracking-tighter-2 mb-1.5">Faster backend</h3>
+              <h3 className="font-tight font-semibold text-[16px] tracking-tighter-2 mb-1.5">Posting time heatmap</h3>
               <p className="text-[13px] text-text-secondary leading-relaxed">
-                Upgraded server infra. Fetches feel snappier across the board.
+                Stop guessing your best posting hour. We mapped every viral reel onto a 7&times;24 grid.
               </p>
             </div>
           </div>

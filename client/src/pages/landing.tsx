@@ -18,8 +18,6 @@ export default function LandingPage() {
           </a>
           <div className="hidden md:flex items-center gap-8 text-[14px] text-text-secondary">
             <a href="/features" className="hover:text-text-primary transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-text-primary transition-colors">Pricing</a>
-            <a href="/changelog" className="hover:text-text-primary transition-colors">Changelog</a>
           </div>
           <div className="flex items-center gap-3">
             <a href="/login" className="text-[14px] text-text-secondary hover:text-text-primary px-3 py-2 transition-colors">Log In</a>
@@ -42,7 +40,7 @@ export default function LandingPage() {
             <h1 className="font-tight font-bold text-[56px] lg:text-[72px] leading-[1.05] tracking-tightest">
               Find viral Reels in{" "}
               <span className="text-mint relative inline-block">
-                8 seconds.
+                2 minutes.
                 <svg className="absolute -bottom-6 -right-4 lg:-right-12" width="120" height="44" viewBox="0 0 120 44" fill="none">
                   <path className="draw-path" d="M2 8C20 4 50 6 80 16 C95 20 105 28 110 36" stroke="#7CFFB2" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
                   <path className="draw-path" d="M104 30 L110 36 L104 40" stroke="#7CFFB2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
@@ -61,9 +59,6 @@ export default function LandingPage() {
             <div className="flex flex-wrap items-center gap-3 mt-10">
               <a href="/signup" className="bg-mint hover:bg-mint-hover text-bg-base font-semibold text-[14px] px-5 py-3 rounded-md inline-flex items-center gap-2 transition-all hover:-translate-y-px">
                 Start tracking &mdash; it&apos;s free <ArrowIcon />
-              </a>
-              <a href="#how" className="border border-border-subtle hover:border-mint hover:text-mint text-[14px] font-medium px-5 py-3 rounded-md transition-colors">
-                See it in action &darr;
               </a>
             </div>
 
@@ -280,14 +275,6 @@ export default function LandingPage() {
               <p className="text-[14px] text-text-secondary leading-relaxed">Take your data and run. We won&apos;t hold it hostage.</p>
             </div>
 
-            {/* Hook library */}
-            <div className="bg-bg-surface border border-border-subtle rounded-lg p-7 hover:border-border-soft transition-colors">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7CFFB2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-5">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-              <h3 className="font-tight font-semibold text-[20px] tracking-tighter-2 mb-2">Hook library</h3>
-              <p className="text-[14px] text-text-secondary leading-relaxed">First 3 seconds of every viral reel, transcribed and searchable.</p>
-            </div>
           </div>
         </div>
       </section>
@@ -469,8 +456,7 @@ export default function LandingPage() {
               <ul className="space-y-2.5 text-[14px]">
                 <li><a href="/features" className="text-text-secondary hover:text-text-primary transition-colors">Features</a></li>
                 <li><a href="#pricing" className="text-text-secondary hover:text-text-primary transition-colors">Pricing</a></li>
-                <li><a href="/changelog" className="text-text-secondary hover:text-text-primary transition-colors">Changelog</a></li>
-                <li><a href="/api" className="text-text-secondary hover:text-text-primary transition-colors">API <span className="font-mono text-[10px] text-text-muted">(soon)</span></a></li>
+                <li><span className="text-text-muted cursor-not-allowed select-none flex items-center gap-1">API <span className="font-mono text-[10px] text-text-muted">(soon)</span></span></li>
               </ul>
             </div>
             <div>

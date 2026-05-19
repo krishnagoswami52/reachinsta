@@ -23,6 +23,9 @@ import ProfilePage from "@/pages/profile";
 import PricingPage from "@/pages/pricing";
 import BillingPage from "@/pages/billing";
 import NotFound from "@/pages/not-found";
+import ContactPage from "@/pages/contact";
+import TermsPage from "@/pages/terms";
+import PrivacyPage from "@/pages/privacy";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 
 function AuthenticatedRoutes() {
@@ -82,6 +85,18 @@ function AppRouter() {
 
   if (location === "/features") {
     return <FeaturesPage />;
+  }
+
+  if (location === "/contact") {
+    return <ContactPage />;
+  }
+
+  if (location === "/terms") {
+    return <TermsPage />;
+  }
+
+  if (location === "/privacy") {
+    return <PrivacyPage />;
   }
 
   if (location === "/forgot-password") {

@@ -252,63 +252,98 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* RIGHT 40% — Social proof */}
+      {/* RIGHT 40% — Mini flow diagram */}
       <div className="bg-bg-surface relative flex flex-col px-6 lg:px-12 py-12 lg:py-16 border-l border-border-subtle min-h-[400px] lg:min-h-screen">
-        <div className="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-12">
-          // why creators switched
-        </div>
 
-        <div className="flex-1 flex flex-col justify-center max-w-[420px]">
-          <div className="bg-bg-base border border-border-subtle rounded-lg p-7 relative">
-            <div className="absolute top-4 right-6 font-tight text-[80px] leading-[0.5] text-border-subtle font-bold select-none">&ldquo;</div>
+        <div className="flex-1 flex flex-col justify-center max-w-[420px] w-full">
 
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2A2D32] to-[#1F2227] flex items-center justify-center text-[14px] font-semibold border border-border-subtle">L</div>
-              <div>
-                <div className="font-mono text-[13px] text-text-primary">@latenightcoder</div>
-                <div className="font-mono text-[10px] text-text-muted">1.2M followers &middot; tech niche</div>
-              </div>
-            </div>
-
-            <p className="text-[16px] text-text-primary leading-relaxed italic mb-6 relative z-10">
-              I was paying $200/mo for a tool that did 1/3 of this. Switched in November. My viral hit rate doubled.
-            </p>
-
-            <div className="space-y-3 pt-5 border-t border-border-subtle">
-              <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted mb-1">hit rate &middot; before / after</div>
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-[10px] text-text-muted w-12 shrink-0">before</span>
-                <div className="flex-1 h-2 bg-bg-elevated rounded-full overflow-hidden">
-                  <div className="bar-before h-full bg-[#5A6069] rounded-full" />
-                </div>
-                <span className="font-mono text-[11px] text-text-muted w-10 text-right">12%</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-[10px] text-mint w-12 shrink-0">after</span>
-                <div className="flex-1 h-2 bg-bg-elevated rounded-full overflow-hidden">
-                  <div className="bar-after h-full bg-mint rounded-full" />
-                </div>
-                <span className="font-mono text-[11px] text-mint w-10 text-right">27%</span>
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-mint pulse-dot" />
-              <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">verified user</span>
-            </div>
+          <div className="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-3">
+            // HOW IT WORKS
           </div>
-
-          <div className="mt-10 flex items-center gap-2.5 px-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-mint pulse-dot" />
-            <p className="font-mono text-[11px] text-text-secondary">
-              <span className="text-mint">1,847</span> creators tracking{" "}
-              <span className="text-mint">28,431</span> competitors right now
-            </p>
-          </div>
-
-          <p className="font-mono text-[10px] text-text-muted mt-4 italic max-w-[360px] leading-relaxed">
-            live count, updated every minute. yes this is real, we didn&apos;t fake it.
+          <h3 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-2">
+            Built for creators who post.
+          </h3>
+          <p className="text-[14px] text-text-secondary mb-10 leading-relaxed">
+            Four steps. Two minutes. One ranked feed of your competitors&apos; best Reels.
           </p>
+
+          <div className="space-y-3">
+
+            <div className="flow-node bg-bg-base border border-border-subtle rounded-lg p-4 flex items-center gap-4 relative">
+              <div className="w-10 h-10 rounded-md bg-mint-dim border border-mint/30 flex items-center justify-center shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7CFFB2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                </svg>
+              </div>
+              <div>
+                <div className="font-tight font-semibold text-[14px] text-text-primary mb-0.5">You drop handles</div>
+                <div className="font-mono text-[11px] text-text-muted">paste up to 100 competitors</div>
+              </div>
+              <div className="absolute left-9 top-full w-px h-3 bg-border-subtle"></div>
+            </div>
+
+            <div className="flow-node bg-bg-base border border-border-subtle rounded-lg p-4 flex items-center gap-4 relative">
+              <div className="w-10 h-10 rounded-md bg-mint-dim border border-mint/30 flex items-center justify-center shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7CFFB2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="8" rx="2"/>
+                  <rect x="2" y="14" width="20" height="8" rx="2"/>
+                  <line x1="6" y1="6" x2="6.01" y2="6"/>
+                  <line x1="6" y1="18" x2="6.01" y2="18"/>
+                </svg>
+              </div>
+              <div>
+                <div className="font-tight font-semibold text-[14px] text-text-primary mb-0.5">We fetch their Reels</div>
+                <div className="font-mono text-[11px] text-text-muted">~2 min for full 28-day pull</div>
+              </div>
+              <div className="absolute left-9 top-full w-px h-3 bg-border-subtle"></div>
+            </div>
+
+            <div className="flow-node bg-bg-base border border-border-subtle rounded-lg p-4 flex items-center gap-4 relative">
+              <div className="w-10 h-10 rounded-md bg-mint-dim border border-mint/30 flex items-center justify-center shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7CFFB2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="4" width="16" height="16" rx="2"/>
+                  <rect x="9" y="9" width="6" height="6"/>
+                  <line x1="9" y1="2" x2="9" y2="4"/>
+                  <line x1="15" y1="2" x2="15" y2="4"/>
+                  <line x1="9" y1="20" x2="9" y2="22"/>
+                  <line x1="15" y1="20" x2="15" y2="22"/>
+                </svg>
+              </div>
+              <div>
+                <div className="font-tight font-semibold text-[14px] text-text-primary mb-0.5">Viral score ranks them</div>
+                <div className="font-mono text-[11px] text-text-muted">velocity, not just volume</div>
+              </div>
+              <div className="absolute left-9 top-full w-px h-3 bg-border-subtle"></div>
+            </div>
+
+            <div className="flow-node bg-mint-dim border border-mint rounded-lg p-4 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-md bg-mint flex items-center justify-center shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A0B0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+              </div>
+              <div>
+                <div className="font-tight font-semibold text-[14px] text-mint mb-0.5">You spot the patterns</div>
+                <div className="font-mono text-[11px] text-text-secondary">post what&apos;s working, today</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-border-subtle grid grid-cols-3 gap-2">
+            <div className="text-center">
+              <div className="font-mono text-[18px] font-semibold text-mint">~2m</div>
+              <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">fetch time</div>
+            </div>
+            <div className="text-center">
+              <div className="font-mono text-[18px] font-semibold text-mint">100</div>
+              <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">max competitors</div>
+            </div>
+            <div className="text-center">
+              <div className="font-mono text-[18px] font-semibold text-mint">$0</div>
+              <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">to start</div>
+            </div>
+          </div>
         </div>
 
       </div>

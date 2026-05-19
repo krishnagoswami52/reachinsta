@@ -289,6 +289,20 @@
   @keyframes progress-fill-anim { from { width: 0%; } to { width: 87%; } }
   .progress-fill { animation: progress-fill-anim 2.5s ease-out infinite alternate; }
 
+  /* Signup flow diagram animations */
+  @keyframes flow-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .flow-node {
+    opacity: 0;
+    animation: flow-in 0.4s ease-out forwards;
+  }
+  .flow-node:nth-child(1) { animation-delay: 0.1s; }
+  .flow-node:nth-child(2) { animation-delay: 0.25s; }
+  .flow-node:nth-child(3) { animation-delay: 0.4s; }
+  .flow-node:nth-child(4) { animation-delay: 0.55s; }
+
   /* Chip component */
   .chip {
     @apply bg-bg-surface border border-border-subtle text-text-secondary font-mono text-[12px] px-3.5 py-2 rounded-md transition-colors;

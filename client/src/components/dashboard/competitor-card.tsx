@@ -56,31 +56,31 @@ export function CompetitorCard({ stats, isSelected, onSelect }: CompetitorCardPr
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="bg-bg-base border border-border-subtle rounded-md p-3">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Play className="w-3 h-3 text-text-muted" strokeWidth={1.5} />
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">reels</span>
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="bg-bg-base border border-border-subtle rounded-md px-2.5 py-3 min-w-0">
+          <div className="flex items-center gap-1 mb-1.5">
+            <Play className="w-3 h-3 text-text-muted shrink-0" strokeWidth={1.5} />
+            <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted truncate">reels</span>
           </div>
-          <div className="font-mono text-[22px] font-medium text-text-primary">{stats.reelsCount}</div>
+          <div className="font-mono text-[18px] font-medium text-text-primary tabular-nums leading-none">{stats.reelsCount}</div>
         </div>
 
-        <div className="bg-bg-base border border-border-subtle rounded-md p-3">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <TrendingUp className="w-3 h-3 text-text-muted" strokeWidth={1.5} />
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">avg views</span>
+        <div className="bg-bg-base border border-border-subtle rounded-md px-2.5 py-3 min-w-0">
+          <div className="flex items-center gap-1 mb-1.5">
+            <TrendingUp className="w-3 h-3 text-text-muted shrink-0" strokeWidth={1.5} />
+            <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted truncate">avg views</span>
           </div>
-          <div className="font-mono text-[22px] font-medium text-text-primary">
+          <div className="font-mono text-[18px] font-medium text-text-primary tabular-nums leading-none">
             {formatNumber(parseFloat(String(stats.avgViews)))}
           </div>
         </div>
 
-        <div className="bg-bg-base border border-border-subtle rounded-md p-3">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Zap className="w-3 h-3 text-text-muted" strokeWidth={1.5} />
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">eng</span>
+        <div className="bg-bg-base border border-border-subtle rounded-md px-2.5 py-3 min-w-0">
+          <div className="flex items-center gap-1 mb-1.5">
+            <Zap className="w-3 h-3 text-text-muted shrink-0" strokeWidth={1.5} />
+            <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted truncate">eng</span>
           </div>
-          <div className={`font-mono text-[22px] font-medium ${isHighEngagement ? "text-mint" : "text-text-primary"}`}>
+          <div className={`font-mono text-[18px] font-medium tabular-nums leading-none ${isHighEngagement ? "text-mint" : "text-text-primary"}`}>
             {engagementPct}%
           </div>
         </div>

@@ -192,12 +192,12 @@ export default function ProfilePage() {
       </div>
 
       {/* Account card */}
-      <section className="bg-bg-surface border border-border-subtle rounded-lg p-7 mb-6">
-        <div className="flex items-start justify-between gap-6 mb-6">
-          <div className="flex items-center gap-4">
+      <section className="bg-bg-surface border border-border-subtle rounded-lg p-5 lg:p-7 mb-6">
+        <div className="flex items-start justify-between gap-3 lg:gap-6 mb-5 lg:mb-6">
+          <div className="flex items-center gap-3 lg:gap-4 flex-1 min-w-0">
             {/* Avatar */}
             <div className="relative group shrink-0">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2A2D32] to-[#1F2227] flex items-center justify-center text-[22px] font-tight font-semibold border border-border-subtle overflow-hidden">
+              <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-gradient-to-br from-[#2A2D32] to-[#1F2227] flex items-center justify-center text-[16px] lg:text-[22px] font-tight font-semibold border border-border-subtle overflow-hidden">
                 {displayAvatar
                   ? <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
                   : <span>{initials}</span>
@@ -232,13 +232,13 @@ export default function ProfilePage() {
                   style={{ width: `${Math.max((lastName?.length || 4), 3) + 1}ch` }}
                 />
               </div>
-              <p className="font-mono text-[13px] text-text-secondary">{user?.email}</p>
+              <p className="font-mono text-[12px] lg:text-[13px] text-text-secondary truncate">{user?.email}</p>
             </div>
           </div>
 
           {/* Plan badge + save */}
           <div className="flex flex-col items-end gap-3 shrink-0">
-            <div className="font-mono text-[10px] uppercase tracking-wider px-2.5 py-1 rounded bg-mint-dim text-mint border border-mint/30">
+            <div className="font-mono text-[9px] lg:text-[10px] uppercase tracking-wider px-2 lg:px-2.5 py-1 rounded bg-mint-dim text-mint border border-mint/30 whitespace-nowrap self-start shrink-0">
               // {currentPlan}
             </div>
             {(nameChanged || avatarPreview) && (
@@ -263,7 +263,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Account stats grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-border-subtle">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4 pt-5 lg:pt-6 border-t border-border-subtle">
           {memberSince && (
             <div>
               <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted mb-1.5">// MEMBER SINCE</div>

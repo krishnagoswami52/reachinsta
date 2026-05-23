@@ -17,23 +17,23 @@ export function KPICard({ title, value, subtitle, trend, icon: Icon, highlight, 
 
   return (
     <div className={cn(
-      "bg-bg-surface border border-border-subtle rounded-lg p-5 hover:border-border-soft transition-colors",
+      "bg-bg-surface border border-border-subtle rounded-lg p-4 lg:p-5 hover:border-border-soft transition-colors",
       className
     )}>
-      <div className="flex items-center gap-1.5 mb-3">
-        {Icon && <Icon className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.5} />}
-        <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+      <div className="flex items-center gap-1.5 mb-2 lg:mb-3">
+        {Icon && <Icon className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.5} />}
+        <span className="font-mono text-[9px] lg:text-[10px] uppercase tracking-wider text-text-muted truncate">
           {title}
         </span>
       </div>
       <div className={cn(
-        "font-mono text-[32px] font-medium tracking-tight",
+        "font-mono text-[24px] lg:text-[32px] font-medium tracking-tight tabular-nums leading-none",
         highlight ? "text-mint" : "text-text-primary"
       )}>
         {formattedValue}
       </div>
       {subtitle && (
-        <p className="font-mono text-[11px] text-text-muted mt-1">{subtitle}</p>
+        <p className="font-mono text-[10px] lg:text-[11px] text-text-muted mt-1.5">{subtitle}</p>
       )}
       {trend !== undefined && (
         <div className={cn(

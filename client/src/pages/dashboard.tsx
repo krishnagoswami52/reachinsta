@@ -221,7 +221,7 @@ export default function DashboardPage() {
           ) : (
             <>
               {/* KPI cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                 <KPICard title="competitors tracked" value={competitors.length} subtitle={`of ${profile?.maxCompetitors || 5} max`} icon={Users} />
                 <KPICard title="reels analyzed" value={reels.length} icon={Play} />
                 <KPICard title="total views" value={totalViews} icon={Eye} />

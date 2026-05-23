@@ -163,8 +163,17 @@ export function AppSidebar({ profile }: AppSidebarProps) {
       {/* User card */}
       <div className="shrink-0 px-4 py-4 border-t border-border-subtle flex items-center justify-between gap-2">
         <Link href="/profile" className="flex items-center gap-2.5 min-w-0 flex-1 hover:bg-bg-surface rounded-md p-1 -m-1 transition-colors">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-border-soft to-border-subtle flex items-center justify-center text-[12px] font-semibold border border-border-subtle text-text-primary shrink-0">
-            {initials}
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-border-soft to-border-subtle flex items-center justify-center text-[12px] font-semibold border border-border-subtle text-text-primary shrink-0">
+            {user?.profileImageUrl ? (
+              <img
+                src={user.profileImageUrl}
+                alt={displayName}
+                className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+            ) : (
+              initials
+            )}
           </div>
           <div className="min-w-0">
             <div className="text-[13px] text-text-primary truncate max-w-[110px]">{displayName}</div>

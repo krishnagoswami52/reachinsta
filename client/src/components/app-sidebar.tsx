@@ -9,14 +9,16 @@ import {
   LogOut,
   Shield,
   Sparkles,
+  X,
 } from "lucide-react";
 import type { Profile, Competitor } from "@shared/schema";
 
 interface AppSidebarProps {
   profile?: Profile | null;
+  onClose?: () => void;
 }
 
-export function AppSidebar({ profile }: AppSidebarProps) {
+export function AppSidebar({ profile, onClose }: AppSidebarProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
 
@@ -53,7 +55,7 @@ export function AppSidebar({ profile }: AppSidebarProps) {
   return (
     <aside className="bg-bg-base border-r border-border-subtle w-[240px] h-screen lg:fixed lg:left-0 lg:top-0 flex flex-col lg:z-40">
       {/* Logo */}
-      <div className="shrink-0 px-6 py-5 border-b border-border-subtle">
+      <div className="shrink-0 px-6 py-5 border-b border-border-subtle flex items-center justify-between">
         <Link href="/dashboard">
           <div className="flex items-center gap-2 cursor-pointer">
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
@@ -65,6 +67,15 @@ export function AppSidebar({ profile }: AppSidebarProps) {
             </span>
           </div>
         </Link>
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Close menu"
+            className="lg:hidden p-2 -mr-2 text-text-muted hover:text-text-primary transition-colors"
+          >
+            <X className="w-5 h-5" strokeWidth={1.5} />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}

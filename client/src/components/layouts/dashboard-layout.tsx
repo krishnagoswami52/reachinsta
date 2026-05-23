@@ -1,11 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Menu } from "lucide-react";
-import { useState } from "react";
 import type { Profile } from "@shared/schema";
 
 interface DashboardLayoutProps {
@@ -14,7 +13,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { data: profile, isLoading: profileLoading } = useQuery<Profile>({
@@ -27,6 +26,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       setLocation("/login", { replace: true });
     }
   }, [authLoading, isAuthenticated, setLocation]);
+
+  // Close sidebar on route change
+  useEffect(() => { setSidebarOpen(false); }, [location]);
+
+  // Escape key closes sidebar
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setSidebarOpen(false); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // Body scroll lock when drawer is open
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [sidebarOpen]);
 
   if (authLoading || profileLoading) {
     return (
@@ -50,15 +65,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <AppSidebar profile={profile} />
       </div>
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
-          <div className="relative z-10">
-            <AppSidebar profile={profile} />
-          </div>
-        </div>
-      )}
+      {/* Mobile sidebar: backdrop + slide-in drawer */}
+      <div
+        className={`lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden="true"
+      />
+      <div className={`lg:hidden fixed left-0 top-0 z-50 h-screen transition-transform duration-300 ease-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <AppSidebar profile={profile} onClose={() => setSidebarOpen(false)} />
+      </div>
 
       <div className="flex flex-col flex-1 min-w-0 lg:ml-[240px]">
         {/* Mobile header */}

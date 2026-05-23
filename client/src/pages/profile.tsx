@@ -214,20 +214,22 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <div className="flex gap-2 mb-1">
+              <div className="flex items-baseline gap-1.5 flex-wrap mb-1">
                 <input
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="First"
-                  className="font-tight font-semibold text-[20px] tracking-tighter-2 text-text-primary bg-transparent border-b border-transparent hover:border-border-subtle focus:border-mint outline-none w-[110px] transition-colors"
+                  className="font-tight font-semibold text-[20px] tracking-tighter-2 text-text-primary bg-transparent border-b border-transparent hover:border-border-subtle focus:border-mint outline-none min-w-0 transition-colors"
+                  style={{ width: `${Math.max((firstName?.length || 5), 3) + 1}ch` }}
                 />
                 <input
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Last"
-                  className="font-tight font-semibold text-[20px] tracking-tighter-2 text-text-primary bg-transparent border-b border-transparent hover:border-border-subtle focus:border-mint outline-none w-[110px] transition-colors"
+                  className="font-tight font-semibold text-[20px] tracking-tighter-2 text-text-primary bg-transparent border-b border-transparent hover:border-border-subtle focus:border-mint outline-none min-w-0 transition-colors"
+                  style={{ width: `${Math.max((lastName?.length || 4), 3) + 1}ch` }}
                 />
               </div>
               <p className="font-mono text-[13px] text-text-secondary">{user?.email}</p>

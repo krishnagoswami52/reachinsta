@@ -77,9 +77,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       <div className="flex flex-col flex-1 min-w-0 lg:ml-[240px]">
         {/* Mobile header */}
-        <header className="lg:hidden sticky top-0 z-40 flex items-center gap-3 border-b border-border-subtle bg-bg-base px-4 py-3">
+        <header className="lg:hidden sticky top-0 z-40 flex items-center gap-3 border-b border-border-subtle bg-bg-base px-4 py-2.5">
           <button
-            className="text-text-muted hover:text-text-primary transition-colors"
+            className="text-text-muted hover:text-text-primary transition-colors p-2 -ml-2 rounded-md"
             onClick={() => setSidebarOpen(true)}
             data-testid="button-sidebar-toggle"
           >

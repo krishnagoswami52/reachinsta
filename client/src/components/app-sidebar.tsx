@@ -91,7 +91,7 @@ export function AppSidebar({ profile, onClose }: AppSidebarProps) {
                 <Link key={item.path} href={item.path}>
                   <div
                     className={`
-                      flex items-center gap-3 px-3 py-2 rounded-md text-[14px] transition-colors cursor-pointer
+                      flex items-center gap-3 px-3 py-2.5 rounded-md text-[14px] transition-colors cursor-pointer
                       ${active
                         ? "bg-bg-surface text-text-primary border border-border-subtle"
                         : "text-text-secondary hover:bg-bg-surface hover:text-text-primary"}
@@ -118,7 +118,7 @@ export function AppSidebar({ profile, onClose }: AppSidebarProps) {
                   <Link key={item.path} href={item.path}>
                     <div
                       className={`
-                        flex items-center gap-3 px-3 py-2 rounded-md text-[14px] transition-colors cursor-pointer
+                        flex items-center gap-3 px-3 py-2.5 rounded-md text-[14px] transition-colors cursor-pointer
                         ${active
                           ? "bg-bg-surface text-text-primary border border-border-subtle"
                           : "text-text-secondary hover:bg-bg-surface hover:text-text-primary"}
@@ -196,7 +196,7 @@ export function AppSidebar({ profile, onClose }: AppSidebarProps) {
           </div>
         </Link>
         <button
-          className="text-text-muted hover:text-mint transition-colors p-1.5 rounded hover:bg-bg-surface shrink-0"
+          className="text-text-muted hover:text-mint transition-colors p-2.5 rounded hover:bg-bg-surface shrink-0"
           onClick={() => logout()}
           data-testid="button-logout"
           title="Log out"
@@ -204,6 +204,8 @@ export function AppSidebar({ profile, onClose }: AppSidebarProps) {
           <LogOut className="w-4 h-4" strokeWidth={1.5} />
         </button>
       </div>
+      {/* iOS home indicator safe area */}
+      <div className="h-[env(safe-area-inset-bottom)]" />
     </aside>
   );
 }

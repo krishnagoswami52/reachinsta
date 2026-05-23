@@ -28,7 +28,7 @@ export default function LandingPage() {
 
       {/* HERO */}
       <section className="relative overflow-hidden">
-        <div className="max-w-[1200px] mx-auto px-6 pt-24 pb-32 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        <div className="max-w-[1200px] mx-auto px-6 pt-14 pb-20 lg:pt-24 lg:pb-32 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 
           {/* Left 7 cols */}
           <div className="lg:col-span-7 relative">
@@ -37,7 +37,7 @@ export default function LandingPage() {
               <span className="font-mono text-[12px] uppercase tracking-wider text-mint">v2.0 — Now 3x faster</span>
             </div>
 
-            <h1 className="font-tight font-bold text-[56px] lg:text-[72px] leading-[1.05] tracking-tightest">
+            <h1 className="font-tight font-bold text-[40px] sm:text-[56px] lg:text-[72px] leading-[1.05] tracking-tightest">
               Find viral Reels in{" "}
               <span className="text-mint relative inline-block">
                 2 minutes.
@@ -155,7 +155,7 @@ export default function LandingPage() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section id="how" className="py-24">
+      <section id="how" className="py-14 lg:py-24">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="w-20 h-px bg-mint mb-6" />
           <h2 className="font-tight font-bold text-[40px] lg:text-[48px] leading-[1.1] tracking-tightest mb-3 max-w-[700px]">
@@ -205,7 +205,7 @@ export default function LandingPage() {
       </section>
 
       {/* FEATURE GRID */}
-      <section className="py-24 border-t border-border-subtle">
+      <section className="py-14 lg:py-24 border-t border-border-subtle">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="w-20 h-px bg-mint mb-6" />
           <h2 className="font-tight font-bold text-[40px] lg:text-[48px] leading-[1.1] tracking-tightest mb-14 max-w-[680px]">
@@ -280,7 +280,7 @@ export default function LandingPage() {
       </section>
 
       {/* PRICING */}
-      <section id="pricing" className="py-24 border-t border-border-subtle">
+      <section id="pricing" className="py-14 lg:py-24 border-t border-border-subtle">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="w-20 h-px bg-mint mb-6" />
           <h2 className="font-tight font-bold text-[40px] lg:text-[48px] leading-[1.1] tracking-tightest mb-3 max-w-[700px]">
@@ -358,7 +358,7 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-24 border-t border-border-subtle">
+      <section className="py-14 lg:py-24 border-t border-border-subtle">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
             <div className="lg:col-span-4">
@@ -419,10 +419,10 @@ export default function LandingPage() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="py-28 border-t border-border-subtle relative overflow-hidden">
+      <section className="py-16 lg:py-28 border-t border-border-subtle relative overflow-hidden">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="w-20 h-px bg-mint mb-6" />
-          <h2 className="font-tight font-bold text-[44px] lg:text-[64px] leading-[1.05] tracking-tightest max-w-[820px] mb-6">
+          <h2 className="font-tight font-bold text-[32px] sm:text-[44px] lg:text-[64px] leading-[1.05] tracking-tightest max-w-[820px] mb-6">
             Your competitors aren&apos;t reading this. They&apos;re{" "}
             <span className="text-mint">posting.</span>
           </h2>
@@ -436,7 +436,7 @@ export default function LandingPage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-border-subtle py-16">
+      <footer className="border-t border-border-subtle py-10 lg:py-16">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
             <div>

@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+﻿import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Reel } from "@shared/schema";
 
 interface ERByWeekdayChartProps {
@@ -22,7 +22,7 @@ export function ERByWeekdayChart({ reels }: ERByWeekdayChartProps) {
         <p className="font-mono text-[11px] text-text-muted">Average engagement rate per day of the week</p>
       </div>
       <div className="h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <BarChart data={dayData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1F2227" vertical={false} />
             <XAxis dataKey="day" tick={{ fontFamily: "JetBrains Mono", fontSize: 11, fill: "#5A6069" }} axisLine={{ stroke: "#1F2227" }} tickLine={false} />
@@ -41,3 +41,4 @@ export function ERByWeekdayChart({ reels }: ERByWeekdayChartProps) {
     </div>
   );
 }
+

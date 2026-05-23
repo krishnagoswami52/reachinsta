@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+﻿import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Reel } from "@shared/schema";
 
 interface ERByHourChartProps {
@@ -20,7 +20,7 @@ export function ERByHourChart({ reels }: ERByHourChartProps) {
         <p className="font-mono text-[11px] text-text-muted">Engagement rate per posting hour (UTC)</p>
       </div>
       <div className="h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <BarChart data={hourData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1F2227" vertical={false} />
             <XAxis dataKey="hour" tick={{ fontFamily: "JetBrains Mono", fontSize: 10, fill: "#5A6069" }} axisLine={{ stroke: "#1F2227" }} tickLine={false} />
@@ -39,3 +39,4 @@ export function ERByHourChart({ reels }: ERByHourChartProps) {
     </div>
   );
 }
+

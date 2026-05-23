@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+﻿import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Reel } from "@shared/schema";
 
 interface VRDistributionChartProps {
@@ -21,14 +21,14 @@ export function VRDistributionChart({ reels }: VRDistributionChartProps) {
         <p className="font-mono text-[11px] text-text-muted">Lower ratio = more engagement relative to views</p>
       </div>
       <div className="h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <BarChart data={buckets}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1F2227" vertical={false} />
             <XAxis dataKey="range" tick={{ fontFamily: "JetBrains Mono", fontSize: 10, fill: "#5A6069" }} axisLine={{ stroke: "#1F2227" }} tickLine={false} />
             <YAxis tick={{ fontFamily: "JetBrains Mono", fontSize: 11, fill: "#5A6069" }} axisLine={{ stroke: "#1F2227" }} tickLine={false} />
             <Tooltip
               formatter={(value: number) => [value, "Reels"]}
-              labelFormatter={(label) => `VR: ${label}–${parseInt(label) + bucketSize}`}
+              labelFormatter={(label) => `VR: ${label}â€“${parseInt(label) + bucketSize}`}
               contentStyle={{ backgroundColor: "#111316", border: "1px solid #1F2227", borderRadius: "6px", fontFamily: "JetBrains Mono", fontSize: "12px" }}
               labelStyle={{ color: "#8B9199" }}
               itemStyle={{ color: "#7CFFB2" }}
@@ -40,3 +40,4 @@ export function VRDistributionChart({ reels }: VRDistributionChartProps) {
     </div>
   );
 }
+

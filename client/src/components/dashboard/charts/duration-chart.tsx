@@ -54,8 +54,8 @@ export function DurationChart({ reels }: DurationChartProps) {
         </p>
       )}
       <div className="h-[300px] mt-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1F2227" vertical={false} />
             <XAxis dataKey="name" tick={{ fontFamily: "JetBrains Mono", fontSize: 11, fill: "#5A6069" }} axisLine={{ stroke: "#1F2227" }} tickLine={false} />
             <YAxis tick={{ fontFamily: "JetBrains Mono", fontSize: 11, fill: "#5A6069" }} axisLine={{ stroke: "#1F2227" }} tickLine={false} tickFormatter={(v) => formatNumber(v)} />

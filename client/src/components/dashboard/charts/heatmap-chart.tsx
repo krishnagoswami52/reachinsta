@@ -65,8 +65,8 @@ export function HeatmapChart({ reels, metric = "views" }: HeatmapChartProps) {
           {" "}({metric === "views" ? formatNumber(Math.round(bestTime.value)) + " avg views" : (bestTime.value * 100).toFixed(2) + "% eng"})
         </p>
       )}
-      <div className="overflow-x-auto mt-4">
-        <div className="inline-block min-w-full">
+      <div className="overflow-x-auto scrollbar-hide -mx-6 lg:mx-0 px-6 lg:px-0 mt-4">
+        <div className="min-w-[560px] lg:min-w-0">
           <div className="flex gap-1">
             <div className="w-10" />
             {hours.filter((_, i) => i % 3 === 0).map((hour) => (

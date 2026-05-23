@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+﻿import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { CompetitorStats } from "@shared/schema";
 
 interface CreatorERChartProps {
@@ -21,7 +21,7 @@ export function CreatorERChart({ stats }: CreatorERChartProps) {
         <p className="font-mono text-[11px] text-text-muted">Engagement rate per creator</p>
       </div>
       <div className="h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <BarChart data={data} layout="horizontal">
             <CartesianGrid strokeDasharray="3 3" stroke="#1F2227" vertical={false} />
             <XAxis
@@ -51,3 +51,4 @@ export function CreatorERChart({ stats }: CreatorERChartProps) {
     </div>
   );
 }
+

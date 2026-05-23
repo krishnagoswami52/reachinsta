@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+﻿import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { formatNumber } from "@/lib/utils";
 import type { Reel } from "@shared/schema";
 
@@ -31,7 +31,7 @@ export function DurationBucketChart({ reels }: DurationBucketChartProps) {
         <p className="font-mono text-[11px] text-text-muted">Average views per reel by duration bucket</p>
       </div>
       <div className="h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1F2227" vertical={false} />
             <XAxis dataKey="label" tick={{ fontFamily: "JetBrains Mono", fontSize: 10, fill: "#5A6069" }} axisLine={{ stroke: "#1F2227" }} tickLine={false} />
@@ -49,3 +49,4 @@ export function DurationBucketChart({ reels }: DurationBucketChartProps) {
     </div>
   );
 }
+

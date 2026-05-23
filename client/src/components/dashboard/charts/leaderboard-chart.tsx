@@ -26,16 +26,16 @@ export function LeaderboardChart({ stats }: LeaderboardChartProps) {
       </div>
       <p className="font-mono text-[11px] text-text-muted mb-6">Top 10 by average views per reel</p>
       <div className="h-[350px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <BarChart
             data={data}
             layout="vertical"
-            margin={{ top: 10, right: 20, left: 60, bottom: 10 }}
+            margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#1F2227" horizontal={false} />
             <XAxis
               type="number"
-              tick={{ fontFamily: "JetBrains Mono", fontSize: 11, fill: "#5A6069" }}
+              tick={{ fontFamily: "JetBrains Mono", fontSize: 10, fill: "#5A6069" }}
               axisLine={{ stroke: "#1F2227" }}
               tickLine={false}
               tickFormatter={(value) => formatNumber(value)}
@@ -43,10 +43,10 @@ export function LeaderboardChart({ stats }: LeaderboardChartProps) {
             <YAxis
               type="category"
               dataKey="name"
-              tick={{ fontFamily: "JetBrains Mono", fontSize: 11, fill: "#5A6069" }}
+              tick={{ fontFamily: "JetBrains Mono", fontSize: 10, fill: "#5A6069" }}
               axisLine={{ stroke: "#1F2227" }}
               tickLine={false}
-              width={80}
+              width={70}
             />
             <Tooltip
               contentStyle={{ backgroundColor: "#111316", border: "1px solid #1F2227", borderRadius: "6px", fontFamily: "JetBrains Mono", fontSize: "12px" }}

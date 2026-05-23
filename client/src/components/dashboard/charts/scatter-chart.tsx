@@ -1,4 +1,4 @@
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+﻿import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Timer } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import type { Reel } from "@shared/schema";
@@ -25,7 +25,7 @@ export function DurationScatterChart({ reels }: DurationScatterChartProps) {
         Relationship between video length and performance
       </p>
       <div className="h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1F2227" />
             <XAxis
@@ -56,7 +56,7 @@ export function DurationScatterChart({ reels }: DurationScatterChartProps) {
                 return (
                   <div style={{ backgroundColor: "#111316", border: "1px solid #1F2227", borderRadius: "6px", padding: "10px 12px", fontFamily: "JetBrains Mono", fontSize: "12px" }}>
                     <p style={{ color: "#E8EAED" }}>@{d.username}</p>
-                    <p style={{ color: "#8B9199" }}>{d.duration}s · {formatNumber(d.views)} views</p>
+                    <p style={{ color: "#8B9199" }}>{d.duration}s Â· {formatNumber(d.views)} views</p>
                     <p style={{ color: "#7CFFB2" }}>{(d.engagement * 100).toFixed(2)}% eng</p>
                   </div>
                 );
@@ -73,3 +73,4 @@ export function DurationScatterChart({ reels }: DurationScatterChartProps) {
     </div>
   );
 }
+

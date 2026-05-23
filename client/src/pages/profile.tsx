@@ -6,7 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { loadPaddle, openCheckout } from "@/lib/paddle";
 import { PLANS } from "@/lib/plans";
-import { Camera, Crown, CreditCard, Shield, KeyRound, LogOut, ExternalLink } from "lucide-react";
+import { Camera, Crown, CreditCard, Shield, KeyRound, LogOut, ChevronDown, ArrowRight } from "lucide-react";
 import type { Profile, Competitor } from "@shared/schema";
 
 export default function ProfilePage() {
@@ -80,6 +80,60 @@ export default function ProfilePage() {
   function handleRemoveAvatar() {
     setAvatarPreview(null);
     updateMutation.mutate({ profileImageUrl: null });
+  }
+
+  // Password change form
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  const passwordStrength = useMemo(() => {
+    let score = 0;
+    if (newPassword.length >= 8) score++;
+    if (/[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword)) score++;
+    if (/\d/.test(newPassword)) score++;
+    if (/[^A-Za-z0-9]/.test(newPassword)) score++;
+    return score;
+  }, [newPassword]);
+
+  const passwordStrengthMessage = useMemo(() => {
+    if (!newPassword) return "8+ characters. Different from your current one, ideally.";
+    if (newPassword.length < 8) return "a bit short — add a few more chars";
+    const messages = ["weak — try mixing cases", "okay — add a number", "good — one symbol away from great", "great. you're set."];
+    return messages[passwordStrength - 1] ?? "8+ characters.";
+  }, [newPassword, passwordStrength]);
+
+  async function handlePasswordChange(e: React.FormEvent) {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess(false);
+
+    if (newPassword.length < 8) { setPasswordError("New password must be at least 8 characters."); return; }
+    if (newPassword !== confirmPassword) { setPasswordError("Passwords don't match."); return; }
+    if (newPassword === currentPassword) { setPasswordError("New password must be different from current password."); return; }
+
+    setPasswordSubmitting(true);
+    try {
+      const res = await apiRequest("POST", "/api/auth/change-password", { currentPassword, newPassword });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setPasswordError((body as any).message ?? "Failed to update password.");
+        return;
+      }
+      setPasswordSuccess(true);
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+      setTimeout(() => { setShowPasswordForm(false); setPasswordSuccess(false); }, 2500);
+    } catch {
+      setPasswordError("Something went wrong. Try again.");
+    } finally {
+      setPasswordSubmitting(false);
+    }
   }
 
   const [paddleReady, setPaddleReady] = useState(false);
@@ -297,22 +351,134 @@ export default function ProfilePage() {
           <Shield className="w-4 h-4 text-mint" />
           <h2 className="font-tight font-semibold text-[18px] tracking-tighter-2 text-text-primary">Security</h2>
         </div>
-        <p className="text-[14px] text-text-secondary mb-5">
-          Change your password or update how we reach you.
+        <p className="text-[14px] text-text-secondary mb-6">
+          Change your password. Need the email-reset flow instead?{" "}
+          <a href="/forgot-password" className="text-mint hover:underline">Use forgot password</a>.
         </p>
-        <button
-          onClick={() => setLocation("/forgot-password")}
-          className="w-full flex items-center justify-between p-4 bg-bg-base border border-border-subtle hover:border-border-soft rounded-md transition-colors group"
-        >
-          <div className="flex items-center gap-3">
-            <KeyRound className="w-4 h-4 text-text-secondary group-hover:text-mint transition-colors" />
-            <div className="text-left">
-              <div className="text-[14px] text-text-primary">Change password</div>
-              <div className="font-mono text-[11px] text-text-muted">Sends a reset code to your email</div>
+
+        {!showPasswordForm ? (
+          <button
+            onClick={() => setShowPasswordForm(true)}
+            className="w-full flex items-center justify-between p-4 bg-bg-base border border-border-subtle hover:border-border-soft rounded-md transition-colors group"
+          >
+            <div className="flex items-center gap-3">
+              <KeyRound className="w-4 h-4 text-text-secondary group-hover:text-mint transition-colors" />
+              <div className="text-left">
+                <div className="text-[14px] text-text-primary">Change password</div>
+                <div className="font-mono text-[11px] text-text-muted">Enter current password to set a new one</div>
+              </div>
             </div>
-          </div>
-          <ExternalLink className="w-3.5 h-3.5 text-text-muted" />
-        </button>
+            <ChevronDown className="w-4 h-4 text-text-muted group-hover:text-mint transition-colors" />
+          </button>
+        ) : (
+          <form onSubmit={handlePasswordChange} className="space-y-4 bg-bg-base border border-border-subtle rounded-md p-5">
+            {/* Current password */}
+            <div>
+              <label className="font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-2 block">
+                // CURRENT PASSWORD
+              </label>
+              <div className="relative">
+                <input
+                  type={showCurrent ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                  className="w-full bg-transparent border border-border-subtle rounded-md px-3.5 py-2.5 pr-16 text-[14px] text-text-primary placeholder:text-text-muted focus:border-mint focus:outline-none focus:shadow-[0_0_0_3px_rgba(124,255,178,0.1)] transition-all"
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                />
+                <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[11px] uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">
+                  {showCurrent ? "hide" : "show"}
+                </button>
+              </div>
+            </div>
+
+            {/* New password */}
+            <div>
+              <label className="font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-2 block">
+                // NEW PASSWORD
+              </label>
+              <div className="relative">
+                <input
+                  type={showNew ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className="w-full bg-transparent border border-border-subtle rounded-md px-3.5 py-2.5 pr-16 text-[14px] text-text-primary placeholder:text-text-muted focus:border-mint focus:outline-none focus:shadow-[0_0_0_3px_rgba(124,255,178,0.1)] transition-all"
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                />
+                <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[11px] uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">
+                  {showNew ? "hide" : "show"}
+                </button>
+              </div>
+              <div className="flex gap-1 mt-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className={`h-[3px] flex-1 rounded-sm transition-colors ${i <= passwordStrength ? "bg-mint" : "bg-border-subtle"}`} />
+                ))}
+              </div>
+              <p className="font-mono text-[11px] text-text-muted mt-2">{passwordStrengthMessage}</p>
+            </div>
+
+            {/* Confirm new password */}
+            <div>
+              <label className="font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-2 block">
+                // CONFIRM NEW PASSWORD
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="w-full bg-transparent border border-border-subtle rounded-md px-3.5 py-2.5 text-[14px] text-text-primary placeholder:text-text-muted focus:border-mint focus:outline-none focus:shadow-[0_0_0_3px_rgba(124,255,178,0.1)] transition-all"
+                placeholder="••••••••"
+                autoComplete="new-password"
+              />
+              {confirmPassword && (
+                <p className={`font-mono text-[11px] mt-2 ${confirmPassword === newPassword ? "text-mint" : "text-red-400"}`}>
+                  {confirmPassword === newPassword ? "✓ passwords match" : "✕ passwords don't match"}
+                </p>
+              )}
+            </div>
+
+            {passwordError && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2.5">
+                <p className="font-mono text-[12px] text-red-400">{passwordError}</p>
+              </div>
+            )}
+            {passwordSuccess && (
+              <div className="bg-mint/10 border border-mint/30 rounded-md px-3 py-2.5">
+                <p className="font-mono text-[12px] text-mint">✓ Password updated successfully.</p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={passwordSubmitting || newPassword !== confirmPassword || newPassword.length < 8 || !currentPassword}
+                className="bg-mint hover:bg-mint-hover disabled:bg-border-soft disabled:text-text-muted text-bg-base font-semibold text-[14px] px-5 py-2.5 rounded-md inline-flex items-center gap-2 transition-all"
+              >
+                {passwordSubmitting ? (
+                  <><span className="inline-block w-3.5 h-3.5 border-2 border-bg-base/30 border-t-bg-base rounded-full animate-spin" />Updating…</>
+                ) : (
+                  <>Update password<ArrowRight className="w-3.5 h-3.5" /></>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowPasswordForm(false); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPasswordError(""); setPasswordSuccess(false); }}
+                className="font-mono text-[12px] text-text-muted hover:text-text-primary transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <p className="font-mono text-[11px] text-text-muted italic pt-2 border-t border-border-subtle">
+              PS: We bcrypt-hash before storing. We never see it.
+            </p>
+          </form>
+        )}
       </section>
 
       {/* Sign out */}

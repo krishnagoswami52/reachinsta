@@ -1,9 +1,12 @@
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
-import { registerUser, loginUser, sanitizeUser, hashPassword } from "../../services/auth";
+import { registerUser, loginUser, sanitizeUser, hashPassword, verifyPassword } from "../../services/auth";
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/models/auth";
+import { users as dbUsers } from "@shared/models/auth";
 import { storage } from "../../storage";
+import { db } from "../../db";
+import { eq } from "drizzle-orm";
 import {
   createAndSendVerificationEmail,
   verifyEmailCode,
@@ -256,6 +259,41 @@ export async function setupAuth(app: Express) {
     } catch (error) {
       console.error("Change email error:", error);
       res.status(500).json({ message: "Failed to change email" });
+    }
+  });
+
+  app.post("/api/auth/change-password", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || typeof currentPassword !== "string") {
+        return res.status(400).json({ message: "Current password is required" });
+      }
+      if (!newPassword || typeof newPassword !== "string" || newPassword.length < 8) {
+        return res.status(400).json({ message: "New password must be at least 8 characters" });
+      }
+      if (currentPassword === newPassword) {
+        return res.status(400).json({ message: "New password must be different from current password" });
+      }
+
+      const user = await storage.getUserById(userId);
+      if (!user || !user.passwordHash) {
+        return res.status(400).json({ message: "No password set for this account" });
+      }
+
+      const isValid = await verifyPassword(currentPassword, user.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      const newHash = await hashPassword(newPassword);
+      await db.update(dbUsers).set({ passwordHash: newHash, updatedAt: new Date() }).where(eq(dbUsers.id, userId));
+
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Change password error:", error);
+      res.status(500).json({ message: "Failed to update password" });
     }
   });
 

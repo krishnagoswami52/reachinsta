@@ -57,9 +57,9 @@ export default function CompetitorsPage() {
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5 lg:gap-6">
         {/* Left: add panel */}
-        <div>
+        <div className="order-1">
           <CompetitorList
             competitors={competitors}
             maxCompetitors={profile?.maxCompetitors || 5}
@@ -70,8 +70,8 @@ export default function CompetitorsPage() {
         </div>
 
         {/* Right: analytics grid */}
-        <div>
-          <h2 className="font-tight font-semibold text-[22px] tracking-tighter-2 text-text-primary mb-6">
+        <div className="order-2">
+          <h2 className="font-tight font-semibold text-[20px] lg:text-[22px] tracking-tighter-2 text-text-primary mb-4 lg:mb-6">
             Competitor Analytics
           </h2>
 
@@ -83,7 +83,7 @@ export default function CompetitorsPage() {
               className="py-8"
             />
           ) : (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
               {stats.map((stat) => (
                 <CompetitorCard key={stat.id} stats={stat} />
               ))}

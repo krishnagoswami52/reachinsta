@@ -16,7 +16,7 @@ export function CompetitorCard({ stats, isSelected, onSelect }: CompetitorCardPr
 
   return (
     <div
-      className={`bg-bg-surface border rounded-lg p-6 hover:border-border-soft transition-colors cursor-pointer ${
+      className={`bg-bg-surface border rounded-lg p-4 lg:p-6 hover:border-border-soft transition-colors cursor-pointer ${
         isSelected ? "border-mint" : "border-border-subtle"
       }`}
       onClick={onSelect}

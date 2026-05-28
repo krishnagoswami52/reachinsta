@@ -1,7 +1,7 @@
 import { ApifyClient } from 'apify-client';
 import { storage } from "../storage";
 import type { FetchRun, InsertReel, InsertCompetitorStats } from "@shared/schema";
-import { getBestKey, isBudgetError, markExhausted, recordUsage } from "./keyManager";
+import { getBestKey, isBudgetError, markExhausted, maskToken, recordUsage } from "./keyManager";
 
 const INSTAGRAM_SCRAPER_ACTOR_ID = "shu8hvrXbJbY3Eb9W";
 const FOLLOWERS_SCRAPER_ACTOR_ID = "7RQ4RlfRihUhflQtJ";
@@ -16,16 +16,39 @@ async function runActorWithRotation<T>(
     const token = await getBestKey();
     const client = new ApifyClient({ token });
 
+    // Test hook: inject a budget error for a specific token via env flag.
+    // Safe to leave in code — only fires when APIFY_TEST_FORCE_BUDGET_ERROR is set.
+    if (process.env.APIFY_TEST_FORCE_BUDGET_ERROR === token) {
+      const fakeErr = new Error("monthly usage limit reached");
+      console.warn(`[KeyManager] APIFY_TEST_FORCE_BUDGET_ERROR active — injecting budget error for ${maskToken(token)}`);
+      if (isBudgetError(fakeErr)) {
+        console.warn(`[KeyManager] Token ${maskToken(token)} hit budget limit. Marking exhausted, rotating to next.`, { error: fakeErr.message });
+        await markExhausted(token);
+        lastError = fakeErr;
+        continue;
+      }
+    }
+
+    console.log(`[KeyManager] Using token ${maskToken(token)} for fetch (attempt ${attempt + 1})`);
+
     try {
       const result = await fn(client);
+      console.log(`[KeyManager] Fetch succeeded with token ${maskToken(token)}`);
       return { result, token };
     } catch (error: any) {
       if (isBudgetError(error)) {
-        console.warn(`[KeyManager] Budget exhausted on key ...${token.slice(-8)}, rotating to next`);
+        console.warn(
+          `[KeyManager] Token ${maskToken(token)} hit budget limit. Marking exhausted, rotating to next.`,
+          { error: error?.message?.slice(0, 200) },
+        );
         await markExhausted(token);
         lastError = error;
         continue;
       }
+      console.error(
+        `[KeyManager] Token ${maskToken(token)} failed with NON-budget error.`,
+        { error: error?.message?.slice(0, 200), statusCode: error?.statusCode },
+      );
       throw error;
     }
   }

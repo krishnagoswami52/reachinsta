@@ -47,3 +47,6 @@ vite.config.ts.*
 notes.txt
 ne.txt
 credentials.txt
+
+# Apify token file - contains credentials, NEVER commit
+apify_api.txt

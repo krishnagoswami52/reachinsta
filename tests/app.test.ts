@@ -1,8 +1,23 @@
+import "dotenv/config";
 import { test, expect, Page } from "@playwright/test";
 
 const BASE = "http://localhost:5000";
-const FOUNDER = { email: "founder@techcm.in", password: "mnikg2190" };
-const ADMIN = { email: "krishna@techcm.in", password: "mnikg2190" };
+
+// Credentials must come from env — never hardcode (audit issue C1)
+const FOUNDER_EMAIL = process.env.TEST_FOUNDER_EMAIL;
+const FOUNDER_PASSWORD = process.env.TEST_FOUNDER_PASSWORD;
+const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD;
+
+if (!FOUNDER_EMAIL || !FOUNDER_PASSWORD || !ADMIN_EMAIL || !ADMIN_PASSWORD) {
+  throw new Error(
+    "Tests require TEST_FOUNDER_EMAIL, TEST_FOUNDER_PASSWORD, TEST_ADMIN_EMAIL and " +
+      "TEST_ADMIN_PASSWORD env vars. Set them in .env before running tests."
+  );
+}
+
+const FOUNDER = { email: FOUNDER_EMAIL, password: FOUNDER_PASSWORD };
+const ADMIN = { email: ADMIN_EMAIL, password: ADMIN_PASSWORD };
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 

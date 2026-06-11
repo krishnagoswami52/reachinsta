@@ -3,10 +3,23 @@
  * Run with:  node tests/api-test.mjs
  */
 
+import "dotenv/config";
+
 const BASE = "http://127.0.0.1:5000";
 
-const FOUNDER = { email: "founder@techcm.in",  password: "mnikg2190" };
-const ADMIN   = { email: "krishna@techcm.in",   password: "mnikg2190" };
+// Credentials must come from env — never hardcode (audit issue C1)
+if (
+  !process.env.TEST_FOUNDER_EMAIL || !process.env.TEST_FOUNDER_PASSWORD ||
+  !process.env.TEST_ADMIN_EMAIL || !process.env.TEST_ADMIN_PASSWORD
+) {
+  throw new Error(
+    "Tests require TEST_FOUNDER_EMAIL, TEST_FOUNDER_PASSWORD, TEST_ADMIN_EMAIL and " +
+      "TEST_ADMIN_PASSWORD env vars. Set them in .env before running tests."
+  );
+}
+
+const FOUNDER = { email: process.env.TEST_FOUNDER_EMAIL, password: process.env.TEST_FOUNDER_PASSWORD };
+const ADMIN   = { email: process.env.TEST_ADMIN_EMAIL,   password: process.env.TEST_ADMIN_PASSWORD };
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -514,7 +527,7 @@ async function run() {
   // Admin can change roles but only super-admin can assign "admin" role
   if (founderProfile?.id && adminProfile?.id) {
     const r = await req("POST", `/api/admin/users/${founderProfile.id}/role`, { role: "admin" }, adminCookie);
-    // krishna@techcm.in IS the super-admin, so this should succeed
+    // The ADMIN test account IS the super-admin, so this should succeed
     if (r.status === 200) {
       pass("POST /api/admin/users/:id/role (super-admin assigns admin)", r.status, { role: r.data?.role });
       // Restore to user

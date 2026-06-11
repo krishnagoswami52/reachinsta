@@ -35,8 +35,11 @@ const updateRoleSchema = z.object({
   role: z.enum(["user", "admin"]),
 });
 
-const SUPER_ADMIN_EMAIL = "krishna@techcm.in";
-const ADMIN_EMAILS = [SUPER_ADMIN_EMAIL];
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
+if (!SUPER_ADMIN_EMAIL) {
+  throw new Error("SUPER_ADMIN_EMAIL env var is required");
+}
+const ADMIN_EMAILS: string[] = [SUPER_ADMIN_EMAIL];
 
 export async function registerRoutes(
   httpServer: Server,

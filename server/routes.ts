@@ -17,7 +17,11 @@ const fetchDataSchema = z.object({
   timeRangeDays: z.number().refine((v) => [7, 14, 28].includes(v), {
     message: "Time range must be 7, 14, or 28 days",
   }),
-  competitors: z.array(z.string()).optional(),
+  competitors: z
+    .array(z.string().min(1).max(30).regex(/^[a-zA-Z0-9._@]+$/))
+    .min(1)
+    .max(100)
+    .optional(),
 });
 
 const updatePlanSchema = z.object({
@@ -227,16 +231,37 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Monthly fetch limit reached" });
       }
       
-      let competitorUsernames: string[] = [];
-      
+      const trackedCompetitors = await storage.getCompetitors(userId);
+      if (trackedCompetitors.length === 0) {
+        return res.status(400).json({ message: "Add competitors first" });
+      }
+
+      let competitorUsernames: string[];
+
       if (providedCompetitors && providedCompetitors.length > 0) {
-        competitorUsernames = providedCompetitors;
-      } else {
-        const competitors = await storage.getCompetitors(userId);
-        if (competitors.length === 0) {
-          return res.status(400).json({ message: "Add competitors first" });
+        // Client-supplied usernames must be a subset of the user's tracked
+        // competitors — otherwise anyone could burn Apify budget on arbitrary handles
+        const tracked = new Set(trackedCompetitors.map((c) => c.username));
+        const requested = Array.from(
+          new Set(providedCompetitors.map((u) => u.toLowerCase().replace("@", "")))
+        );
+        const notOwned = requested.filter((u) => !tracked.has(u));
+        if (notOwned.length > 0) {
+          return res.status(403).json({
+            message: "Some requested competitors are not in your tracked list",
+            code: "COMPETITOR_NOT_OWNED",
+          });
         }
-        competitorUsernames = competitors.map(c => c.username);
+        competitorUsernames = requested;
+      } else {
+        competitorUsernames = trackedCompetitors.map((c) => c.username);
+      }
+
+      if (competitorUsernames.length > profile.maxCompetitors) {
+        return res.status(403).json({
+          message: "Competitor count exceeds your plan limit. Upgrade to fetch more.",
+          code: "PLAN_LIMIT_COMPETITORS",
+        });
       }
       
       const fetchRun = await storage.createFetchRun({

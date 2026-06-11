@@ -31,6 +31,8 @@ npm-debug.log*
 test-results
 playwright-report
 playwright/.cache
+tests/load/results/*.json
+tests/load/results/*.html
 
 # Replit (no longer using)
 .replit
@@ -50,3 +52,6 @@ credentials.txt
 
 # Apify token file - contains credentials, NEVER commit
 apify_api.txt
+
+# Add this line at the end:
+design-references/

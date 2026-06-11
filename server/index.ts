@@ -78,6 +78,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  app.get('/api/health', (_req, res) => {
+    res.json({ status: 'ok', ts: Date.now() });
+  });
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

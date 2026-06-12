@@ -6,6 +6,8 @@ import { createServer } from "http";
 import { startWorker } from "./worker";
 import { initApifyKeys } from "./services/keyManager";
 import paddleWebhookRouter from "./routes/paddleWebhook";
+import cron from "node-cron";
+import { downgradeExpiredSubscriptions } from "./jobs/downgrade-expired";
 
 console.log('[Env Check]', {
   db: !!process.env.DATABASE_URL,
@@ -116,6 +118,22 @@ app.use((req, res, next) => {
       startWorker().catch((err) => {
         log(`Failed to start worker: ${err.message}`);
       });
+
+      // Daily at 1:00 AM UTC — downgrade canceled subscriptions past period end
+      cron.schedule(
+        "0 1 * * *",
+        async () => {
+          console.log("[Cron] Running downgrade-expired job");
+          try {
+            const count = await downgradeExpiredSubscriptions();
+            console.log(`[Cron] Downgrade complete: ${count} user(s)`);
+          } catch (err) {
+            console.error("[Cron] Downgrade job failed:", err);
+          }
+        },
+        { timezone: "Etc/UTC" },
+      );
+      log("Downgrade-expired cron scheduled (daily 01:00 UTC)");
     },
   );
 })();

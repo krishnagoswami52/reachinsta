@@ -160,6 +160,7 @@ async function handleSubscriptionActivated(data: any) {
     plan,
     currentPeriodEnd: periodEnd,
     cancelAtPeriodEnd: false,
+    cancelAt: null,
   });
 
   console.log(`[Paddle Webhook] Activated → userId=${profile.id} plan=${plan}`);
@@ -178,18 +179,24 @@ async function handleSubscriptionUpdated(data: any) {
     ? new Date(data.current_billing_period.ends_at)
     : undefined;
 
+  // A scheduled cancel means the user keeps paid access until effective_at —
+  // mark as "canceling" so the cron can downgrade once that date passes
+  const cancelScheduled = data.scheduled_change?.action === "cancel";
+
+  if (data.status === "canceled") {
+    // Paddle reports canceled via subscription.updated too — same path as subscription.canceled
+    await applyCanceledState(profile.id, data);
+    return;
+  }
+
   // Map Paddle status → our status
   const statusMap: Record<string, string> = {
     active: "active",
     past_due: "past_due",
     paused: "paused",
-    canceled: "canceled",
     trialing: "active",
   };
-  const subscriptionStatus = statusMap[data.status] ?? "active";
-
-  // cancelAtPeriodEnd: true if a cancel is scheduled
-  const cancelAtPeriodEnd = data.scheduled_change?.action === "cancel";
+  const subscriptionStatus = cancelScheduled ? "canceling" : (statusMap[data.status] ?? "active");
 
   await storage.updateProfileSubscription(profile.id, {
     paddleCustomerId: data.customer_id,
@@ -197,7 +204,10 @@ async function handleSubscriptionUpdated(data: any) {
     subscriptionStatus,
     ...(plan ? { plan } : {}),
     ...(periodEnd !== undefined ? { currentPeriodEnd: periodEnd } : {}),
-    cancelAtPeriodEnd,
+    cancelAtPeriodEnd: cancelScheduled,
+    cancelAt: cancelScheduled && data.scheduled_change?.effective_at
+      ? new Date(data.scheduled_change.effective_at)
+      : null,
   });
 
   console.log(`[Paddle Webhook] Updated → userId=${profile.id} status=${subscriptionStatus} plan=${plan ?? "unchanged"}`);
@@ -210,18 +220,42 @@ async function handleSubscriptionCanceled(data: any) {
     return;
   }
 
+  await applyCanceledState(profile.id, data);
+}
+
+/**
+ * Shared logic for a subscription reported as canceled (via subscription.canceled
+ * OR subscription.updated with status=canceled).
+ *
+ * - Period already over (or unknown) → downgrade to free immediately.
+ * - Period still running (immediate-cancel edge case) → mark "canceling" so the
+ *   daily cron downgrades once the period ends. User keeps what they paid for.
+ */
+async function applyCanceledState(userId: string, data: any) {
   const periodEnd = data.current_billing_period?.ends_at
     ? new Date(data.current_billing_period.ends_at)
     : null;
+  const now = new Date();
 
-  // Keep the plan active until period end — do NOT downgrade yet
-  await storage.updateProfileSubscription(profile.id, {
-    subscriptionStatus: "canceled",
-    cancelAtPeriodEnd: true,
-    currentPeriodEnd: periodEnd,
-  });
-
-  console.log(`[Paddle Webhook] Canceled → userId=${profile.id} accessUntil=${periodEnd?.toISOString()}`);
+  if (!periodEnd || periodEnd <= now) {
+    await storage.updateProfileSubscription(userId, {
+      plan: "free",
+      subscriptionStatus: "canceled",
+      paddleSubscriptionId: null,
+      cancelAtPeriodEnd: false,
+      cancelAt: null,
+      currentPeriodEnd: null,
+    });
+    console.log(`[Paddle Webhook] Canceled → userId=${userId} downgraded to free (period ended)`);
+  } else {
+    await storage.updateProfileSubscription(userId, {
+      subscriptionStatus: "canceling",
+      cancelAtPeriodEnd: true,
+      cancelAt: periodEnd,
+      currentPeriodEnd: periodEnd,
+    });
+    console.log(`[Paddle Webhook] Canceled → userId=${userId} accessUntil=${periodEnd.toISOString()}`);
+  }
 }
 
 async function handleSubscriptionPaused(data: any) {
@@ -231,6 +265,7 @@ async function handleSubscriptionPaused(data: any) {
   await storage.updateProfileSubscription(profile.id, {
     subscriptionStatus: "paused",
     cancelAtPeriodEnd: false,
+    cancelAt: null,
   });
 
   console.log(`[Paddle Webhook] Paused → userId=${profile.id}`);
@@ -247,6 +282,7 @@ async function handleSubscriptionResumed(data: any) {
   await storage.updateProfileSubscription(profile.id, {
     subscriptionStatus: "active",
     cancelAtPeriodEnd: false,
+    cancelAt: null,
     currentPeriodEnd: periodEnd,
   });
 

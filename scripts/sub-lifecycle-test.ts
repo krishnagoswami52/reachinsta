@@ -57,18 +57,34 @@ async function getProfileByEmail(email: string) {
 
 // ─── Paddle sandbox API helpers ───────────────────────────────────────────────
 
+class PaddleApiError extends Error {
+  constructor(public status: number, public detail: string, path: string) {
+    super(`Paddle GET ${path} → ${status}: ${detail}`);
+  }
+}
+
 async function paddleGet(path: string): Promise<any> {
   const res = await fetch(`${PADDLE_BASE}${path}`, {
     headers: { Authorization: `Bearer ${PADDLE_KEY}` },
   });
-  if (!res.ok) throw new Error(`Paddle GET ${path} → ${res.status}`);
-  return (await res.json()).data;
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new PaddleApiError(res.status, json?.error?.detail ?? json?.error?.code ?? "(no body)", path);
+  }
+  return json.data;
 }
 
+/**
+ * Finds the test customer's subscription, filtering ONLY by customer_id —
+ * no status filter, so briefly-trialing/past_due subscriptions are matched too.
+ */
 async function findSandboxSubscription(email: string): Promise<any | null> {
   const customers = await paddleGet(`/customers?email=${encodeURIComponent(email)}`);
+  console.log(`    customers matching ${email}: ${customers?.length ?? 0}${customers?.[0] ? ` (${customers[0].id})` : ""}`);
   if (!customers?.length) return null;
+
   const subs = await paddleGet(`/subscriptions?customer_id=${customers[0].id}`);
+  console.log(`    raw subscriptions response for ${customers[0].id}: ${JSON.stringify(subs?.map((s: any) => ({ id: s.id, status: s.status })) ?? [])}`);
   return subs?.[0] ?? null;
 }
 
@@ -261,11 +277,26 @@ async function tickConsent(frame: Frame) {
   log("Completing Paddle sandbox checkout with test card 4242…");
   await completeCheckout(page);
 
-  log("Waiting for subscription to appear in Paddle sandbox");
+  log("Waiting for subscription to appear in Paddle sandbox (60s, polling every 2s)");
   let sub: any = null;
-  for (let i = 0; i < 24; i++) {
-    await page.waitForTimeout(5000);
-    sub = await findSandboxSubscription(EMAIL).catch(() => null);
+  for (let i = 0; i < 30; i++) {
+    await page.waitForTimeout(2000);
+    console.log(`    poll ${i + 1}/30 for ${EMAIL}`);
+    try {
+      sub = await findSandboxSubscription(EMAIL);
+    } catch (err) {
+      if (err instanceof PaddleApiError && (err.status === 403 || err.status === 401)) {
+        // No point polling 30 times against a key with no permissions
+        await shot(page, "06-after-payment");
+        fail(
+          `Paddle API key rejected (${err.message}).\n` +
+            `    The PADDLE_API_KEY in .env has no API permissions — regenerate it in the\n` +
+            `    Paddle dashboard (Developer Tools → Authentication) with subscription:read,\n` +
+            `    subscription:write and customer:read scopes, then rerun this script.`,
+        );
+      }
+      console.log(`    poll error (will retry): ${err}`);
+    }
     if (sub) break;
   }
   await shot(page, "06-after-payment");

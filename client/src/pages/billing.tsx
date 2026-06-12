@@ -1,23 +1,101 @@
-import { useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { ArrowLeft, CreditCard, RefreshCw } from "lucide-react";
 import { PLANS } from "@/lib/plans";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Profile } from "@shared/schema";
+
+function formatDate(value: Date | string | null | undefined): string {
+  if (!value) return "the end of your billing period";
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/** apiRequest throws "<status>: <json body>" — extract the server's message field. */
+function errMessage(error: Error): string {
+  const raw = error.message.replace(/^\d+:\s*/, "");
+  try {
+    return JSON.parse(raw).message ?? raw;
+  } catch {
+    return raw;
+  }
+}
 
 export default function BillingPage() {
   useEffect(() => { document.title = "Billing - ReachInsta"; }, []);
   const { toast } = useToast();
   const toastedRef = useRef(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const { data: profile, isLoading } = useQuery<Profile>({
     queryKey: ["/api/profile"],
+  });
+
+  const invalidateUserState = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+  };
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/subscription/cancel");
+      return res.json();
+    },
+    onSuccess: (data: { cancelAt?: string }) => {
+      invalidateUserState();
+      setShowCancelConfirm(false);
+      toast({
+        title: "Subscription canceled",
+        description: `You'll keep access until ${formatDate(data.cancelAt)}.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Couldn't cancel subscription",
+        description: errMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/subscription/resume");
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidateUserState();
+      toast({
+        title: "Subscription resumed",
+        description: "Your plan will continue without interruption.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Couldn't resume subscription",
+        description: errMessage(error),
+        variant: "destructive",
+      });
+    },
   });
 
   useEffect(() => {
@@ -136,24 +214,74 @@ export default function BillingPage() {
         </Card>
       </div>
 
-      {/* Cancel subscription — placeholder for next phase */}
-      <Card className="border-destructive/20">
-        <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <p className="font-medium">Cancel Subscription</p>
-            <p className="text-sm text-muted-foreground">
-              Your plan remains active until the end of the billing period.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            disabled
-            className="border-destructive/40 text-destructive shrink-0"
-          >
-            Cancel (coming soon)
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Cancel / resume subscription */}
+      {profile?.subscriptionStatus === "canceling" ? (
+        <Card className="border-yellow-500/30">
+          <CardContent className="p-6 space-y-4">
+            <div>
+              <p className="font-medium">Subscription canceled</p>
+              <p className="text-sm text-muted-foreground">
+                You'll keep your {PLANS[profile.plan]?.name ?? profile.plan} plan until{" "}
+                <span className="font-medium text-foreground">{formatDate(profile.cancelAt ?? profile.currentPeriodEnd)}</span>,
+                then be downgraded to Free. Changed your mind?
+              </p>
+            </div>
+            <Button
+              onClick={() => resumeMutation.mutate()}
+              disabled={resumeMutation.isPending}
+            >
+              {resumeMutation.isPending ? "Resuming…" : "Resume subscription"}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : profile?.paddleSubscriptionId && (profile.subscriptionStatus === "active" || profile.subscriptionStatus === "past_due") ? (
+        <Card className="border-destructive/20">
+          <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <p className="font-medium">Cancel Subscription</p>
+              <p className="text-sm text-muted-foreground">
+                Your plan remains active until the end of the billing period.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setShowCancelConfirm(true)}
+              className="border-destructive/40 text-destructive shrink-0"
+            >
+              Cancel subscription
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You'll keep access to your current plan until{" "}
+              <span className="font-medium text-foreground">{formatDate(profile?.currentPeriodEnd)}</span>.
+              After that, you'll be downgraded to the Free plan. You can resume any
+              time before then.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelMutation.isPending}>
+              Keep subscription
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                cancelMutation.mutate();
+              }}
+              disabled={cancelMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cancelMutation.isPending ? "Canceling…" : "Yes, cancel"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

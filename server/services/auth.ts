@@ -63,5 +63,6 @@ export function buildSanitizedUser(user: User, profile: Profile | undefined): Sa
     subscriptionStatus: profile?.subscriptionStatus ?? "free",
     currentPeriodEnd: profile?.currentPeriodEnd ?? null,
     cancelAtPeriodEnd: profile?.cancelAtPeriodEnd ?? false,
+    cancelAt: profile?.cancelAt ?? null,
   };
 }

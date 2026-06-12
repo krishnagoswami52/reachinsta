@@ -49,11 +49,12 @@ export interface IStorage {
   getProfileByPaddleCustomerId(customerId: string): Promise<Profile | undefined>;
   updateProfileSubscription(userId: string, data: {
     paddleCustomerId?: string;
-    paddleSubscriptionId?: string;
+    paddleSubscriptionId?: string | null;
     subscriptionStatus?: string;
     plan?: string;
     currentPeriodEnd?: Date | null;
     cancelAtPeriodEnd?: boolean;
+    cancelAt?: Date | null;
     fetchesUsed?: number;
     periodResetAt?: Date | null;
   }): Promise<void>;
@@ -332,11 +333,12 @@ export class DatabaseStorage implements IStorage {
     userId: string,
     data: {
       paddleCustomerId?: string;
-      paddleSubscriptionId?: string;
+      paddleSubscriptionId?: string | null;
       subscriptionStatus?: string;
       plan?: string;
       currentPeriodEnd?: Date | null;
       cancelAtPeriodEnd?: boolean;
+      cancelAt?: Date | null;
       fetchesUsed?: number;
       periodResetAt?: Date | null;
     },
@@ -348,6 +350,7 @@ export class DatabaseStorage implements IStorage {
     if (data.subscriptionStatus !== undefined) updates.subscriptionStatus = data.subscriptionStatus;
     if (data.currentPeriodEnd !== undefined) updates.currentPeriodEnd = data.currentPeriodEnd;
     if (data.cancelAtPeriodEnd !== undefined) updates.cancelAtPeriodEnd = data.cancelAtPeriodEnd;
+    if (data.cancelAt !== undefined) updates.cancelAt = data.cancelAt;
     if (data.fetchesUsed !== undefined) updates.fetchesUsed = data.fetchesUsed;
     if (data.periodResetAt !== undefined) updates.periodResetAt = data.periodResetAt;
 

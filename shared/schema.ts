@@ -12,7 +12,7 @@ export type PlanType = typeof planTypes[number];
 export const roleTypes = ["user", "admin"] as const;
 export type RoleType = typeof roleTypes[number];
 
-export const subscriptionStatusTypes = ["free", "active", "past_due", "canceled", "paused"] as const;
+export const subscriptionStatusTypes = ["free", "active", "canceling", "past_due", "canceled", "paused"] as const;
 export type SubscriptionStatusType = typeof subscriptionStatusTypes[number];
 
 export const fetchStatusTypes = ["queued", "running", "merging", "analyzing", "completed", "failed"] as const;
@@ -38,6 +38,7 @@ export const profiles = pgTable("profiles", {
   paddleSubscriptionId: text("paddle_subscription_id"),
   currentPeriodEnd: timestamp("current_period_end"),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+  cancelAt: timestamp("cancel_at"),
   periodResetAt: timestamp("period_reset_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -260,6 +261,7 @@ export type SanitizedUser = Omit<User, "passwordHash"> & {
   subscriptionStatus: SubscriptionStatusType;
   currentPeriodEnd: Date | null;
   cancelAtPeriodEnd: boolean;
+  cancelAt: Date | null;
 };
 
 export const durationBuckets = [

@@ -17,6 +17,12 @@ import {
   markPasswordResetSent,
   resetPasswordWithCode,
 } from "../../services/email";
+import {
+  authLimiter,
+  passwordResetRequestLimiter,
+  passwordResetCodeLimiter,
+  changePasswordLimiter,
+} from "../../middleware/rate-limit";
 
 declare module "express-session" {
   interface SessionData {
@@ -51,7 +57,7 @@ export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
 
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", authLimiter, async (req, res) => {
     try {
       const parseResult = registerSchema.safeParse(req.body);
       if (!parseResult.success) {
@@ -99,7 +105,7 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", authLimiter, async (req, res) => {
     try {
       const parseResult = loginSchema.safeParse(req.body);
       if (!parseResult.success) {
@@ -262,7 +268,7 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/change-password", isAuthenticated, async (req: any, res) => {
+  app.post("/api/auth/change-password", changePasswordLimiter, isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { currentPassword, newPassword } = req.body;
@@ -297,7 +303,7 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/forgot-password", async (req, res) => {
+  app.post("/api/auth/forgot-password", passwordResetRequestLimiter, async (req, res) => {
     try {
       const parseResult = forgotPasswordSchema.safeParse(req.body);
       if (!parseResult.success) {
@@ -334,7 +340,7 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/reset-password", async (req, res) => {
+  app.post("/api/auth/reset-password", passwordResetCodeLimiter, async (req, res) => {
     try {
       const parseResult = resetPasswordSchema.safeParse(req.body);
       if (!parseResult.success) {

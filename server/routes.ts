@@ -5,6 +5,7 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integra
 import subscriptionRouter from "./routes/subscription";
 import { z } from "zod";
 import { planLimits, type PlanType, type RoleType } from "@shared/schema";
+import { fetchLimiter } from "./middleware/rate-limit";
 
 const addCompetitorSchema = z.object({
   username: z.string().min(1).max(30).regex(/^[a-zA-Z0-9._@]+$/),
@@ -210,7 +211,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/fetch", isAuthenticated, async (req: any, res) => {
+  app.post("/api/fetch", isAuthenticated, fetchLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       

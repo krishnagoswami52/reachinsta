@@ -8,6 +8,7 @@ import { initApifyKeys } from "./services/keyManager";
 import paddleWebhookRouter from "./routes/paddleWebhook";
 import cron from "node-cron";
 import { downgradeExpiredSubscriptions } from "./jobs/downgrade-expired";
+import { apiLimiter } from "./middleware/rate-limit";
 
 console.log('[Env Check]', {
   db: !!process.env.DATABASE_URL,
@@ -41,6 +42,13 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+// Baseline API rate limit (generous — only catches egregious abuse / DoS).
+// Skip Paddle webhooks: those are server-to-server and must never be throttled.
+app.use("/api/", (req, res, next) => {
+  if (req.path.startsWith("/webhooks/")) return next();
+  return apiLimiter(req, res, next);
+});
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

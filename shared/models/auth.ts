@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, timestamp, varchar, text, boolean } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgTable, timestamp, varchar, text, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -40,6 +40,10 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   tokenHash: text("token_hash").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
+  // Failed-attempt tracking — caps brute-forcing of the 6-digit code even if the
+  // attacker rotates IPs (IP-based rate limiting alone is insufficient).
+  attempts: integer("attempts").default(0).notNull(),
+  blockedUntil: timestamp("blocked_until"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

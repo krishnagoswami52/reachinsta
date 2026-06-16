@@ -19,7 +19,7 @@ import { CompetitorCard } from "@/components/dashboard/competitor-card";
 import { EmptyState } from "@/components/dashboard/empty-state";
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { RefreshCw, TrendingUp, Eye, Users, BarChart3, Play, Clock, Sparkles } from "lucide-react";
+import { RefreshCw, TrendingUp, Eye, Users, BarChart3, Play, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { formatNumber, getTimeAgo } from "@/lib/utils";
 import type { Profile, Competitor, FetchRun, Reel, CompetitorStats } from "@shared/schema";
@@ -252,21 +252,6 @@ export default function DashboardPage() {
                   <div className="grid lg:grid-cols-2 gap-6">
                     <DurationChart reels={reels} />
                     <DurationScatterChart reels={reels} />
-                  </div>
-                  <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <Clock className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
-                      <h3 className="font-tight font-semibold text-[16px] text-text-primary">Best Posting Windows</h3>
-                    </div>
-                    <div className="grid md:grid-cols-3 gap-4">
-                      {["Monday 9:00 AM", "Wednesday 6:00 PM", "Saturday 12:00 PM"].map((time, i) => (
-                        <div key={i} className="p-4 rounded-md bg-bg-elevated border border-border-subtle text-center">
-                          <p className="font-mono text-[22px] font-medium text-mint">#{i + 1}</p>
-                          <p className="text-[14px] text-text-primary mt-1">{time}</p>
-                          <p className="font-mono text-[11px] text-text-muted mt-1">High engagement window</p>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 </TabsContent>
 

@@ -1,11 +1,15 @@
 import { Resend } from "resend";
 import crypto from "crypto";
 import { storage } from "../storage";
+import type { ResetPasswordResult } from "../storage";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const TOKEN_EXPIRY_HOURS = 24;
-const PASSWORD_RESET_TOKEN_EXPIRY_HOURS = 1;
+// Shortened from 1 hour to 15 minutes to shrink the brute-force window for the
+// 6-digit reset code (audit fix #3).
+const PASSWORD_RESET_TOKEN_EXPIRY_MS = 15 * 60 * 1000;
+const PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = 15;
 
 function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -103,7 +107,7 @@ export async function createAndSendPasswordResetCode(
 
   const code = generateCode();
   const codeHash = hashToken(code);
-  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_EXPIRY_MS);
 
   await storage.createPasswordResetToken(userId, codeHash, expiresAt);
 
@@ -138,7 +142,7 @@ export async function createAndSendPasswordResetCode(
                   ${code}
                 </div>
               </div>
-              <p style="color: #666; font-size: 14px;">This code will expire in ${PASSWORD_RESET_TOKEN_EXPIRY_HOURS} hour(s).</p>
+              <p style="color: #666; font-size: 14px;">This code will expire in ${PASSWORD_RESET_TOKEN_EXPIRY_MINUTES} minutes.</p>
               <p style="color: #666; font-size: 14px;">If you didn't request a password reset, you can safely ignore this email.</p>
             </div>
           </body>
@@ -156,7 +160,7 @@ export async function resetPasswordWithCode(
   userId: string,
   code: string,
   newPasswordHash: string,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<ResetPasswordResult> {
   const codeHash = hashToken(code);
   return storage.resetPasswordAtomic(userId, codeHash, newPasswordHash);
 }

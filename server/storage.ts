@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { eq, desc, and, sql, count } from "drizzle-orm";
 import { db } from "./db";
 import {
@@ -24,6 +25,34 @@ export type VerificationToken = {
   createdAt: Date | null;
 };
 
+/** Result of a password-reset attempt, including brute-force tracking signals. */
+export type ResetPasswordResult = {
+  success: boolean;
+  error?: string;
+  /** True when the user is temporarily blocked after too many failed attempts. */
+  blocked?: boolean;
+  /** Remaining attempts before the code is blocked (only on a wrong-code miss). */
+  remaining?: number;
+};
+
+/** Max wrong-code submissions before a reset code is blocked. */
+const MAX_RESET_ATTEMPTS = 5;
+/** How long a code stays blocked after exhausting attempts. */
+const RESET_BLOCK_MS = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Constant-time comparison of two SHA-256 hex digests. Avoids leaking, via
+ * response timing, how many leading characters of a guessed code hashed to the
+ * stored value. Both inputs are fixed-length (64 hex chars / 32 bytes).
+ */
+function timingSafeHexEqual(a: string, b: string): boolean {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  const bufA = Buffer.from(a, "hex");
+  const bufB = Buffer.from(b, "hex");
+  if (bufA.length === 0 || bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 export interface IStorage {
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -40,7 +69,7 @@ export interface IStorage {
 
   createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<VerificationToken>;
   deletePasswordResetTokensForUser(userId: string): Promise<void>;
-  resetPasswordAtomic(userId: string, tokenHash: string, newPasswordHash: string): Promise<{ success: boolean; error?: string }>;
+  resetPasswordAtomic(userId: string, tokenHash: string, newPasswordHash: string): Promise<ResetPasswordResult>;
   
   getProfile(id: string): Promise<Profile | undefined>;
   upsertProfile(profile: InsertProfile): Promise<Profile>;
@@ -235,45 +264,85 @@ export class DatabaseStorage implements IStorage {
     userId: string,
     tokenHash: string,
     newPasswordHash: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<ResetPasswordResult> {
     return await db.transaction(async (tx) => {
+      // Look the token up by user (not by hash) so a WRONG code still resolves to
+      // the pending token and we can count the failed attempt against it. Only one
+      // active token exists per user — a new code deletes prior ones — but order
+      // by createdAt defensively in case of overlap.
       const [token] = await tx
         .select()
         .from(passwordResetTokens)
-        .where(and(
-          eq(passwordResetTokens.userId, userId),
-          eq(passwordResetTokens.tokenHash, tokenHash),
-          sql`${passwordResetTokens.usedAt} IS NULL`,
-          sql`${passwordResetTokens.expiresAt} > NOW()`
-        ))
+        .where(eq(passwordResetTokens.userId, userId))
+        .orderBy(desc(passwordResetTokens.createdAt))
+        .limit(1)
         .for("update");
 
       if (!token) {
-        const [expiredOrUsed] = await tx
-          .select()
-          .from(passwordResetTokens)
-          .where(and(
-            eq(passwordResetTokens.userId, userId),
-            eq(passwordResetTokens.tokenHash, tokenHash),
-          ));
+        return { success: false, error: "Invalid or expired reset code" };
+      }
 
-        if (!expiredOrUsed) {
-          return { success: false, error: "Invalid reset code" };
-        }
-        if (expiredOrUsed.usedAt) {
-          return { success: false, error: "This reset code has already been used" };
-        }
+      const now = new Date();
+
+      // Hard block from previously exhausted attempts (checked before anything
+      // else so a blocked code cannot be probed further until it's re-requested).
+      if (token.blockedUntil && token.blockedUntil > now) {
+        return {
+          success: false,
+          blocked: true,
+          error: "Too many failed attempts. Request a new reset code.",
+        };
+      }
+
+      if (token.usedAt) {
+        return { success: false, error: "This reset code has already been used" };
+      }
+      if (token.expiresAt <= now) {
         return { success: false, error: "This reset code has expired" };
       }
 
+      const matches = timingSafeHexEqual(tokenHash, token.tokenHash);
+
+      if (!matches) {
+        const newAttempts = token.attempts + 1;
+
+        if (newAttempts >= MAX_RESET_ATTEMPTS) {
+          // Exhausted — block the code for an hour. Keep the row (not marked used)
+          // so the block above keeps rejecting probes until it expires or the user
+          // requests a fresh code.
+          await tx
+            .update(passwordResetTokens)
+            .set({ attempts: newAttempts, blockedUntil: new Date(now.getTime() + RESET_BLOCK_MS) })
+            .where(eq(passwordResetTokens.id, token.id));
+
+          return {
+            success: false,
+            blocked: true,
+            error: "Too many failed attempts. Request a new reset code.",
+          };
+        }
+
+        await tx
+          .update(passwordResetTokens)
+          .set({ attempts: newAttempts })
+          .where(eq(passwordResetTokens.id, token.id));
+
+        return {
+          success: false,
+          error: "Invalid or expired reset code",
+          remaining: MAX_RESET_ATTEMPTS - newAttempts,
+        };
+      }
+
+      // Correct code — consume it (one-time use) and set the new password.
       await tx
         .update(passwordResetTokens)
-        .set({ usedAt: new Date() })
+        .set({ usedAt: now })
         .where(eq(passwordResetTokens.id, token.id));
 
       await tx
         .update(users)
-        .set({ passwordHash: newPasswordHash, updatedAt: new Date() })
+        .set({ passwordHash: newPasswordHash, updatedAt: now })
         .where(eq(users.id, userId));
 
       return { success: true };

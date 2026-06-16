@@ -365,7 +365,19 @@ export async function setupAuth(app: Express) {
       const newPasswordHash = await hashPassword(password);
       const result = await resetPasswordWithCode(user.id, code, newPasswordHash);
       if (!result.success) {
-        return res.status(400).json({ message: result.error || "Failed to reset password" });
+        if (result.blocked) {
+          return res.status(429).json({
+            message: result.error || "Too many failed attempts. Request a new reset code.",
+            code: "RESET_BLOCKED",
+          });
+        }
+        if (typeof result.remaining === "number") {
+          return res.status(400).json({
+            message: `Invalid or expired reset code. ${result.remaining} attempt(s) remaining.`,
+            code: "INVALID_CODE",
+          });
+        }
+        return res.status(400).json({ message: result.error || "Invalid or expired reset code" });
       }
 
       res.json({ message: "Password reset successful" });

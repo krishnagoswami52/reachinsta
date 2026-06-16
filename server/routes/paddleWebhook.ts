@@ -84,45 +84,6 @@ router.post("/api/webhooks/paddle", raw({ type: "application/json" }), async (re
 
   const rawBody = req.body as Buffer;
 
-  // ─── TEMPORARY DIAGNOSTICS (remove after debugging 401) ──────────────────────
-  if (process.env.PADDLE_WEBHOOK_DEBUG === "1") {
-    try {
-      const parts = Object.fromEntries(
-        signatureHeader.split(";").map((p) => p.split("=") as [string, string]),
-      );
-      const { ts, h1 } = parts;
-      const isBuffer = Buffer.isBuffer(rawBody);
-      const signedPayload = `${ts}:${isBuffer ? rawBody.toString("utf8") : String(rawBody)}`;
-      const computed = createHmac("sha256", webhookSecret).update(signedPayload).digest("hex");
-
-      // Detect secret corruption (trailing whitespace / wrapping quotes) without leaking it
-      const trimmed = webhookSecret.trim();
-      const hasWhitespace = trimmed.length !== webhookSecret.length;
-      const hasQuotes = /^['"]|['"]$/.test(webhookSecret);
-
-      console.log("[Paddle Webhook][DEBUG]", {
-        rawBodyIsBuffer: isBuffer,
-        rawBodyLength: isBuffer ? rawBody.length : `NOT A BUFFER (type=${typeof rawBody})`,
-        contentType: req.headers["content-type"],
-        signatureHeader,
-        parsedTs: ts,
-        receivedH1First10: (h1 ?? "").slice(0, 10),
-        computedHmacFirst10: computed.slice(0, 10),
-        match: computed === h1,
-        secretLength: webhookSecret.length,
-        secretFirst6: webhookSecret.slice(0, 6),
-        secretHasSurroundingWhitespace: hasWhitespace,
-        secretHasWrappingQuotes: hasQuotes,
-        sigTimestamp: ts ? new Date(Number(ts) * 1000).toISOString() : null,
-        serverTimeNow: new Date().toISOString(),
-        skewSeconds: ts ? Math.round(Date.now() / 1000 - Number(ts)) : null,
-      });
-    } catch (e) {
-      console.error("[Paddle Webhook][DEBUG] diagnostic block threw", e);
-    }
-  }
-  // ─────────────────────────────────────────────────────────────────────────────
-
   if (!verifyPaddleSignature(rawBody, signatureHeader, webhookSecret)) {
     console.warn("[Paddle Webhook] Signature verification failed");
     return res.sendStatus(401);

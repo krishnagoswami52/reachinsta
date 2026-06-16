@@ -1,7 +1,14 @@
 import { Router, raw } from "express";
 import { createHmac, timingSafeEqual } from "crypto";
+import { eq } from "drizzle-orm";
 import { storage } from "../storage";
+import { db } from "../db";
+import { processedWebhookEvents } from "@shared/schema";
 import type { PlanType } from "@shared/schema";
+
+// Reject events whose signature timestamp is more than this far from now (in
+// either direction). Blunts replay of captured webhook payloads.
+const TIMESTAMP_TOLERANCE_SECONDS = 300; // 5 minutes
 
 const router = Router();
 
@@ -121,6 +128,27 @@ router.post("/api/webhooks/paddle", raw({ type: "application/json" }), async (re
     return res.sendStatus(401);
   }
 
+  // Timestamp freshness — the `ts` in the (already-verified) signature header is
+  // the value Paddle signed, so it can't be forged. Reject anything outside the
+  // tolerance window to defeat replay of a captured payload.
+  const sigTs = Object.fromEntries(
+    signatureHeader.split(";").map((p) => p.split("=") as [string, string]),
+  ).ts;
+  const eventTimestamp = parseInt(sigTs ?? "", 10);
+  if (!Number.isFinite(eventTimestamp)) {
+    console.warn("[Paddle Webhook] Missing/invalid signature timestamp");
+    return res.sendStatus(400);
+  }
+  const ageSeconds = Math.floor(Date.now() / 1000) - eventTimestamp;
+  if (ageSeconds > TIMESTAMP_TOLERANCE_SECONDS) {
+    console.warn(`[Paddle Webhook] Rejecting stale event: age=${ageSeconds}s`);
+    return res.status(401).json({ message: "Webhook timestamp too old" });
+  }
+  if (ageSeconds < -TIMESTAMP_TOLERANCE_SECONDS) {
+    console.warn(`[Paddle Webhook] Rejecting future event: age=${ageSeconds}s`);
+    return res.status(401).json({ message: "Webhook timestamp in future" });
+  }
+
   let event: any;
   try {
     event = JSON.parse(rawBody.toString("utf8"));
@@ -129,14 +157,41 @@ router.post("/api/webhooks/paddle", raw({ type: "application/json" }), async (re
   }
 
   const eventType: string = event.event_type ?? event.type ?? "";
+  const eventId: string | undefined = event.event_id;
   const data = event.data ?? {};
-  console.log(`[Paddle Webhook] ${eventType}`, { subscriptionId: data.id, customerId: data.customer_id });
+  console.log(`[Paddle Webhook] ${eventType}`, { eventId, subscriptionId: data.id, customerId: data.customer_id });
+
+  // Idempotency — skip events we've already applied (Paddle retries / replays).
+  if (eventId) {
+    const alreadyProcessed = await db
+      .select()
+      .from(processedWebhookEvents)
+      .where(eq(processedWebhookEvents.eventId, eventId))
+      .limit(1);
+    if (alreadyProcessed.length > 0) {
+      console.log(`[Paddle Webhook] Duplicate event, already processed: ${eventId} (${eventType})`);
+      return res.status(200).json({ ok: true, deduped: true });
+    }
+  } else {
+    console.warn(`[Paddle Webhook] Event has no event_id (${eventType}); processing without dedup`);
+  }
 
   try {
     await handlePaddleEvent(eventType, data);
+
+    // Record only after the handler actually completed. onConflictDoNothing
+    // covers the race where two copies of the same event pass the SELECT above.
+    if (eventId) {
+      await db
+        .insert(processedWebhookEvents)
+        .values({ eventId, eventType })
+        .onConflictDoNothing();
+    }
   } catch (err) {
-    console.error(`[Paddle Webhook] Handler error for ${eventType}:`, err);
-    // Return 200 so Paddle doesn't retry — log and investigate separately
+    console.error(`[Paddle Webhook] Handler error for ${eventType} (event_id=${eventId}):`, err);
+    // Return 500 so Paddle retries per its schedule, instead of silently
+    // dropping the event. Handlers apply absolute state, so a retry is safe.
+    return res.status(500).json({ message: "Handler failed, will be retried" });
   }
 
   return res.sendStatus(200);

@@ -135,6 +135,19 @@ export const insertApifyKeySchema = createInsertSchema(apifyKeys).omit({ id: tru
 export type InsertApifyKey = typeof apifyKeys.$inferInsert;
 export type ApifyKey = typeof apifyKeys.$inferSelect;
 
+// Idempotency log for Paddle webhooks. One row per successfully-processed
+// event_id; the webhook handler skips any event_id already present here so
+// Paddle retries / replays don't apply a state change twice.
+export const processedWebhookEvents = pgTable("processed_webhook_events", {
+  eventId: varchar("event_id").primaryKey(), // Paddle's evt_xxx
+  eventType: varchar("event_type").notNull(),
+  processedAt: timestamp("processed_at").defaultNow().notNull(),
+}, (table) => [
+  index("processed_webhook_events_processed_at_idx").on(table.processedAt),
+]);
+
+export type ProcessedWebhookEvent = typeof processedWebhookEvents.$inferSelect;
+
 export const profilesRelations = relations(profiles, ({ many }) => ({
   competitors: many(competitors),
   fetchRuns: many(fetchRuns),

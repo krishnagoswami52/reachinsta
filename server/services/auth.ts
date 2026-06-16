@@ -5,6 +5,11 @@ import type { Profile, SanitizedUser } from "@shared/schema";
 
 const SALT_ROUNDS = 12;
 
+// Pre-computed once at startup. Used to run a bcrypt comparison even when no
+// matching user exists, so login response timing is the same whether or not the
+// email is registered (defeats timing-based account enumeration).
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("reachinsta-timing-defense-dummy-password", SALT_ROUNDS);
+
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, SALT_ROUNDS);
 }
@@ -33,16 +38,14 @@ export async function registerUser(input: RegisterInput): Promise<User> {
 
 export async function loginUser(input: LoginInput): Promise<User> {
   const user = await storage.getUserByEmail(input.email);
-  if (!user) {
-    throw new Error("Invalid email or password");
-  }
 
-  if (!user.passwordHash) {
-    throw new Error("Please set a password for your account");
-  }
+  // Always run a bcrypt comparison — against the real hash if the user exists,
+  // otherwise against a dummy hash — so the response takes the same time whether
+  // or not the email is registered. Never reveal which factor failed.
+  const hashToCompare = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
+  const passwordValid = await verifyPassword(input.password, hashToCompare);
 
-  const isValid = await verifyPassword(input.password, user.passwordHash);
-  if (!isValid) {
+  if (!user || !user.passwordHash || !passwordValid) {
     throw new Error("Invalid email or password");
   }
 

@@ -1,5 +1,7 @@
 import bcrypt from "bcryptjs";
+import { sql } from "drizzle-orm";
 import { storage } from "../storage";
+import { db } from "../db";
 import type { User, RegisterInput, LoginInput } from "@shared/models/auth";
 import type { Profile, SanitizedUser } from "@shared/schema";
 
@@ -50,6 +52,32 @@ export async function loginUser(input: LoginInput): Promise<User> {
   }
 
   return user;
+}
+
+/**
+ * Destroys sessions for a user by deleting rows from the connect-pg-simple
+ * `sessions` table whose serialized session JSON carries the matching userId.
+ *
+ * Session shape (verified against the live table): the `sess` jsonb column
+ * stores `userId` at the top level — i.e. `sess->>'userId'`. The unqualified
+ * `sessions` name resolves to public.sessions via search_path (the unrelated
+ * Supabase auth.sessions table has no `sess` column).
+ *
+ * @param userId          user whose sessions to destroy
+ * @param exceptCurrentSid if given, keep this session (used on a voluntary
+ *                         password change so the actor stays logged in)
+ * @returns number of sessions destroyed
+ */
+export async function destroyUserSessions(userId: string, exceptCurrentSid?: string): Promise<number> {
+  const result = exceptCurrentSid
+    ? await db.execute(
+        sql`DELETE FROM sessions WHERE sess->>'userId' = ${userId} AND sid <> ${exceptCurrentSid}`,
+      )
+    : await db.execute(sql`DELETE FROM sessions WHERE sess->>'userId' = ${userId}`);
+
+  const count = result.rowCount ?? 0;
+  console.log(`[Auth] Destroyed ${count} session(s) for user ${userId}${exceptCurrentSid ? " (kept current)" : ""}`);
+  return count;
 }
 
 export function sanitizeUser(user: User): Omit<User, "passwordHash"> {

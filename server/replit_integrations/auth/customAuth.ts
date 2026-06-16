@@ -1,7 +1,7 @@
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
-import { registerUser, loginUser, sanitizeUser, hashPassword, verifyPassword } from "../../services/auth";
+import { registerUser, loginUser, sanitizeUser, hashPassword, verifyPassword, destroyUserSessions } from "../../services/auth";
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/models/auth";
 import { users as dbUsers } from "@shared/models/auth";
 import { storage } from "../../storage";
@@ -296,6 +296,11 @@ export async function setupAuth(app: Express) {
       const newHash = await hashPassword(newPassword);
       await db.update(dbUsers).set({ passwordHash: newHash, updatedAt: new Date() }).where(eq(dbUsers.id, userId));
 
+      // Lock out any other (possibly compromised) sessions, but keep the
+      // current one — the user is doing this voluntarily and shouldn't be
+      // logged out of the action they just took.
+      await destroyUserSessions(userId, req.sessionID);
+
       res.json({ message: "Password updated successfully" });
     } catch (error) {
       console.error("Change password error:", error);
@@ -379,6 +384,10 @@ export async function setupAuth(app: Express) {
         }
         return res.status(400).json({ message: result.error || "Invalid or expired reset code" });
       }
+
+      // A reset implies the account may have been compromised — destroy ALL
+      // sessions (including any held by an attacker). The user re-logs in fresh.
+      await destroyUserSessions(user.id);
 
       res.json({ message: "Password reset successful" });
     } catch (error) {

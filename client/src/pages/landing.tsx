@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { VideoModal } from "@/components/VideoModal";
-import { DEMO_VIDEO_ID, DEMO_VIDEO_TITLE } from "@/config/video";
+import { DEMO_VIDEO_ID, DEMO_VIDEO_TITLE, DEMO_VIDEO_DURATION } from "@/config/video";
 
 export default function LandingPage() {
   useEffect(() => { document.title = "ReachInsta — Find viral Reels before your competitors do."; }, []);
@@ -161,6 +161,52 @@ export default function LandingPage() {
             <span className="text-[14px] text-text-secondary">combined Instagram followers</span>
           </div>
           <span className="font-mono text-[11px] text-text-muted hidden lg:inline">// not a stock-photo trust badge</span>
+        </div>
+      </section>
+
+      {/* PRODUCT DEMO VIDEO */}
+      <section className="py-14 lg:py-24 border-b border-border-subtle">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <div className="w-20 h-px bg-mint mb-6" />
+          <h2 className="font-tight font-bold text-[40px] lg:text-[48px] leading-[1.1] tracking-tightest mb-3 max-w-[700px]">
+            See ReachInsta in 90 seconds.
+          </h2>
+          <p className="text-[17px] text-text-secondary max-w-[480px] mb-14">
+            One fetch, one dashboard, zero doomscrolling. Watch the whole flow.
+          </p>
+
+          <button
+            onClick={() => setIsVideoOpen(true)}
+            className="group relative block w-full max-w-[880px] aspect-video rounded-lg overflow-hidden bg-bg-surface border border-border-subtle hover:border-border-soft transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mint/60"
+            aria-label="Play product demo video"
+          >
+            <img
+              src={`https://img.youtube.com/vi/${DEMO_VIDEO_ID}/maxresdefault.jpg`}
+              alt="ReachInsta product demo preview"
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+              onError={(e) => {
+                const img = e.currentTarget;
+                img.onerror = null;
+                img.src = `https://img.youtube.com/vi/${DEMO_VIDEO_ID}/hqdefault.jpg`;
+              }}
+            />
+            <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-mint group-hover:bg-mint-hover group-hover:scale-110 transition-all duration-300 flex items-center justify-center shadow-2xl">
+                <svg width="26" height="26" viewBox="0 0 22 22" fill="none" className="ml-1">
+                  <path d="M6 4L18 11L6 18V4Z" fill="#0A0B0D"/>
+                </svg>
+              </div>
+            </div>
+            <div className="absolute bottom-4 right-4 px-2.5 py-1 bg-black/70 rounded font-mono text-[11px] text-text-primary" style={{ backdropFilter: "blur(4px)" }}>
+              {DEMO_VIDEO_DURATION}
+            </div>
+          </button>
+
+          <p className="font-mono text-[12px] text-text-muted mt-6">
+            No signup required to watch. Sound optional, results not.
+          </p>
         </div>
       </section>
 

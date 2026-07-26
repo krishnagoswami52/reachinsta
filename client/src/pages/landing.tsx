@@ -1,7 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { VideoModal } from "@/components/VideoModal";
+import { DEMO_VIDEO_ID, DEMO_VIDEO_TITLE } from "@/config/video";
 
 export default function LandingPage() {
   useEffect(() => { document.title = "ReachInsta — Find viral Reels before your competitors do."; }, []);
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-bg-base text-text-primary">
@@ -60,6 +63,13 @@ export default function LandingPage() {
               <a href="/signup" className="bg-mint hover:bg-mint-hover text-bg-base font-semibold text-[14px] px-5 py-3 rounded-md inline-flex items-center gap-2 transition-all hover:-translate-y-px">
                 Start tracking &mdash; it&apos;s free <ArrowIcon />
               </a>
+              <button
+                onClick={() => setIsVideoOpen(true)}
+                className="border border-border-subtle hover:border-mint hover:text-mint text-text-primary font-semibold text-[14px] px-5 py-3 rounded-md inline-flex items-center gap-2 transition-colors"
+                aria-label="Watch 90 second product demo video"
+              >
+                <PlayIcon /> Watch 90s demo
+              </button>
             </div>
 
             <p className="font-mono text-[12px] text-text-muted mt-5">
@@ -476,6 +486,13 @@ export default function LandingPage() {
         </div>
       </footer>
 
+      <VideoModal
+        isOpen={isVideoOpen}
+        onClose={() => setIsVideoOpen(false)}
+        videoId={DEMO_VIDEO_ID}
+        title={DEMO_VIDEO_TITLE}
+      />
+
     </div>
   );
 }
@@ -499,6 +516,14 @@ function PricingFeatureMissing({ children }: { children: React.ReactNode }) {
       </svg>
       <span className="text-text-muted">{children}</span>
     </li>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path d="M2.5 1.5L10.5 6L2.5 10.5V1.5Z" fill="currentColor"/>
+    </svg>
   );
 }
 

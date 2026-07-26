@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { FloatingVideoBadge } from "@/components/FloatingVideoBadge";
 
 export default function LandingPage() {
   useEffect(() => { document.title = "ReachInsta — Find viral Reels before your competitors do."; }, []);
@@ -475,6 +476,9 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Floating demo-video badge — landing page only */}
+      <FloatingVideoBadge />
 
     </div>
   );

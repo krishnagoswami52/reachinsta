@@ -28,7 +28,7 @@ export function QuickTips({ reels, stats, timeRangeDays }: QuickTipsProps) {
 
   if (hourData.length > 0) {
     const bestHour = hourData.reduce((best, curr) => curr.avgER > best.avgER ? curr : best);
-    tips.push(`Post around ${bestHour.hour}:00 - engagement is strongest at this hour.`);
+    tips.push(`Post around ${bestHour.hour}:00 your local time - engagement is strongest at this hour.`);
   }
 
   const dayData = DAYS.map((day, index) => {

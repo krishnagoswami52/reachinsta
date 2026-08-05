@@ -21,7 +21,7 @@ export function MetricsNotes() {
           <span className="text-text-primary">Duration buckets</span> identify optimal video length for your niche
         </li>
         <li className="font-mono text-[12px] text-text-secondary">
-          Post timing is based on when competitors uploaded their reels (UTC)
+          Post timing is based on when competitors uploaded their reels, shown in your local time
         </li>
         <li className="font-mono text-[12px] text-text-secondary">
           Data fetched via Apify — slight delays possible

@@ -17,7 +17,7 @@ export function ERByHourChart({ reels }: ERByHourChartProps) {
     <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
       <div className="mb-6">
         <h3 className="font-tight font-semibold text-[16px] text-text-primary mb-1">Avg ER by Upload Hour</h3>
-        <p className="font-mono text-[11px] text-text-muted">Engagement rate per posting hour (UTC)</p>
+        <p className="font-mono text-[11px] text-text-muted">Engagement rate per posting hour (your local time)</p>
       </div>
       <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>

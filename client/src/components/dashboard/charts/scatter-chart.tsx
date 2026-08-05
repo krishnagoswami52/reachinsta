@@ -1,6 +1,8 @@
 ﻿import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Timer } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
 import type { Reel } from "@shared/schema";
 
 interface DurationScatterChartProps {
@@ -20,6 +22,7 @@ export function DurationScatterChart({ reels }: DurationScatterChartProps) {
       <div className="flex items-center gap-2 mb-1">
         <Timer className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
         <h3 className="font-tight font-semibold text-[16px] text-text-primary">Duration vs Views</h3>
+        <HelpText {...METRIC_HELP.durationScatter} />
       </div>
       <p className="font-mono text-[11px] text-text-muted mb-4">
         Relationship between video length and performance
@@ -70,6 +73,9 @@ export function DurationScatterChart({ reels }: DurationScatterChartProps) {
           </ScatterChart>
         </ResponsiveContainer>
       </div>
+      <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
+        💡 Each dot = one reel. Cluster shows the sweet spot. Outliers = viral exceptions worth studying.
+      </p>
     </div>
   );
 }

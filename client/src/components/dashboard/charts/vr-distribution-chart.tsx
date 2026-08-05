@@ -1,4 +1,6 @@
 ﻿import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
 import type { Reel } from "@shared/schema";
 
 interface VRDistributionChartProps {
@@ -17,7 +19,10 @@ export function VRDistributionChart({ reels }: VRDistributionChartProps) {
   return (
     <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
       <div className="mb-6">
-        <h3 className="font-tight font-semibold text-[16px] text-text-primary mb-1">View-to-Like Ratio Distribution</h3>
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-tight font-semibold text-[16px] text-text-primary">View-to-Like Ratio Distribution</h3>
+          <HelpText {...METRIC_HELP.vrDistribution} />
+        </div>
         <p className="font-mono text-[11px] text-text-muted">Lower ratio = more engagement relative to views</p>
       </div>
       <div className="h-[300px]">
@@ -37,6 +42,9 @@ export function VRDistributionChart({ reels }: VRDistributionChartProps) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
+        💡 Lower ratio = more engaged audience per view. Aim for ratios below the median.
+      </p>
     </div>
   );
 }

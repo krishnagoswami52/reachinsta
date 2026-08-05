@@ -1,4 +1,6 @@
 ﻿import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
 import type { Reel } from "@shared/schema";
 
 interface ERByWeekdayChartProps {
@@ -18,7 +20,10 @@ export function ERByWeekdayChart({ reels }: ERByWeekdayChartProps) {
   return (
     <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
       <div className="mb-6">
-        <h3 className="font-tight font-semibold text-[16px] text-text-primary mb-1">Avg ER by Weekday</h3>
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-tight font-semibold text-[16px] text-text-primary">Avg ER by Weekday</h3>
+          <HelpText {...METRIC_HELP.erByWeekday} />
+        </div>
         <p className="font-mono text-[11px] text-text-muted">Average engagement rate per day of the week</p>
       </div>
       <div className="h-[300px]">
@@ -38,6 +43,9 @@ export function ERByWeekdayChart({ reels }: ERByWeekdayChartProps) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
+        💡 Which days perform best in your niche. Tuesday-Wednesday spikes are common in B2B/tech niches.
+      </p>
     </div>
   );
 }

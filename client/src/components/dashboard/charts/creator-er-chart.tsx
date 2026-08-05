@@ -1,4 +1,6 @@
 ﻿import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
 import type { CompetitorStats } from "@shared/schema";
 
 interface CreatorERChartProps {
@@ -17,7 +19,10 @@ export function CreatorERChart({ stats }: CreatorERChartProps) {
   return (
     <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
       <div className="mb-6">
-        <h3 className="font-tight font-semibold text-[16px] text-text-primary mb-1">Top Creators by Avg ER (%)</h3>
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-tight font-semibold text-[16px] text-text-primary">Top Creators by Avg ER (%)</h3>
+          <HelpText {...METRIC_HELP.topCreatorsByER} />
+        </div>
         <p className="font-mono text-[11px] text-text-muted">Engagement rate per creator</p>
       </div>
       <div className="h-[300px]">
@@ -48,6 +53,9 @@ export function CreatorERChart({ stats }: CreatorERChartProps) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
+        💡 Small accounts with high ER often outperform big accounts with low ER. Study these creators' content style, not just their size.
+      </p>
     </div>
   );
 }

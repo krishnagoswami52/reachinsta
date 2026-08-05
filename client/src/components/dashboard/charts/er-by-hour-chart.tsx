@@ -1,4 +1,6 @@
 ﻿import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
 import type { Reel } from "@shared/schema";
 
 interface ERByHourChartProps {
@@ -16,7 +18,10 @@ export function ERByHourChart({ reels }: ERByHourChartProps) {
   return (
     <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
       <div className="mb-6">
-        <h3 className="font-tight font-semibold text-[16px] text-text-primary mb-1">Avg ER by Upload Hour</h3>
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-tight font-semibold text-[16px] text-text-primary">Avg ER by Upload Hour</h3>
+          <HelpText {...METRIC_HELP.erByHour} />
+        </div>
         <p className="font-mono text-[11px] text-text-muted">Engagement rate per posting hour (your local time)</p>
       </div>
       <div className="h-[300px]">
@@ -36,6 +41,9 @@ export function ERByHourChart({ reels }: ERByHourChartProps) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
+        💡 When your niche's audience is most active. Bar height shows engagement rate at each hour of the day.
+      </p>
     </div>
   );
 }

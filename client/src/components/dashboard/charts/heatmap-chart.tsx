@@ -1,6 +1,8 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Clock } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
 import type { Reel } from "@shared/schema";
 
 interface HeatmapChartProps {
@@ -60,6 +62,7 @@ export function HeatmapChart({ reels, metric = "views" }: HeatmapChartProps) {
         <h3 className="font-tight font-semibold text-[16px] text-text-primary">
           {metric === "views" ? "Views Heatmap" : "Engagement Heatmap"}
         </h3>
+        <HelpText {...(metric === "views" ? METRIC_HELP.viewsHeatmap : METRIC_HELP.engagementHeatmap)} />
       </div>
       <p className="font-mono text-[11px] text-text-muted">
         {metric === "views"
@@ -121,6 +124,11 @@ export function HeatmapChart({ reels, metric = "views" }: HeatmapChartProps) {
         </div>
         <span>More</span>
       </div>
+      <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
+        {metric === "views"
+          ? "💡 Darker cells = when competitors get more views. Post during your niche's peak traffic times to maximize reach."
+          : "💡 Darker cells = when audiences engage most. High engagement boosts Instagram's algorithm ranking."}
+      </p>
     </div>
   );
 }

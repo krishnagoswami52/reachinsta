@@ -1,6 +1,8 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Timer } from "lucide-react";
 import { formatNumber, DURATION_BUCKETS } from "@/lib/utils";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
 import type { Reel } from "@shared/schema";
 
 interface DurationChartProps {
@@ -38,6 +40,7 @@ export function DurationChart({ reels }: DurationChartProps) {
       <div className="flex items-center gap-2 mb-1">
         <Timer className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
         <h3 className="font-tight font-semibold text-[16px] text-text-primary">Duration Performance</h3>
+        <HelpText {...METRIC_HELP.durationPerformance} />
       </div>
       {bestBucket && bestBucket.avgViews > 0 && (
         <p className="font-mono text-[11px] text-text-muted mb-4">
@@ -62,6 +65,9 @@ export function DurationChart({ reels }: DurationChartProps) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
+        💡 Same duration data, ranked by average views. Try to match the top-performing bucket length.
+      </p>
     </div>
   );
 }

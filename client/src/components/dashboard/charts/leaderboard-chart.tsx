@@ -1,6 +1,8 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Trophy } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
 import type { CompetitorStats } from "@shared/schema";
 
 interface LeaderboardChartProps {
@@ -23,6 +25,7 @@ export function LeaderboardChart({ stats }: LeaderboardChartProps) {
       <div className="flex items-center gap-2 mb-1">
         <Trophy className="w-4 h-4 text-mint" strokeWidth={1.5} />
         <h3 className="font-tight font-semibold text-[16px] text-text-primary">Competitor Leaderboard</h3>
+        <HelpText {...METRIC_HELP.competitorLeaderboard} />
       </div>
       <p className="font-mono text-[11px] text-text-muted mb-6">Top 10 by average views per reel</p>
       <div className="h-[350px]">
@@ -58,6 +61,9 @@ export function LeaderboardChart({ stats }: LeaderboardChartProps) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
+        💡 Ranked by average views per reel (not total). Shows who's consistently getting reach in your niche.
+      </p>
     </div>
   );
 }

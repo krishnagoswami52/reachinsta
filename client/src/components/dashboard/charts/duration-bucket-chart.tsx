@@ -1,5 +1,7 @@
 ﻿import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { formatNumber, DURATION_BUCKETS } from "@/lib/utils";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
 import type { Reel } from "@shared/schema";
 
 interface DurationBucketChartProps {
@@ -16,7 +18,10 @@ export function DurationBucketChart({ reels }: DurationBucketChartProps) {
   return (
     <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
       <div className="mb-6">
-        <h3 className="font-tight font-semibold text-[16px] text-text-primary mb-1">Avg Views by Duration</h3>
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-tight font-semibold text-[16px] text-text-primary">Avg Views by Duration</h3>
+          <HelpText {...METRIC_HELP.avgViewsByDuration} />
+        </div>
         <p className="font-mono text-[11px] text-text-muted">Average views per reel by duration bucket</p>
       </div>
       <div className="h-[300px]">
@@ -35,6 +40,9 @@ export function DurationBucketChart({ reels }: DurationBucketChartProps) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
+        💡 How long your ideal reel should be. Sweet spot varies by niche — study the top-performing bucket.
+      </p>
     </div>
   );
 }

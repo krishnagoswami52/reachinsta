@@ -69,9 +69,18 @@ export default function AnalyticsPage() {
   const hasData = reels.length > 0;
 
   // Zero-view reels are scrape failures (missing videoPlayCount), not real data —
-  // they carry ER=0 and drag every average down. Excluded from all aggregations.
+  // they carry ER=0 and drag every average down. ER above 30% is not achievable
+  // organically and indicates a broken view count. Both excluded from all aggregations.
   const validReels = useMemo(
-    () => reels.filter(r => r.views > 0),
+    () => reels.filter(r => {
+      if (r.views <= 0) return false;
+      const er = parseFloat(String(r.engagementRate));
+      if (er > 0.30) {
+        console.warn(`[Analytics] Excluded reel with suspicious ER ${(er * 100).toFixed(1)}% from @${r.username}`);
+        return false;
+      }
+      return true;
+    }),
     [reels]
   );
 
@@ -209,7 +218,7 @@ export default function AnalyticsPage() {
               <div className="font-mono text-[32px] font-medium text-text-primary tracking-tight">{reels.length}</div>
               {reels.length > validReels.length && (
                 <div className="font-mono text-[10px] text-text-muted mt-1">
-                  {reels.length - validReels.length} excluded (no view data)
+                  {reels.length - validReels.length} excluded (unreliable data)
                 </div>
               )}
             </div>

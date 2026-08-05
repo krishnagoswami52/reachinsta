@@ -25,6 +25,12 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
+# CRITICAL: Analytics depend on UTC. DO NOT change to Asia/Kolkata.
+# posted_at is stored as UTC wall-clock in a timestamp-without-timezone column;
+# the pg driver parses it in the process's local TZ, so a non-UTC container
+# would shift every timestamp served to users (see docs/analytics-timezone-diagnostic.md).
+ENV TZ=UTC
+
 # Sirf production deps
 COPY package*.json ./
 RUN npm ci --legacy-peer-deps --omit=dev

@@ -1,5 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatNumber } from "@/lib/utils";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
 import type { Reel } from "@shared/schema";
 
 interface TopReelsTableProps {
@@ -45,8 +47,12 @@ export function TopReelsTable({ reels, sortBy }: TopReelsTableProps) {
               <TableHead className="text-right font-mono text-[10px] uppercase tracking-wider text-text-muted">Views</TableHead>
               <TableHead className="text-right hidden sm:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">Likes</TableHead>
               <TableHead className="text-right hidden sm:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">Comments</TableHead>
-              <TableHead className="text-right font-mono text-[10px] uppercase tracking-wider text-text-muted">ER %</TableHead>
-              <TableHead className="text-right hidden md:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">VR</TableHead>
+              <TableHead className="text-right font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                <span className="inline-flex items-center gap-1">ER % <HelpText {...METRIC_HELP.er} /></span>
+              </TableHead>
+              <TableHead className="text-right hidden md:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                <span className="inline-flex items-center gap-1">VR <HelpText {...METRIC_HELP.vr} /></span>
+              </TableHead>
               <TableHead className="text-right hidden md:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">Duration</TableHead>
               <TableHead className="hidden lg:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">Posted</TableHead>
             </TableRow>
@@ -76,6 +82,11 @@ export function TopReelsTable({ reels, sortBy }: TopReelsTableProps) {
           </TableBody>
         </Table>
       </div>
+      <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
+        {sortBy === "views"
+          ? "💡 These reels went viral. Study their first 3 seconds, hooks, and titles to understand what triggered growth."
+          : "💡 These have loyal, engaged audiences. Study their community-building tactics and content depth."}
+      </p>
     </div>
   );
 }

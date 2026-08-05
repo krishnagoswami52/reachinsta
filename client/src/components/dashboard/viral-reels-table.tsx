@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/select";
 import { formatNumber, formatPercentage, getDurationBucket } from "@/lib/utils";
 import { ExternalLink, TrendingUp, ArrowUpDown, Search, Filter } from "lucide-react";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
 import type { Reel } from "@shared/schema";
 
 interface ViralReelsTableProps {
@@ -163,11 +165,17 @@ export function ViralReelsTable({ reels, competitors = [], isLoading }: ViralRee
                 <TableHead className="text-right hidden sm:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">Likes</TableHead>
                 <TableHead className="text-right hidden sm:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">Comments</TableHead>
                 <TableHead className="text-right">
-                  <SortableHeader field="engagementRate">ER</SortableHeader>
+                  <span className="inline-flex items-center gap-1">
+                    <SortableHeader field="engagementRate">ER</SortableHeader>
+                    <HelpText {...METRIC_HELP.er} />
+                  </span>
                 </TableHead>
                 <TableHead className="text-center hidden md:table-cell font-mono text-[10px] uppercase tracking-wider text-text-muted">Duration</TableHead>
                 <TableHead className="text-right">
-                  <SortableHeader field="viralScore">Score</SortableHeader>
+                  <span className="inline-flex items-center gap-1">
+                    <SortableHeader field="viralScore">Score</SortableHeader>
+                    <HelpText {...METRIC_HELP.viralScore} />
+                  </span>
                 </TableHead>
                 <TableHead className="text-right hidden sm:table-cell">
                   <SortableHeader field="postedAt">Posted</SortableHeader>
@@ -243,6 +251,9 @@ export function ViralReelsTable({ reels, competitors = [], isLoading }: ViralRee
           </Table>
         </div>
       </div>
+      <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
+        💡 Ranked by weighted viral score (views + engagement, log scale). Copy their structure, hooks, and captions.
+      </p>
     </div>
   );
 }

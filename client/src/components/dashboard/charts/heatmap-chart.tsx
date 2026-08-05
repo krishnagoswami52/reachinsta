@@ -57,10 +57,17 @@ export function HeatmapChart({ reels, metric = "views" }: HeatmapChartProps) {
     <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
       <div className="flex items-center gap-2 mb-1">
         <Clock className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
-        <h3 className="font-tight font-semibold text-[16px] text-text-primary">Posting Time Heatmap</h3>
+        <h3 className="font-tight font-semibold text-[16px] text-text-primary">
+          {metric === "views" ? "Views Heatmap" : "Engagement Heatmap"}
+        </h3>
       </div>
+      <p className="font-mono text-[11px] text-text-muted">
+        {metric === "views"
+          ? "When posts get the most views — darker cell = higher avg views (your local time)"
+          : "When posts get the highest engagement rate — darker cell = higher avg ER (your local time)"}
+      </p>
       {bestTime && bestTime.value > 0 && (
-        <p className="font-mono text-[11px] text-text-muted mb-4">
+        <p className="font-mono text-[11px] text-text-muted mb-4 mt-1">
           Best: <span className="text-mint">{days[bestTime.day]}</span> at {bestTime.hour}:00
           {" "}({metric === "views" ? formatNumber(Math.round(bestTime.value)) + " avg views" : (bestTime.value * 100).toFixed(2) + "% eng"})
         </p>

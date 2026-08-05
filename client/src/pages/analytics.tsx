@@ -20,7 +20,28 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 
 import { BarChart3, Calendar, Clock, Users, CheckCircle2, XCircle, Loader2, TrendingUp, Eye, ChevronDown } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
+import { HelpText } from "@/components/analytics/HelpText";
+import { METRIC_HELP } from "@/lib/metric-help";
+import { classifyER, classifyViews, getERContext, getViewsContext, TIER_LABELS, type BenchmarkTier } from "@/lib/benchmarks";
 import type { FetchRun, Reel, CompetitorStats } from "@shared/schema";
+
+const TIER_STYLES: Record<BenchmarkTier, string> = {
+  excellent: "bg-mint/15 text-mint border-mint/30",
+  good: "bg-mint/10 text-mint border-mint/20",
+  average: "bg-bg-elevated text-text-secondary border-border-subtle",
+  below: "bg-amber-500/10 text-amber-500 border-amber-500/30",
+};
+
+function TierBadge({ tier, context }: { tier: BenchmarkTier; context: string }) {
+  return (
+    <div className="mt-2">
+      <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded border ${TIER_STYLES[tier]}`}>
+        {TIER_LABELS[tier]}
+      </span>
+      <p className="font-mono text-[10px] text-text-muted mt-1.5">{context}</p>
+    </div>
+  );
+}
 
 function formatDate(date: string | Date | null): string {
   if (!date) return "N/A";
@@ -214,6 +235,7 @@ export default function AnalyticsPage() {
               <div className="flex items-center gap-1.5 mb-3">
                 <BarChart3 className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.5} />
                 <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">total reels</span>
+                <HelpText {...METRIC_HELP.totalReels} />
               </div>
               <div className="font-mono text-[32px] font-medium text-text-primary tracking-tight">{reels.length}</div>
               {reels.length > validReels.length && (
@@ -227,6 +249,7 @@ export default function AnalyticsPage() {
               <div className="flex items-center gap-1.5 mb-3">
                 <Eye className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.5} />
                 <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">total views</span>
+                <HelpText {...METRIC_HELP.totalViews} />
               </div>
               <div className="font-mono text-[32px] font-medium text-text-primary tracking-tight">{formatNumber(totalViews)}</div>
             </div>
@@ -235,26 +258,41 @@ export default function AnalyticsPage() {
               <div className="flex items-center gap-1.5 mb-3">
                 <Eye className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.5} />
                 <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">avg views</span>
+                <HelpText {...METRIC_HELP.avgViews} />
               </div>
               <div className="font-mono text-[32px] font-medium text-text-primary tracking-tight">{formatNumber(Math.round(avgViews))}</div>
+              {avgViews > 0 && <TierBadge tier={classifyViews(avgViews)} context={getViewsContext(avgViews)} />}
             </div>
 
             <div className="bg-bg-surface border border-border-subtle rounded-lg p-5 hover:border-border-soft transition-colors">
               <div className="flex items-center gap-1.5 mb-3">
                 <TrendingUp className="w-3.5 h-3.5 text-mint" strokeWidth={1.5} />
                 <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">avg er</span>
+                <HelpText {...METRIC_HELP.avgER} />
               </div>
               <div className="font-mono text-[32px] font-medium text-mint tracking-tight">
                 {(avgEngagement * 100).toFixed(2)}%
               </div>
+              {avgEngagement > 0 && (
+                <TierBadge tier={classifyER(avgEngagement * 100)} context={getERContext(avgEngagement * 100)} />
+              )}
             </div>
 
             <div className="bg-bg-surface border border-border-subtle rounded-lg p-5 hover:border-border-soft transition-colors">
               <div className="flex items-center gap-1.5 mb-3">
                 <TrendingUp className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.5} />
                 <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">top views</span>
+                <HelpText {...METRIC_HELP.topViews} />
               </div>
               <div className="font-mono text-[32px] font-medium text-text-primary tracking-tight">{formatNumber(topViews)}</div>
+              {avgViews > 0 && topViews > 0 && (
+                <p className="font-mono text-[10px] text-text-muted mt-2">
+                  <span className={topViews / avgViews >= 5 ? "text-mint" : "text-text-secondary"}>
+                    {(topViews / avgViews).toFixed(1)}x
+                  </span>{" "}
+                  the niche average{topViews / avgViews >= 5 ? " — viral" : ""}
+                </p>
+              )}
             </div>
           </div>
 

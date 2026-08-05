@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -68,11 +68,18 @@ export default function AnalyticsPage() {
   const stats  = fetchData?.stats  || [];
   const hasData = reels.length > 0;
 
-  const totalViews    = reels.reduce((sum, r) => sum + r.views, 0);
-  const avgViews      = reels.length > 0 ? totalViews / reels.length : 0;
-  const avgEngagement = reels.length > 0
-    ? reels.reduce((sum, r) => sum + parseFloat(String(r.engagementRate)), 0) / reels.length : 0;
-  const topViews = reels.length > 0 ? Math.max(...reels.map(r => r.views)) : 0;
+  // Zero-view reels are scrape failures (missing videoPlayCount), not real data —
+  // they carry ER=0 and drag every average down. Excluded from all aggregations.
+  const validReels = useMemo(
+    () => reels.filter(r => r.views > 0),
+    [reels]
+  );
+
+  const totalViews    = validReels.reduce((sum, r) => sum + r.views, 0);
+  const avgViews      = validReels.length > 0 ? totalViews / validReels.length : 0;
+  const avgEngagement = validReels.length > 0
+    ? validReels.reduce((sum, r) => sum + parseFloat(String(r.engagementRate)), 0) / validReels.length : 0;
+  const topViews = validReels.length > 0 ? Math.max(...validReels.map(r => r.views)) : 0;
 
   return (
     <div className="space-y-6">
@@ -200,6 +207,11 @@ export default function AnalyticsPage() {
                 <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">total reels</span>
               </div>
               <div className="font-mono text-[32px] font-medium text-text-primary tracking-tight">{reels.length}</div>
+              {reels.length > validReels.length && (
+                <div className="font-mono text-[10px] text-text-muted mt-1">
+                  {reels.length - validReels.length} excluded (no view data)
+                </div>
+              )}
             </div>
 
             <div className="bg-bg-surface border border-border-subtle rounded-lg p-5 hover:border-border-soft transition-colors">
@@ -256,8 +268,8 @@ export default function AnalyticsPage() {
                   <LeaderboardChart stats={stats} />
                 </div>
                 <div className="grid lg:grid-cols-2 gap-6">
-                  <HeatmapChart reels={reels} />
-                  <DurationBucketChart reels={reels} />
+                  <HeatmapChart reels={validReels} />
+                  <DurationBucketChart reels={validReels} />
                 </div>
               </TabsContent>
 
@@ -266,41 +278,41 @@ export default function AnalyticsPage() {
                   <CreatorERChart stats={stats} />
                   <LeaderboardChart stats={stats} />
                 </div>
-                <ViralReelsTable reels={reels} />
+                <ViralReelsTable reels={validReels} />
               </TabsContent>
 
               <TabsContent value="timing" className="space-y-6 mt-6">
                 <div className="grid lg:grid-cols-2 gap-6">
-                  <ERByHourChart reels={reels} />
-                  <ERByWeekdayChart reels={reels} />
+                  <ERByHourChart reels={validReels} />
+                  <ERByWeekdayChart reels={validReels} />
                 </div>
                 <div className="grid lg:grid-cols-2 gap-6">
-                  <HeatmapChart reels={reels} metric="views" />
-                  <HeatmapChart reels={reels} metric="engagement" />
+                  <HeatmapChart reels={validReels} metric="views" />
+                  <HeatmapChart reels={validReels} metric="engagement" />
                 </div>
               </TabsContent>
 
               <TabsContent value="duration" className="space-y-6 mt-6">
                 <div className="grid lg:grid-cols-2 gap-6">
-                  <DurationBucketChart reels={reels} />
-                  <DurationChart reels={reels} />
+                  <DurationBucketChart reels={validReels} />
+                  <DurationChart reels={validReels} />
                 </div>
                 <div className="grid lg:grid-cols-2 gap-6">
-                  <DurationScatterChart reels={reels} />
-                  <VRDistributionChart reels={reels} />
+                  <DurationScatterChart reels={validReels} />
+                  <VRDistributionChart reels={validReels} />
                 </div>
               </TabsContent>
 
               <TabsContent value="reels" className="space-y-6 mt-6">
                 <div className="grid lg:grid-cols-2 gap-6">
-                  <TopReelsTable reels={reels} sortBy="views" />
-                  <TopReelsTable reels={reels} sortBy="engagement" />
+                  <TopReelsTable reels={validReels} sortBy="views" />
+                  <TopReelsTable reels={validReels} sortBy="engagement" />
                 </div>
-                <ViralReelsTable reels={reels} />
+                <ViralReelsTable reels={validReels} />
               </TabsContent>
 
               <TabsContent value="tips" className="space-y-6 mt-6">
-                <QuickTips reels={reels} stats={stats} timeRangeDays={selectedFetch?.timeRangeDays || 7} />
+                <QuickTips reels={validReels} stats={stats} timeRangeDays={selectedFetch?.timeRangeDays || 7} />
                 <MetricsNotes />
                 <p className="font-mono text-[11px] text-text-muted text-center">
                   Numbers update in real-time after each fetch. No cache.

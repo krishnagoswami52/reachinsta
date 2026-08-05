@@ -1,5 +1,5 @@
 import { Lightbulb } from "lucide-react";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, DURATION_BUCKETS } from "@/lib/utils";
 import type { Reel, CompetitorStats } from "@shared/schema";
 
 interface QuickTipsProps {
@@ -47,16 +47,9 @@ export function QuickTips({ reels, stats, timeRangeDays }: QuickTipsProps) {
     tips.push(`${bestDay.day} performs best - try uploading on this day.`);
   }
 
-  const durationBuckets = [
-    { label: "15-30s", min: 15, max: 30 },
-    { label: "30-45s", min: 30, max: 45 },
-    { label: "45-60s", min: 45, max: 60 },
-    { label: "60-90s", min: 60, max: 90 },
-  ];
-
-  const bucketPerformance = durationBuckets.map(bucket => {
+  const bucketPerformance = DURATION_BUCKETS.map(bucket => {
     const bucketReels = reels.filter(r =>
-      r.durationSeconds >= bucket.min && r.durationSeconds < bucket.max
+      r.durationSeconds >= bucket.min && r.durationSeconds <= bucket.max
     );
     const avgViews = bucketReels.length > 0
       ? bucketReels.reduce((sum, r) => sum + r.views, 0) / bucketReels.length

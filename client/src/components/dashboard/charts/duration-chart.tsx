@@ -1,23 +1,14 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Timer } from "lucide-react";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, DURATION_BUCKETS } from "@/lib/utils";
 import type { Reel } from "@shared/schema";
 
 interface DurationChartProps {
   reels: Reel[];
 }
 
-const buckets = [
-  { label: "0-10s", min: 0, max: 10 },
-  { label: "11-20s", min: 11, max: 20 },
-  { label: "21-30s", min: 21, max: 30 },
-  { label: "31-45s", min: 31, max: 45 },
-  { label: "46-60s", min: 46, max: 60 },
-  { label: "60s+", min: 61, max: Infinity },
-];
-
 export function DurationChart({ reels }: DurationChartProps) {
-  const data = buckets.map((bucket) => {
+  const data = DURATION_BUCKETS.map((bucket) => {
     const bucketReels = reels.filter(
       (r) => r.durationSeconds >= bucket.min && r.durationSeconds <= bucket.max
     );

@@ -27,13 +27,20 @@ export function calculateEngagementRate(views: number, likes: number, comments: 
   return (likes + comments) / Math.max(views, 1);
 }
 
+// Single source of truth for duration bucketing — keep every chart/table/tip on the same scheme.
+// Bounds are inclusive; durationSeconds is an integer column.
+export const DURATION_BUCKETS = [
+  { label: "0-10s", min: 0, max: 10 },
+  { label: "11-20s", min: 11, max: 20 },
+  { label: "21-30s", min: 21, max: 30 },
+  { label: "31-45s", min: 31, max: 45 },
+  { label: "46-60s", min: 46, max: 60 },
+  { label: "60s+", min: 61, max: Infinity },
+] as const;
+
 export function getDurationBucket(seconds: number): string {
-  if (seconds <= 10) return "0-10s";
-  if (seconds <= 20) return "11-20s";
-  if (seconds <= 30) return "21-30s";
-  if (seconds <= 45) return "31-45s";
-  if (seconds <= 60) return "46-60s";
-  return "60s+";
+  const bucket = DURATION_BUCKETS.find(b => seconds >= b.min && seconds <= b.max);
+  return bucket ? bucket.label : DURATION_BUCKETS[0].label;
 }
 
 export function getTimeAgo(date: Date | string): string {

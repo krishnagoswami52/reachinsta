@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { CreatorERChart } from "@/components/dashboard/charts/creator-er-chart";
-import { DurationBucketChart } from "@/components/dashboard/charts/duration-bucket-chart";
 import { VRDistributionChart } from "@/components/dashboard/charts/vr-distribution-chart";
 import { ERByHourChart } from "@/components/dashboard/charts/er-by-hour-chart";
 import { ERByWeekdayChart } from "@/components/dashboard/charts/er-by-weekday-chart";
@@ -18,30 +17,18 @@ import { QuickTips } from "@/components/dashboard/quick-tips";
 import { MetricsNotes } from "@/components/dashboard/metrics-notes";
 import { EmptyState } from "@/components/dashboard/empty-state";
 
-import { BarChart3, Calendar, Clock, Users, CheckCircle2, XCircle, Loader2, TrendingUp, Eye, ChevronDown } from "lucide-react";
+import { BarChart3, Calendar, Users, CheckCircle2, XCircle, Loader2, TrendingUp, Eye, ChevronDown } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import { HelpText } from "@/components/analytics/HelpText";
+import { TierBadge } from "@/components/analytics/TierBadge";
+import { InsightsPanel } from "@/components/analytics/InsightsPanel";
+import { QuickStatsRow } from "@/components/analytics/QuickStatsRow";
+import { TabGuide } from "@/components/analytics/TabGuide";
+import { AllCompetitorsTable } from "@/components/analytics/AllCompetitorsTable";
 import { METRIC_HELP } from "@/lib/metric-help";
-import { classifyER, classifyViews, getERContext, getViewsContext, TIER_LABELS, type BenchmarkTier } from "@/lib/benchmarks";
+import { classifyER, classifyViews, getERContext, getViewsContext } from "@/lib/benchmarks";
+import { computeInsightFacts, generateInsights, type AnalyticsTab } from "@/lib/insights";
 import type { FetchRun, Reel, CompetitorStats } from "@shared/schema";
-
-const TIER_STYLES: Record<BenchmarkTier, string> = {
-  excellent: "bg-mint/15 text-mint border-mint/30",
-  good: "bg-mint/10 text-mint border-mint/20",
-  average: "bg-bg-elevated text-text-secondary border-border-subtle",
-  below: "bg-amber-500/10 text-amber-500 border-amber-500/30",
-};
-
-function TierBadge({ tier, context }: { tier: BenchmarkTier; context: string }) {
-  return (
-    <div className="mt-2">
-      <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded border ${TIER_STYLES[tier]}`}>
-        {TIER_LABELS[tier]}
-      </span>
-      <p className="font-mono text-[10px] text-text-muted mt-1.5">{context}</p>
-    </div>
-  );
-}
 
 function formatDate(date: string | Date | null): string {
   if (!date) return "N/A";
@@ -110,6 +97,11 @@ export default function AnalyticsPage() {
   const avgEngagement = validReels.length > 0
     ? validReels.reduce((sum, r) => sum + parseFloat(String(r.engagementRate)), 0) / validReels.length : 0;
   const topViews = validReels.length > 0 ? Math.max(...validReels.map(r => r.views)) : 0;
+
+  // Overview is insight-led: the facts feed both the insights panel and the quick-stats row.
+  const insightFacts = useMemo(() => computeInsightFacts(validReels), [validReels]);
+  const insights = useMemo(() => generateInsights(insightFacts), [insightFacts]);
+  const goToTab = (tab: AnalyticsTab) => setActiveTab(tab);
 
   return (
     <div className="space-y-6">
@@ -310,14 +302,13 @@ export default function AnalyticsPage() {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6 mt-6">
-                <div className="grid lg:grid-cols-2 gap-6">
-                  <CreatorERChart stats={stats} />
-                  <LeaderboardChart stats={stats} />
-                </div>
-                <div className="grid lg:grid-cols-2 gap-6">
-                  <HeatmapChart reels={validReels} />
-                  <DurationBucketChart reels={validReels} />
-                </div>
+                <InsightsPanel
+                  insights={insights}
+                  timeRangeDays={selectedFetch?.timeRangeDays || 7}
+                  onNavigate={goToTab}
+                />
+                <QuickStatsRow facts={insightFacts} onNavigate={goToTab} />
+                <TabGuide onNavigate={goToTab} />
               </TabsContent>
 
               <TabsContent value="creators" className="space-y-6 mt-6">
@@ -325,7 +316,7 @@ export default function AnalyticsPage() {
                   <CreatorERChart stats={stats} />
                   <LeaderboardChart stats={stats} />
                 </div>
-                <ViralReelsTable reels={validReels} />
+                <AllCompetitorsTable reels={validReels} />
               </TabsContent>
 
               <TabsContent value="timing" className="space-y-6 mt-6">
@@ -340,10 +331,7 @@ export default function AnalyticsPage() {
               </TabsContent>
 
               <TabsContent value="duration" className="space-y-6 mt-6">
-                <div className="grid lg:grid-cols-2 gap-6">
-                  <DurationBucketChart reels={validReels} />
-                  <DurationChart reels={validReels} />
-                </div>
+                <DurationChart reels={validReels} />
                 <div className="grid lg:grid-cols-2 gap-6">
                   <DurationScatterChart reels={validReels} />
                   <VRDistributionChart reels={validReels} />

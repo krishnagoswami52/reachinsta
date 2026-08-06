@@ -9,44 +9,44 @@ interface DurationChartProps {
   reels: Reel[];
 }
 
+/**
+ * Single duration widget — merged from the old "Avg Views by Duration" and
+ * "Duration Performance" charts, which plotted the same numbers twice.
+ * The best-performing bucket is the only mint bar so the takeaway is instant.
+ */
 export function DurationChart({ reels }: DurationChartProps) {
   const data = DURATION_BUCKETS.map((bucket) => {
     const bucketReels = reels.filter(
       (r) => r.durationSeconds >= bucket.min && r.durationSeconds <= bucket.max
     );
     const count = bucketReels.length;
-    const avgViews = count > 0 
-      ? bucketReels.reduce((sum, r) => sum + r.views, 0) / count 
-      : 0;
-    const avgEngagement = count > 0
-      ? bucketReels.reduce((sum, r) => sum + parseFloat(String(r.engagementRate)), 0) / count
+    const avgViews = count > 0
+      ? bucketReels.reduce((sum, r) => sum + r.views, 0) / count
       : 0;
 
-    return {
-      name: bucket.label,
-      count,
-      avgViews: Math.round(avgViews),
-      avgEngagement: (avgEngagement * 100).toFixed(2),
-    };
+    return { name: bucket.label, count, avgViews: Math.round(avgViews) };
   });
 
   const maxViews = Math.max(...data.map((d) => d.avgViews));
-  const bestBucket = data.find((d) => d.avgViews === maxViews);
-
-  const COLORS = ["#7CFFB2", "#8B9199", "#5A6069", "#2A2D32", "#1F2227", "#7CFFB2"];
+  const bestBucket = maxViews > 0 ? data.find((d) => d.avgViews === maxViews) : undefined;
 
   return (
     <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
       <div className="flex items-center gap-2 mb-1">
         <Timer className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
-        <h3 className="font-tight font-semibold text-[16px] text-text-primary">Duration Performance</h3>
-        <HelpText {...METRIC_HELP.durationPerformance} />
+        <h3 className="font-tight font-semibold text-[16px] text-text-primary">Views by Duration</h3>
+        <HelpText {...METRIC_HELP.viewsByDuration} />
       </div>
-      {bestBucket && bestBucket.avgViews > 0 && (
-        <p className="font-mono text-[11px] text-text-muted mb-4">
-          Best: <span className="text-mint">{bestBucket.name}</span> — {formatNumber(bestBucket.avgViews)} avg views
-        </p>
-      )}
+      <p className="font-mono text-[11px] text-text-muted mb-4">
+        {bestBucket ? (
+          <>
+            Best bucket: <span className="text-mint">{bestBucket.name}</span> —{" "}
+            {formatNumber(bestBucket.avgViews)} avg views across {bestBucket.count} reels
+          </>
+        ) : (
+          "Average views per reel by duration bucket"
+        )}
+      </p>
       <div className="h-[300px] mt-4">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
@@ -57,16 +57,22 @@ export function DurationChart({ reels }: DurationChartProps) {
               contentStyle={{ backgroundColor: "#111316", border: "1px solid #1F2227", borderRadius: "6px", fontFamily: "JetBrains Mono", fontSize: "12px" }}
               labelStyle={{ color: "#8B9199" }}
               itemStyle={{ color: "#7CFFB2" }}
-              formatter={(value: number, name: string) => [name === "avgViews" ? formatNumber(value) : `${value}%`, name === "avgViews" ? "Avg Views" : "Avg ER"]}
+              formatter={(value: number) => [formatNumber(value), "Avg Views"]}
             />
             <Bar dataKey="avgViews" radius={[4, 4, 0, 0]}>
-              {data.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+              {data.map((entry) => (
+                <Cell
+                  key={`cell-${entry.name}`}
+                  fill={bestBucket && entry.name === bestBucket.name ? "#7CFFB2" : "#2A2D32"}
+                />
+              ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
       <p className="font-mono text-[11px] text-text-muted italic border-t border-border-subtle pt-3 mt-4">
-        💡 Same duration data, ranked by average views. Try to match the top-performing bucket length.
+        💡 Best bucket highlighted in mint. Try producing more reels at this length — but check the reel count before
+        committing, small buckets swing wildly.
       </p>
     </div>
   );

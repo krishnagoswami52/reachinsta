@@ -76,18 +76,6 @@ export const METRIC_HELP = {
     description:
       "Average engagement rate by day of the week. Shows which days your niche's audience engages most.",
   },
-  avgViewsByDuration: {
-    title: "Avg Views by Duration",
-    description:
-      "Average views per reel, grouped by video length. Use it to pick your ideal reel duration.",
-    benchmark: `Best bucket in tracked data: ${BENCHMARKS.bestDurationBucket}`,
-  },
-  durationPerformance: {
-    title: "Duration Performance",
-    description:
-      "Same duration buckets, ranked by average views. The highlighted best bucket is your target length.",
-    benchmark: `Best bucket in tracked data: ${BENCHMARKS.bestDurationBucket}`,
-  },
   viewsByDuration: {
     title: "Views by Duration",
     description:

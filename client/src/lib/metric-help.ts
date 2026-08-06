@@ -88,6 +88,12 @@ export const METRIC_HELP = {
       "Same duration buckets, ranked by average views. The highlighted best bucket is your target length.",
     benchmark: `Best bucket in tracked data: ${BENCHMARKS.bestDurationBucket}`,
   },
+  viewsByDuration: {
+    title: "Views by Duration",
+    description:
+      "Average views per reel, grouped by video length. The mint bar is the best-performing bucket in this fetch — treat it as your target length.",
+    benchmark: `Best bucket in tracked data: ${BENCHMARKS.bestDurationBucket}`,
+  },
   durationScatter: {
     title: "Duration vs Views",
     description:
@@ -111,5 +117,22 @@ export const METRIC_HELP = {
     description:
       "Competitors ranked by average views per reel — consistency, not one lucky viral hit.",
     benchmark: `Median avg views: ${BENCHMARKS.views.median.toLocaleString()}`,
+  },
+  allCompetitors: {
+    title: "All Competitors",
+    description:
+      "Every tracked account in this fetch, with averages computed from reliable reels only. Sort by any column to find who leads on reach vs engagement.",
+    benchmark: `Median ER: ${BENCHMARKS.engagementRate.median}% | Median avg views: ${BENCHMARKS.views.median.toLocaleString()}`,
+  },
+  competitorTrend: {
+    title: "ER Trend",
+    description:
+      "Splits each account's reels in this fetch into older and newer halves and compares average engagement rate. ↑ = recent content resonating more, ↓ = less, → = steady, — = fewer than 6 dated reels. Uses ER rather than views because views keep accumulating after posting, which would make every recent reel look weak.",
+    formula: "avg ER (newer half) vs avg ER (older half), ±10% deadband",
+  },
+  autoInsights: {
+    title: "Auto-generated insights",
+    description:
+      "Data-driven observations computed from this fetch's reels — best posting hour, best length, top creator, best weekday, and how the niche compares to tracked benchmarks. Nothing here is hardcoded; slices with fewer than 3 reels are skipped.",
   },
 } as const;

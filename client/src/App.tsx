@@ -19,6 +19,7 @@ import CompetitorsPage from "@/pages/competitors";
 import AnalyticsPage from "@/pages/analytics";
 import ExportsPage from "@/pages/exports";
 import AdminPage from "@/pages/admin";
+import AdminMetricsPage from "@/pages/admin-metrics";
 import ProfilePage from "@/pages/profile";
 import PricingPage from "@/pages/pricing";
 import BillingPage from "@/pages/billing";
@@ -37,6 +38,7 @@ function AuthenticatedRoutes() {
         <Route path="/analytics" component={AnalyticsPage} />
         <Route path="/exports" component={ExportsPage} />
         <Route path="/admin" component={AdminPage} />
+        <Route path="/admin/metrics" component={AdminMetricsPage} />
         <Route path="/profile" component={ProfilePage} />
         <Route path="/pricing" component={PricingPage} />
         <Route path="/account/billing" component={BillingPage} />

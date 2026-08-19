@@ -9,6 +9,8 @@ import paddleWebhookRouter from "./routes/paddleWebhook";
 import cron from "node-cron";
 import { downgradeExpiredSubscriptions } from "./jobs/downgrade-expired";
 import { apiLimiter } from "./middleware/rate-limit";
+import adminAnalyticsRouter from "./routes/admin";
+import { trackPageView } from "./middleware/tracking";
 
 console.log('[Env Check]', {
   db: !!process.env.DATABASE_URL,
@@ -93,6 +95,15 @@ app.use((req, res, next) => {
   });
 
   await registerRoutes(httpServer, app);
+
+  // Admin analytics API (read-only, allow-listed emails). Registered after
+  // registerRoutes so the session middleware from setupAuth() is in place.
+  // Distinct paths from the existing /api/admin/users routes — nothing shadowed.
+  app.use("/api/admin", adminAnalyticsRouter);
+
+  // First-party page-view logging. Sits after every API route and before the
+  // SPA catch-all below, so it only sees real page loads. Fire-and-forget.
+  app.use(trackPageView);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

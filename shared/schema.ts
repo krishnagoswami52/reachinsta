@@ -1,8 +1,9 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, bigint, numeric, boolean, timestamp, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, bigint, bigserial, numeric, boolean, timestamp, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import type { User } from "./models/auth";
+import { users } from "./models/auth";
 
 export * from "./models/auth";
 
@@ -134,6 +135,36 @@ export const apifyKeys = pgTable("apify_keys", {
 export const insertApifyKeySchema = createInsertSchema(apifyKeys).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertApifyKey = typeof apifyKeys.$inferInsert;
 export type ApifyKey = typeof apifyKeys.$inferSelect;
+
+// First-party page-view log. Additive, analytics-only: nothing in the product
+// reads this table — it exists solely for the admin dashboard (/admin/metrics).
+// Written best-effort by server/middleware/tracking.ts; a failed insert never
+// affects the response.
+export const pageViews = pgTable("page_views", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  path: varchar("path", { length: 500 }).notNull(),
+  referrer: varchar("referrer", { length: 500 }),
+  userAgent: text("user_agent"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  // users.id is a varchar uuid, so this FK is varchar (not the integer the
+  // original spec assumed).
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  sessionId: varchar("session_id", { length: 100 }),
+  utmSource: varchar("utm_source", { length: 100 }),
+  utmMedium: varchar("utm_medium", { length: 100 }),
+  utmCampaign: varchar("utm_campaign", { length: 100 }),
+  country: varchar("country", { length: 3 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("page_views_created_at_idx").on(table.createdAt),
+  index("page_views_user_id_idx").on(table.userId),
+  index("page_views_utm_source_idx").on(table.utmSource),
+  index("page_views_path_idx").on(table.path),
+  index("page_views_session_id_idx").on(table.sessionId),
+]);
+
+export type InsertPageView = typeof pageViews.$inferInsert;
+export type PageView = typeof pageViews.$inferSelect;
 
 // Idempotency log for Paddle webhooks. One row per successfully-processed
 // event_id; the webhook handler skips any event_id already present here so

@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { eq, desc, and, sql, count } from "drizzle-orm";
+import { eq, desc, and, lt, sql, count } from "drizzle-orm";
 import { db } from "./db";
 import {
   profiles, competitors, fetchRuns, reels, competitorStats, rawPayloads, jobs, apifyKeys,
@@ -114,6 +114,11 @@ export interface IStorage {
   getJob(id: string): Promise<Job | undefined>;
   updateJob(id: string, updates: Partial<Job>): Promise<Job | undefined>;
   claimJob(jobId: string): Promise<Job | undefined>;
+  getStuckJobs(staleBeforeMs: number): Promise<Job[]>;
+  touchJob(jobId: string): Promise<void>;
+  requeueStuckJob(jobId: string, attempts: number, lastError: string): Promise<Job | undefined>;
+  failStuckJob(jobId: string, attempts: number, lastError: string): Promise<Job | undefined>;
+  refundFetchCredit(userId: string): Promise<boolean>;
 
   // Apify key management
   upsertApifyKey(data: { token: string; totalBudget?: string }): Promise<ApifyKey>;
@@ -596,6 +601,70 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(jobs.id, jobId), eq(jobs.status, "queued")))
       .returning();
     return result;
+  }
+
+  /**
+   * Jobs left in "running" with no heartbeat for longer than `staleBeforeMs`.
+   *
+   * A live worker heartbeats its job (see touchJob), so anything this returns
+   * belongs to a worker that died — typically a deploy or crash mid-fetch.
+   * Without this sweep those rows are invisible forever: getQueuedJobs only
+   * looks at status="queued".
+   */
+  async getStuckJobs(staleBeforeMs: number): Promise<Job[]> {
+    const cutoff = new Date(Date.now() - staleBeforeMs);
+    return await db
+      .select()
+      .from(jobs)
+      .where(and(eq(jobs.status, "running"), lt(jobs.updatedAt, cutoff)))
+      .orderBy(jobs.updatedAt)
+      .limit(50);
+  }
+
+  /** Heartbeat: proves the owning worker is still alive so the sweep skips it. */
+  async touchJob(jobId: string): Promise<void> {
+    await db.update(jobs).set({ updatedAt: new Date() }).where(eq(jobs.id, jobId));
+  }
+
+  /**
+   * running -> queued, conditional on the row still being "running".
+   * The CAS means two workers sweeping at once cannot both requeue the same
+   * job, and a worker that revives mid-sweep cannot be stolen from.
+   */
+  async requeueStuckJob(jobId: string, attempts: number, lastError: string): Promise<Job | undefined> {
+    const [result] = await db
+      .update(jobs)
+      .set({ status: "queued", attempts, lastError, updatedAt: new Date() })
+      .where(and(eq(jobs.id, jobId), eq(jobs.status, "running")))
+      .returning();
+    return result;
+  }
+
+  /** running -> failed, same CAS guarantee as requeueStuckJob. */
+  async failStuckJob(jobId: string, attempts: number, lastError: string): Promise<Job | undefined> {
+    const [result] = await db
+      .update(jobs)
+      .set({ status: "failed", attempts, lastError, updatedAt: new Date() })
+      .where(and(eq(jobs.id, jobId), eq(jobs.status, "running")))
+      .returning();
+    return result;
+  }
+
+  /**
+   * Give back one monthly fetch credit. Clamped at zero so a double refund can
+   * never mint quota, and guarded on fetches_used > 0 so the no-op case is
+   * reported honestly to the caller.
+   */
+  async refundFetchCredit(userId: string): Promise<boolean> {
+    const result = await db
+      .update(profiles)
+      .set({
+        fetchesUsed: sql`GREATEST(${profiles.fetchesUsed} - 1, 0)`,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(profiles.id, userId), sql`${profiles.fetchesUsed} > 0`))
+      .returning({ id: profiles.id });
+    return result.length > 0;
   }
 
   // Apify key management

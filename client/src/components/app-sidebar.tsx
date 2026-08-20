@@ -8,6 +8,7 @@ import {
   Download,
   LogOut,
   Shield,
+  TrendingUp,
   Sparkles,
   X,
 } from "lucide-react";
@@ -37,7 +38,8 @@ export function AppSidebar({ profile, onClose }: AppSidebarProps) {
   ];
 
   const adminItems = [
-    { path: "/admin", label: "Admin Panel", icon: Shield },
+    { path: "/admin",         label: "Admin Panel", icon: Shield },
+    { path: "/admin/metrics", label: "Metrics",     icon: TrendingUp },
   ];
 
   const fetchesUsed   = profile?.fetchesUsed       ?? 0;

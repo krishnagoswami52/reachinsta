@@ -7,6 +7,65 @@ const INSTAGRAM_SCRAPER_ACTOR_ID = "shu8hvrXbJbY3Eb9W";
 const FOLLOWERS_SCRAPER_ACTOR_ID = "7RQ4RlfRihUhflQtJ";
 const MAX_KEY_ATTEMPTS = 10; // max keys to try before giving up
 
+/**
+ * Wall-clock ceiling on a single Apify actor run. See docs/fetch-flow-audit.md (C2).
+ *
+ * `timeout` is enforced by Apify: it aborts the run server-side, which is what
+ * actually stops us paying for a runaway actor. `waitSecs` is enforced locally
+ * and is deliberately a little longer, so that when a run does hit the ceiling
+ * we observe Apify's own TIMED-OUT status rather than giving up first and
+ * leaving the run orphaned on their side.
+ *
+ * Without these, `.call()` waits indefinitely (apify-client's documented
+ * default) and a single hung run pins the worker forever.
+ */
+const APIFY_RUN_TIMEOUT_SECS = 600; // 10 minutes, enforced by Apify
+const APIFY_WAIT_SECS = APIFY_RUN_TIMEOUT_SECS + 30; // local wait, with grace
+
+/** Apify run states that mean "this run is over, one way or another". */
+const TERMINAL_RUN_STATUSES = new Set(["SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT", "TIMING-OUT"]);
+
+/**
+ * A fetch that exceeded its time budget.
+ *
+ * The worker treats this as terminal rather than retrying: another attempt
+ * would re-pay for the same slow actor and hold the worker for another full
+ * timeout window. The user's fetch credit is refunded instead.
+ */
+export class FetchTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FetchTimeoutError";
+  }
+}
+
+/**
+ * apify-client's waitForFinish RESOLVES with the run when waitSecs elapses —
+ * it does not throw. Left unchecked, a timed-out run therefore flows straight
+ * on to listItems() and yields a partial or empty dataset that we would store
+ * as a successful fetch. Every actor call must pass through this.
+ */
+function assertRunFinished(run: { status?: string; id?: string }, actorLabel: string): void {
+  const status = run?.status ?? "UNKNOWN";
+
+  if (status === "SUCCEEDED") return;
+
+  if (!TERMINAL_RUN_STATUSES.has(status)) {
+    throw new FetchTimeoutError(
+      `${actorLabel} did not finish within ${APIFY_WAIT_SECS}s (run ${run?.id ?? "?"} still ${status}). Timed out.`,
+    );
+  }
+
+  if (status === "TIMED-OUT" || status === "TIMING-OUT") {
+    throw new FetchTimeoutError(
+      `${actorLabel} exceeded its ${APIFY_RUN_TIMEOUT_SECS}s limit on Apify (run ${run?.id ?? "?"}).`,
+    );
+  }
+
+  // FAILED / ABORTED are ordinary failures — retryable, so not a timeout error.
+  throw new Error(`${actorLabel} finished with status ${status} (run ${run?.id ?? "?"}).`);
+}
+
 async function runActorWithRotation<T>(
   fn: (client: ApifyClient) => Promise<T>,
 ): Promise<{ result: T; token: string }> {
@@ -140,9 +199,13 @@ export async function processApifyFetch(
     };
 
     const { result: postsRun, token: postsToken } = await runActorWithRotation((client) =>
-      client.actor(INSTAGRAM_SCRAPER_ACTOR_ID).call(reelsInput)
+      client.actor(INSTAGRAM_SCRAPER_ACTOR_ID).call(reelsInput, {
+        timeout: APIFY_RUN_TIMEOUT_SECS,
+        waitSecs: APIFY_WAIT_SECS,
+      })
     );
     console.log(`Instagram Scraper run completed with status: ${postsRun.status}`);
+    assertRunFinished(postsRun, "Instagram Scraper");
 
     const { items: postsData } = await new ApifyClient({ token: postsToken })
       .dataset(postsRun.defaultDatasetId)
@@ -275,8 +338,12 @@ export async function processApifyFetch(
       try {
         const followersInput = { usernames: uniqueUsernames };
         const { result: followersRun, token: followersToken } = await runActorWithRotation((client) =>
-          client.actor(FOLLOWERS_SCRAPER_ACTOR_ID).call(followersInput)
+          client.actor(FOLLOWERS_SCRAPER_ACTOR_ID).call(followersInput, {
+            timeout: APIFY_RUN_TIMEOUT_SECS,
+            waitSecs: APIFY_WAIT_SECS,
+          })
         );
+        assertRunFinished(followersRun, "Followers Scraper");
         const { items: followersData } = await new ApifyClient({ token: followersToken })
           .dataset(followersRun.defaultDatasetId)
           .listItems();
@@ -354,7 +421,11 @@ export async function processApifyFetch(
     console.log(`Fetch run ${fetchRun.id} completed successfully with ${reelsToInsert.length} posts`);
 
   } catch (error: any) {
-    console.error(`Fetch run ${fetchRun.id} failed:`, error.message);
+    if (error instanceof FetchTimeoutError) {
+      console.error(`[Apify] TIMEOUT on fetch run ${fetchRun.id}: ${error.message}`);
+    } else {
+      console.error(`Fetch run ${fetchRun.id} failed:`, error.message);
+    }
     await storage.updateFetchRun(fetchRun.id, {
       status: "failed",
       errorMessage: error.message,

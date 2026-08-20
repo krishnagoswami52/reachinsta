@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import type { Profile } from "@shared/schema";
 
 /**
  * Admin analytics dashboard — READ-ONLY business metrics.
@@ -28,17 +29,6 @@ import { useAuth } from "@/hooks/use-auth";
  * untouched. Every number here comes from GET /api/admin/* ; this page never
  * writes anything and never touches pricing, plans or subscriptions.
  */
-
-// Mirrors server/middleware/adminAuth.ts. The server check is the real gate —
-// this one only avoids rendering a shell of failing requests to non-admins.
-const ADMIN_EMAILS = [
-  "krishna@techcm.in",
-  "krishnagoswami52@gmail.com",
-  "krishna@reachinsta.com",
-];
-
-const isAdminEmail = (email?: string | null) =>
-  !!email && ADMIN_EMAILS.includes(email.toLowerCase().trim());
 
 // ─── types ──────────────────────────────────────────────────────────────────
 
@@ -580,15 +570,28 @@ function ActivityFeed({ activity }: { activity?: ActivityFeedData }) {
 // ─── page ───────────────────────────────────────────────────────────────────
 
 export default function AdminMetricsPage() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
-  const allowed = isAdminEmail(user?.email);
+
+  // Same source of authority as the /admin page and the sidebar: profiles.role.
+  const { data: profile, isLoading: isProfileLoading } = useQuery<Profile>({
+    queryKey: ["/api/profile"],
+    enabled: isAuthenticated,
+  });
+
+  const allowed = profile?.role === "admin";
+  const isCheckingAccess = authLoading || (isAuthenticated && isProfileLoading);
 
   useEffect(() => {
-    if (!authLoading && !allowed) {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      setLocation("/login", { replace: true });
+      return;
+    }
+    if (!isProfileLoading && profile && !allowed) {
       setLocation("/dashboard", { replace: true });
     }
-  }, [authLoading, allowed, setLocation]);
+  }, [authLoading, isAuthenticated, isProfileLoading, profile, allowed, setLocation]);
 
   const { data: stats, error: statsError } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
@@ -618,7 +621,7 @@ export default function AdminMetricsPage() {
     enabled: allowed,
   });
 
-  if (authLoading || !allowed) {
+  if (isCheckingAccess || !allowed) {
     return (
       <div className="p-8 font-mono text-[11px] text-text-muted" data-testid="admin-metrics-gate">
         Checking admin access…

@@ -8,6 +8,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { KPICard } from "@/components/dashboard/kpi-card";
 import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { FetchStatusStepper } from "@/components/dashboard/fetch-status-stepper";
+import { QueuePositionCard } from "@/components/dashboard/queue-position-card";
 import { TimeRangeSelector } from "@/components/dashboard/time-range-selector";
 import { CompetitorList } from "@/components/dashboard/competitor-list";
 import { ViralReelsTable } from "@/components/dashboard/viral-reels-table";
@@ -179,6 +180,9 @@ export default function DashboardPage() {
       {isProcessing && fetchRun && (
         <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
           <FetchStatusStepper status={fetchRun.status} />
+          <div className="mt-5">
+            <QueuePositionCard runId={fetchRun.id} isActive={!!isProcessing} />
+          </div>
           <p className="text-center text-[13px] text-text-muted mt-4">
             Estimated time: 3–5 minutes. Please wait while we fetch your data.
           </p>

@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users } from "lucide-react";
+import { ArrowRight, Users, Zap } from "lucide-react";
+import { Link } from "wouter";
 import type { PlanType } from "@shared/schema";
 
 /** Shape returned by GET /api/fetch/queue-position. */
@@ -15,6 +16,12 @@ export interface QueuePosition {
   queue_priority: number;
   message: string;
 }
+
+/**
+ * Only pitch the upgrade when the wait is long enough that skipping it is a
+ * real benefit. Below this it would be an interruption selling nothing.
+ */
+const UPGRADE_CTA_THRESHOLD_SECONDS = 5 * 60;
 
 function formatWait(seconds: number): string {
   if (seconds <= 0) return "starting now";
@@ -67,6 +74,10 @@ export function QueuePositionCard({ runId, isActive }: QueuePositionCardProps) {
   const start = worstPosition.current;
   const progressPct = start <= 1 ? 100 : Math.round(((start - data.position) / (start - 1)) * 100);
 
+  const showUpgradeCta =
+    data.your_priority === "free" &&
+    data.estimated_wait_seconds > UPGRADE_CTA_THRESHOLD_SECONDS;
+
   return (
     <div
       className="bg-bg-elevated border border-border-subtle rounded-lg p-4 sm:p-5"
@@ -112,6 +123,30 @@ export function QueuePositionCard({ runId, isActive }: QueuePositionCardProps) {
           {data.worker_slots_busy} of {data.worker_slots_total} workers busy
         </span>
       </div>
+
+      {showUpgradeCta && (
+        <div
+          className="mt-4 rounded-md border border-mint/30 bg-mint-dim p-3"
+          data-testid="queue-upgrade-cta"
+        >
+          <div className="flex items-start gap-2">
+            <Zap className="w-3.5 h-3.5 text-mint mt-0.5 shrink-0" strokeWidth={1.5} />
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-text-primary">Skip the queue</p>
+              <p className="text-[12px] text-text-secondary mt-0.5 leading-relaxed">
+                Pro fetches are served before free ones, so they start in seconds
+                even when the queue is this busy.
+              </p>
+              <Link href="/pricing">
+                <button className="mt-2 inline-flex items-center gap-1 text-[12px] text-mint hover:text-mint-hover transition-colors">
+                  See Pro
+                  <ArrowRight className="w-3 h-3" strokeWidth={1.5} />
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

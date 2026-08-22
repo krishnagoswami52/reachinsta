@@ -50,22 +50,48 @@ export const ESTIMATED_APIFY_COST: Record<PlanType, number> = {
 };
 
 /**
- * Preferred minimum remaining budget on the Apify key used for a fetch.
+ * Absolute floor on remaining budget. A key at or below this is never handed
+ * to a fetch, on any plan: the point is to avoid running out of credit
+ * mid-actor-run, which costs the whole fetch and not just the shortfall.
+ */
+export const KEY_BUDGET_FLOOR = 0.3;
+
+/**
+ * Minimum remaining budget a key must hold to be a *first choice* for a plan.
  *
- * These are *preferences*, not hard requirements — a fetch actually costs
- * cents (see ESTIMATED_APIFY_COST), so these thresholds exist to steer big
- * fetches at fat keys and small fetches at nearly-spent keys. When no key
- * clears the bar, selection falls back to KEY_BUDGET_FLOOR while keeping the
- * same per-plan ordering. See design-references/claude-code-h1-concurrency-priority-queue.md.
+ * Only plus sits above the floor. That is what reserves the fat end of the
+ * pool for pro: plus is pushed at keys that are merely "good enough", so the
+ * richest keys stay available for the biggest fetches. Pro and free filter at
+ * the floor itself and are separated by direction alone (below), not by
+ * threshold.
+ *
+ * A plan whose threshold is above the floor falls back to the floor when
+ * nothing clears it, rather than failing — a fetch costs cents (see
+ * ESTIMATED_APIFY_COST), so a $1 key funds a 14-day run perfectly well.
  */
 export const MIN_KEY_BUDGET: Record<PlanType, number> = {
-  pro: 5.0,
-  plus: 3.0,
-  free: 2.0,
+  pro: KEY_BUDGET_FLOOR,
+  plus: 2.0,
+  free: KEY_BUDGET_FLOOR,
 };
 
-/** Absolute floor: below this a key cannot fund even a small fetch safely. */
-export const KEY_BUDGET_FLOOR = 0.5;
+/**
+ * Which end of the qualifying range each plan takes.
+ *
+ * pro  -> highest: premium fetches always get the best key available.
+ * plus -> lowest of the keys above its threshold: spends "good enough" credit
+ *         and leaves the top of the pool for pro.
+ * free -> lowest overall: burns small credits before they expire at month end.
+ */
+export const KEY_SELECTION: Record<PlanType, "highest" | "lowest"> = {
+  pro: "highest",
+  plus: "lowest",
+  free: "lowest",
+};
+
+export function keySelectionForPlan(plan: PlanType): "highest" | "lowest" {
+  return KEY_SELECTION[plan] ?? KEY_SELECTION.free;
+}
 
 /** Measured mean duration of a completed run (n=97, docs/fetch-flow-audit.md). */
 export const AVG_JOB_SECONDS = 63;

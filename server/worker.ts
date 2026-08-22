@@ -1,9 +1,30 @@
 import { storage } from "./storage";
 import { processApifyFetch, FetchTimeoutError } from "./services/apify";
-import { planForPriority } from "@shared/queue";
+import { MAX_CONCURRENT_JOBS, planForPriority } from "@shared/queue";
+import type { Job } from "@shared/schema";
 
 const POLL_INTERVAL_MS = 5000;
 const MAX_ATTEMPTS = 3;
+
+/**
+ * How many queued rows to look at per tick.
+ *
+ * Wider than the number of free slots on purpose: candidates get skipped by
+ * the fairness gates below, and if the window were exactly the slot count a
+ * run of skipped jobs would leave the pool idle with work waiting. Still
+ * bounded, so a 500-deep queue does not turn every tick into a large read.
+ */
+const CANDIDATE_WINDOW = MAX_CONCURRENT_JOBS * 4;
+
+/**
+ * Jobs this process is running right now, keyed by job id.
+ *
+ * The authoritative record of a claim is the database (claimJob is an atomic
+ * CAS), but the pool needs a synchronous, in-process count to decide how many
+ * more jobs it may start within a single tick — a DB round-trip per decision
+ * would race with itself.
+ */
+const activeJobs = new Map<string, { userId: string; priority: number }>();
 
 /**
  * Stuck-job recovery.
@@ -22,13 +43,23 @@ const STUCK_JOB_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes without a heartbeat
 const STUCK_SWEEP_INTERVAL_MS = 5 * 60 * 1000; // sweep every 5 minutes
 const HEARTBEAT_INTERVAL_MS = 60 * 1000; // 1 minute
 
+/** Claim a queued job and run it. Used by the degraded single-job fallback. */
 async function processJob(jobId: string): Promise<void> {
   const job = await storage.claimJob(jobId);
   if (!job) {
     console.log(`Job ${jobId} was already claimed or doesn't exist`);
     return;
   }
+  await runClaimedJob(job);
+}
 
+/**
+ * Run a job that has already been claimed.
+ *
+ * Split out from processJob so the pool can claim first (which is what makes a
+ * slot count meaningful) and only then hand the work off to run concurrently.
+ */
+async function runClaimedJob(job: Job): Promise<void> {
   console.log(`Processing job ${job.id} (attempt ${job.attempts + 1}/${MAX_ATTEMPTS})`);
 
   // Keep updated_at fresh for as long as we hold this job, so the stuck-job
@@ -219,21 +250,79 @@ async function recoverStuckJobs(): Promise<void> {
   }
 }
 
+/**
+ * Fill any free slot in the pool from the head of the priority queue.
+ *
+ * Returns as soon as the work is launched — it does not wait for it. That is
+ * the whole point: the previous implementation awaited each job in a for-loop,
+ * so a 63s average run serialised into a ~30 minute wait for the 30th user
+ * (docs/fetch-flow-audit.md, scenario 7).
+ */
+async function scheduleFromQueue(): Promise<void> {
+  if (activeJobs.size >= MAX_CONCURRENT_JOBS) return;
+
+  const candidates = await storage.getQueuedJobs(CANDIDATE_WINDOW);
+  if (candidates.length === 0) return;
+
+  for (const candidate of candidates) {
+    if (activeJobs.size >= MAX_CONCURRENT_JOBS) break;
+    if (activeJobs.has(candidate.id)) continue;
+
+    // claimJob is a CAS on status='queued', so a job cannot be started twice
+    // even if two ticks (or two processes) reach it together.
+    const job = await storage.claimJob(candidate.id);
+    if (!job) continue;
+
+    // Recorded before the first await inside the job so the slot count is
+    // correct for every later decision in this same tick.
+    activeJobs.set(job.id, { userId: job.userId, priority: job.priority });
+
+    console.log(
+      `[Worker] Started job ${job.id} (priority ${job.priority}) — ` +
+        `${activeJobs.size}/${MAX_CONCURRENT_JOBS} slots busy`,
+    );
+
+    void runClaimedJob(job)
+      .catch((err) => console.error(`[Worker] Job ${job.id} threw out of its handler:`, err))
+      .finally(() => {
+        activeJobs.delete(job.id);
+        console.log(
+          `[Worker] Freed slot for job ${job.id} — ${activeJobs.size}/${MAX_CONCURRENT_JOBS} busy`,
+        );
+      });
+  }
+}
+
+/**
+ * Last-resort path when the pool scheduler itself fails.
+ *
+ * Keeps the pre-pool behaviour available: claim one job, run it to completion,
+ * return. Slower, but a queue that drains slowly beats a queue that stops.
+ */
+async function runSingleJobFallback(): Promise<void> {
+  try {
+    const [job] = await storage.getQueuedJobs(1);
+    if (!job) return;
+    console.warn(`[Worker] Pool scheduling failed — running job ${job.id} sequentially`);
+    await processJob(job.id);
+  } catch (error) {
+    console.error("[Worker] Single-job fallback also failed:", error);
+  }
+}
+
 async function pollForJobs(): Promise<void> {
   try {
-    const jobs = await storage.getQueuedJobs();
-
-    for (const job of jobs) {
-      await processJob(job.id);
-    }
+    await scheduleFromQueue();
   } catch (error) {
     console.error("Error polling for jobs:", error);
+    await runSingleJobFallback();
   }
 }
 
 export async function startWorker(): Promise<void> {
   console.log("Starting background worker...");
   console.log(`Poll interval: ${POLL_INTERVAL_MS}ms`);
+  console.log(`Concurrency: ${MAX_CONCURRENT_JOBS} parallel slot(s)`);
   console.log(`Max attempts: ${MAX_ATTEMPTS}`);
   console.log(
     `Stuck-job sweep: every ${STUCK_SWEEP_INTERVAL_MS / 60000}m, ` +

@@ -60,7 +60,12 @@ export const fetchRuns = pgTable("fetch_runs", {
   timeRangeDays: integer("time_range_days").notNull(),
   competitorUsernames: text("competitor_usernames").array(),
   status: text("status").$type<FetchStatusType>().default("queued").notNull(),
+  // User-facing copy only. Anything technical belongs in internalErrorCode —
+  // see server/utils/errorMessages.ts.
   errorMessage: text("error_message"),
+  // Developer-facing classification of the failure (APIFY_TIMEOUT, ...).
+  // Never rendered to end users; surfaced in the admin dashboard.
+  internalErrorCode: varchar("internal_error_code", { length: 50 }),
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -114,10 +119,22 @@ export const jobs = pgTable("jobs", {
   status: text("status").$type<JobStatusType>().default("queued").notNull(),
   attempts: integer("attempts").default(0).notNull(),
   lastError: text("last_error"),
+  // Scheduling class derived from the owner's plan at enqueue time:
+  // 1 = pro, 2 = plus, 3 = free. Lower is served first, ties break FIFO.
+  // Frozen at creation on purpose — a plan change mid-queue must not reorder
+  // work that other users are already waiting behind.
+  priority: integer("priority").default(3).notNull(),
+  // Expected Apify spend for this fetch, for cost attribution and key sizing.
+  estimatedApifyCost: numeric("estimated_apify_cost", { precision: 10, scale: 4 }),
+  // Which key from the rotation pool actually ran this job.
+  apifyKeyId: varchar("apify_key_id").references(() => apifyKeys.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("jobs_status_idx").on(table.status),
+  // Backs the priority-queue pop: ORDER BY priority, created_at over the
+  // queued rows only.
+  index("jobs_priority_queue_idx").on(table.priority, table.createdAt),
 ]);
 
 export const apifyKeys = pgTable("apify_keys", {

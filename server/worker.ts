@@ -4,6 +4,7 @@ import {
   FREE_USER_RESERVED_SLOTS,
   MAX_CONCURRENT_JOBS,
   QUEUE_PRIORITY,
+  perUserConcurrencyLimit,
   planForPriority,
 } from "@shared/queue";
 import type { Job } from "@shared/schema";
@@ -54,6 +55,14 @@ function countActivePaidJobs(): number {
   let n = 0;
   for (const active of activeJobs.values()) {
     if (isPaidPriority(active.priority)) n++;
+  }
+  return n;
+}
+
+function countActiveJobsForUser(userId: string): number {
+  let n = 0;
+  for (const active of activeJobs.values()) {
+    if (active.userId === userId) n++;
   }
   return n;
 }
@@ -299,6 +308,17 @@ async function scheduleFromQueue(): Promise<void> {
   for (const candidate of candidates) {
     if (activeJobs.size >= MAX_CONCURRENT_JOBS) break;
     if (activeJobs.has(candidate.id)) continue;
+
+    // Monopolisation guard: no single account may hold the whole pool. Pro
+    // gets 3 slots, plus 2, free 1 — so even an account with several fetches
+    // queued at once leaves room for everybody else.
+    const userLimit = perUserConcurrencyLimit(planForPriority(candidate.priority));
+    if (countActiveJobsForUser(candidate.userId) >= userLimit) {
+      console.log(
+        `[Worker] Job ${candidate.id} held: user already holds ${userLimit} slot(s), their limit`,
+      );
+      continue;
+    }
 
     // Starvation guard: paid work cannot fill the last slot. Skip, don't
     // break — a free job further down the window is still startable, and

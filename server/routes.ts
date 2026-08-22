@@ -6,13 +6,15 @@ import subscriptionRouter from "./routes/subscription";
 import { z } from "zod";
 import { planLimits, type PlanType, type RoleType } from "@shared/schema";
 import {
-  AVG_JOB_SECONDS,
   MAX_CONCURRENT_JOBS,
+  estimateQueueWaitSeconds,
   estimatedCostForPlan,
   planForPriority,
   priorityForPlan,
+  queuePositionMessage,
 } from "@shared/queue";
 import { fetchLimiter } from "./middleware/rate-limit";
+import { messageForCode } from "./utils/errorMessages";
 
 const addCompetitorSchema = z.object({
   username: z.string().min(1).max(30).regex(/^[a-zA-Z0-9._@]+$/),
@@ -53,30 +55,6 @@ if (!SUPER_ADMIN_EMAIL) {
   throw new Error("SUPER_ADMIN_EMAIL env var is required");
 }
 const ADMIN_EMAILS: string[] = [SUPER_ADMIN_EMAIL];
-
-/**
- * Copy for the queue card. Deliberately never mentions internals — no key
- * pool, no worker counts, no error strings.
- */
-function queuePositionMessage(position: number, waitSeconds: number, plan: PlanType): string {
-  if (position === 1) {
-    return "You're next — your fetch starts in a moment.";
-  }
-
-  const waitMin = Math.max(1, Math.round(waitSeconds / 60));
-  const ahead = position - 1;
-  const aheadLabel = `${ahead} fetch${ahead === 1 ? "" : "es"} ahead of you`;
-
-  if (plan === "pro") {
-    return `#${position} in the priority queue — ${aheadLabel}. Starting in about ${waitMin} min.`;
-  }
-
-  if (plan === "plus") {
-    return `#${position} in the queue — ${aheadLabel}. About ${waitMin} min to go.`;
-  }
-
-  return `#${position} in the queue — ${aheadLabel}. About ${waitMin} min to go.`;
-}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -392,15 +370,7 @@ export async function registerRoutes(
       const ahead = await storage.countJobsAheadInQueue(job.priority, job.createdAt);
       const position = ahead + 1;
 
-      // Anything that fits in a slot that is free right now starts on the next
-      // poll tick, so it has no meaningful queue wait. Past that, each full
-      // pass of the pool clears MAX_CONCURRENT_JOBS jobs in roughly one
-      // average run.
-      const slotsFree = Math.max(0, MAX_CONCURRENT_JOBS - workerSlotsBusy);
-      const estimatedWaitSeconds =
-        position <= slotsFree
-          ? 0
-          : Math.ceil((position - slotsFree) / MAX_CONCURRENT_JOBS) * AVG_JOB_SECONDS;
+      const estimatedWaitSeconds = estimateQueueWaitSeconds(position, workerSlotsBusy);
 
       res.json({
         status: "queued",
@@ -496,7 +466,8 @@ export async function registerRoutes(
 
       const updatedFetchRun = await storage.updateFetchRun(fetchRun.id, {
         status: "failed",
-        errorMessage: "Cancelled by user",
+        errorMessage: messageForCode("FETCH_CANCELLED"),
+        internalErrorCode: "FETCH_CANCELLED",
       });
 
       res.json(updatedFetchRun || fetchRun);

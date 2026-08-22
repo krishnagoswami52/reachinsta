@@ -32,6 +32,7 @@ const ERROR_TRANSLATIONS: Record<string, string | null> = {
   // Recovery / system
   JOB_RECOVERED: null, // A recovered job is a success in progress. Say nothing.
   JOB_RETRYING: null, // Still queued and still going to run. Say nothing.
+  FETCH_CANCELLED: "You stopped this fetch.",
   WORKER_TIMEOUT: "Your fetch is taking longer than usual. Please check back in a minute.",
 
   // Instagram
@@ -94,6 +95,9 @@ export function detectErrorCode(error: any): ErrorCode {
 
   // Our own bookkeeping, before anything else can claim it.
   if (text.includes("recovering") || text.includes("worker went away")) return "JOB_RECOVERED";
+  if (text.includes("cancelled by user") || text.includes("canceled by user")) {
+    return "FETCH_CANCELLED";
+  }
 
   if (text.includes("all apify keys exhausted") || text.includes("no apify key")) {
     return "APIFY_ALL_KEYS_EXHAUSTED";

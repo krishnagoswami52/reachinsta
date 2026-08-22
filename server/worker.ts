@@ -52,20 +52,48 @@ function isPaidPriority(priority: number): boolean {
   return priority < QUEUE_PRIORITY.free;
 }
 
-function countActivePaidJobs(): number {
-  let n = 0;
-  for (const active of activeJobs.values()) {
-    if (isPaidPriority(active.priority)) n++;
-  }
-  return n;
+export interface ActiveSlot {
+  userId: string;
+  priority: number;
 }
 
-function countActiveJobsForUser(userId: string): number {
-  let n = 0;
-  for (const active of activeJobs.values()) {
-    if (active.userId === userId) n++;
+export type SlotDecision =
+  | { start: true }
+  | { start: false; reason: "pool-full" | "user-limit" | "free-slot-reserved" };
+
+/**
+ * May this job take a slot, given what is already running?
+ *
+ * Pure and exported so the fairness rules can be tested directly rather than
+ * through a copy of them. The scheduler below is the only production caller;
+ * it passes its live activeJobs map.
+ */
+export function canStartJob(
+  candidate: { userId: string; priority: number },
+  active: ReadonlyMap<string, ActiveSlot>,
+): SlotDecision {
+  if (active.size >= MAX_CONCURRENT_JOBS) return { start: false, reason: "pool-full" };
+
+  let paid = 0;
+  let sameUser = 0;
+  for (const slot of active.values()) {
+    if (isPaidPriority(slot.priority)) paid++;
+    if (slot.userId === candidate.userId) sameUser++;
   }
-  return n;
+
+  // Monopolisation guard: no single account may hold the whole pool. Pro gets
+  // 3 slots, plus 2, free 1 — so an account with several fetches queued at
+  // once still leaves room for everybody else.
+  if (sameUser >= perUserConcurrencyLimit(planForPriority(candidate.priority))) {
+    return { start: false, reason: "user-limit" };
+  }
+
+  // Starvation guard: paid work cannot fill the last slot.
+  if (isPaidPriority(candidate.priority) && paid >= PAID_SLOT_CEILING) {
+    return { start: false, reason: "free-slot-reserved" };
+  }
+
+  return { start: true };
 }
 
 /**
@@ -324,29 +352,15 @@ async function scheduleFromQueue(): Promise<void> {
   if (candidates.length === 0) return;
 
   for (const candidate of candidates) {
-    if (activeJobs.size >= MAX_CONCURRENT_JOBS) break;
     if (activeJobs.has(candidate.id)) continue;
 
-    // Monopolisation guard: no single account may hold the whole pool. Pro
-    // gets 3 slots, plus 2, free 1 — so even an account with several fetches
-    // queued at once leaves room for everybody else.
-    const userLimit = perUserConcurrencyLimit(planForPriority(candidate.priority));
-    if (countActiveJobsForUser(candidate.userId) >= userLimit) {
-      console.log(
-        `[Worker] Job ${candidate.id} held: user already holds ${userLimit} slot(s), their limit`,
-      );
-      continue;
-    }
-
-    // Starvation guard: paid work cannot fill the last slot. Skip, don't
-    // break — a free job further down the window is still startable, and
-    // that is exactly the slot being held for it.
-    if (isPaidPriority(candidate.priority) && countActivePaidJobs() >= PAID_SLOT_CEILING) {
-      console.log(
-        `[Worker] Job ${candidate.id} (priority ${candidate.priority}) held: ` +
-          `paid work already holds ${PAID_SLOT_CEILING}/${MAX_CONCURRENT_JOBS} slots, ` +
-          `${FREE_USER_RESERVED_SLOTS} reserved for free users`,
-      );
+    const decision = canStartJob(candidate, activeJobs);
+    if (!decision.start) {
+      if (decision.reason === "pool-full") break;
+      // Skip, don't break: a job further down the priority-ordered window may
+      // still be startable — for "free-slot-reserved" that is precisely the
+      // free job the slot is being held for.
+      console.log(`[Worker] Job ${candidate.id} held (${decision.reason})`);
       continue;
     }
 

@@ -56,7 +56,7 @@ export const ESTIMATED_APIFY_COST: Record<PlanType, number> = {
  * cents (see ESTIMATED_APIFY_COST), so these thresholds exist to steer big
  * fetches at fat keys and small fetches at nearly-spent keys. When no key
  * clears the bar, selection falls back to KEY_BUDGET_FLOOR while keeping the
- * same per-plan ordering. See docs/h1-concurrency-priority-queue.md.
+ * same per-plan ordering. See design-references/claude-code-h1-concurrency-priority-queue.md.
  */
 export const MIN_KEY_BUDGET: Record<PlanType, number> = {
   pro: 5.0,
@@ -88,4 +88,41 @@ export function minKeyBudgetForPlan(plan: PlanType): number {
 
 export function perUserConcurrencyLimit(plan: PlanType): number {
   return PER_USER_CONCURRENCY[plan] ?? PER_USER_CONCURRENCY.free;
+}
+
+/**
+ * Seconds a job at `position` should expect to wait.
+ *
+ * Anything that fits in a slot that is free right now starts on the worker's
+ * next poll tick, so it has no meaningful queue wait. Past that, each full
+ * pass of the pool clears MAX_CONCURRENT_JOBS jobs in roughly one average run.
+ */
+export function estimateQueueWaitSeconds(position: number, workerSlotsBusy: number): number {
+  const slotsFree = Math.max(0, MAX_CONCURRENT_JOBS - workerSlotsBusy);
+  if (position <= slotsFree) return 0;
+  return Math.ceil((position - slotsFree) / MAX_CONCURRENT_JOBS) * AVG_JOB_SECONDS;
+}
+
+/**
+ * Copy for the queue card. Deliberately never mentions internals — no key
+ * pool, no worker counts, no error strings.
+ */
+export function queuePositionMessage(
+  position: number,
+  waitSeconds: number,
+  plan: PlanType,
+): string {
+  if (position === 1) {
+    return "You're next — your fetch starts in a moment.";
+  }
+
+  const waitMin = Math.max(1, Math.round(waitSeconds / 60));
+  const ahead = position - 1;
+  const aheadLabel = `${ahead} fetch${ahead === 1 ? "" : "es"} ahead of you`;
+
+  if (plan === "pro") {
+    return `#${position} in the priority queue — ${aheadLabel}. Starting in about ${waitMin} min.`;
+  }
+
+  return `#${position} in the queue — ${aheadLabel}. About ${waitMin} min to go.`;
 }

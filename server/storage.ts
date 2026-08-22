@@ -116,6 +116,7 @@ export interface IStorage {
   claimJob(jobId: string): Promise<Job | undefined>;
   getStuckJobs(staleBeforeMs: number): Promise<Job[]>;
   touchJob(jobId: string): Promise<void>;
+  setJobApifyKey(jobId: string, apifyKeyId: string): Promise<void>;
   requeueStuckJob(jobId: string, attempts: number, lastError: string): Promise<Job | undefined>;
   failStuckJob(jobId: string, attempts: number, lastError: string): Promise<Job | undefined>;
   refundFetchCredit(userId: string): Promise<boolean>;
@@ -123,7 +124,8 @@ export interface IStorage {
   // Apify key management
   upsertApifyKey(data: { token: string; totalBudget?: string }): Promise<ApifyKey>;
   getBestApifyKey(): Promise<ApifyKey | undefined>;
-  recordApifyKeyUsage(token: string, cost: number): Promise<void>;
+  getSelectableApifyKeys(): Promise<ApifyKey[]>;
+  recordApifyKeyUsage(token: string, cost: number): Promise<number | undefined>;
   markApifyKeyExhausted(token: string): Promise<void>;
   getAllApifyKeys(): Promise<ApifyKey[]>;
 }
@@ -628,6 +630,17 @@ export class DatabaseStorage implements IStorage {
       .limit(50);
   }
 
+  /**
+   * Record which rotation key funded a job.
+   *
+   * Deliberately does not bump updated_at: that column is the heartbeat the
+   * stuck-job sweep reads, and an attribution write must not be mistaken for
+   * proof that the worker is alive.
+   */
+  async setJobApifyKey(jobId: string, apifyKeyId: string): Promise<void> {
+    await db.update(jobs).set({ apifyKeyId }).where(eq(jobs.id, jobId));
+  }
+
   /** Heartbeat: proves the owning worker is still alive so the sweep skips it. */
   async touchJob(jobId: string): Promise<void> {
     await db.update(jobs).set({ updatedAt: new Date() }).where(eq(jobs.id, jobId));
@@ -691,6 +704,22 @@ export class DatabaseStorage implements IStorage {
     return existing;
   }
 
+  /**
+   * Every key still in the rotation, richest first.
+   *
+   * Selection policy lives in keyManager (it depends on the requesting user's
+   * plan); this just hands over the candidate set. Returning the whole pool
+   * rather than a single row is what makes it possible to spread five parallel
+   * workers across five different tokens.
+   */
+  async getSelectableApifyKeys(): Promise<ApifyKey[]> {
+    return await db
+      .select()
+      .from(apifyKeys)
+      .where(eq(apifyKeys.isExhausted, false))
+      .orderBy(desc(sql`${apifyKeys.totalBudget}::numeric - ${apifyKeys.usedBudget}::numeric`));
+  }
+
   async getBestApifyKey(): Promise<ApifyKey | undefined> {
     const [result] = await db
       .select()
@@ -701,15 +730,20 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async recordApifyKeyUsage(token: string, cost: number): Promise<void> {
-    await db
+  /** Charges a key and reports what it has left, so the caller can retire it. */
+  async recordApifyKeyUsage(token: string, cost: number): Promise<number | undefined> {
+    const [result] = await db
       .update(apifyKeys)
       .set({
         usedBudget: sql`${apifyKeys.usedBudget}::numeric + ${cost.toFixed(4)}::numeric`,
         lastUsedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(eq(apifyKeys.token, token));
+      .where(eq(apifyKeys.token, token))
+      .returning({
+        remaining: sql<string>`${apifyKeys.totalBudget}::numeric - ${apifyKeys.usedBudget}::numeric`,
+      });
+    return result ? parseFloat(result.remaining) : undefined;
   }
 
   async markApifyKeyExhausted(token: string): Promise<void> {

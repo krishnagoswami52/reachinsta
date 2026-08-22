@@ -1,7 +1,15 @@
 import { ApifyClient } from 'apify-client';
 import { storage } from "../storage";
-import type { FetchRun, InsertReel, InsertCompetitorStats } from "@shared/schema";
-import { getBestKey, isBudgetError, markExhausted, maskToken, recordUsage } from "./keyManager";
+import type { FetchRun, InsertReel, InsertCompetitorStats, PlanType } from "@shared/schema";
+import {
+  getKeyForPlan,
+  isBudgetError,
+  markExhausted,
+  markTokenInFlight,
+  maskToken,
+  recordUsage,
+  releaseToken,
+} from "./keyManager";
 
 const INSTAGRAM_SCRAPER_ACTOR_ID = "shu8hvrXbJbY3Eb9W";
 const FOLLOWERS_SCRAPER_ACTOR_ID = "7RQ4RlfRihUhflQtJ";
@@ -66,13 +74,32 @@ function assertRunFinished(run: { status?: string; id?: string }, actorLabel: st
   throw new Error(`${actorLabel} finished with status ${status} (run ${run?.id ?? "?"}).`);
 }
 
+/**
+ * Run one actor call, rotating through the key pool on budget failures.
+ *
+ * The key is now chosen for the requesting user's plan rather than always
+ * taking the fattest token, and it is flagged in-flight for the duration so
+ * concurrent workers land on different tokens. `tried` makes rotation
+ * monotonic: a token that just failed is never offered again for this call,
+ * which matters now that selection is plan-shaped and could otherwise keep
+ * returning the same "best for free" key.
+ */
 async function runActorWithRotation<T>(
+  plan: PlanType,
   fn: (client: ApifyClient) => Promise<T>,
-): Promise<{ result: T; token: string }> {
+): Promise<{ result: T; token: string; keyId: string }> {
   let lastError: Error = new Error("No Apify keys available");
+  const tried = new Set<string>();
 
   for (let attempt = 0; attempt < MAX_KEY_ATTEMPTS; attempt++) {
-    const token = await getBestKey();
+    let key;
+    try {
+      key = await getKeyForPlan(plan, tried);
+    } catch (error: any) {
+      throw tried.size > 0 ? lastError : error;
+    }
+    const token = key.token;
+    tried.add(token);
     const client = new ApifyClient({ token });
 
     // Test hook: inject a budget error for a specific token via env flag.
@@ -88,12 +115,13 @@ async function runActorWithRotation<T>(
       }
     }
 
-    console.log(`[KeyManager] Using token ${maskToken(token)} for fetch (attempt ${attempt + 1})`);
+    console.log(`[KeyManager] Using token ${maskToken(token)} for ${plan} fetch (attempt ${attempt + 1})`);
 
+    markTokenInFlight(token);
     try {
       const result = await fn(client);
       console.log(`[KeyManager] Fetch succeeded with token ${maskToken(token)}`);
-      return { result, token };
+      return { result, token, keyId: key.id };
     } catch (error: any) {
       if (isBudgetError(error)) {
         console.warn(
@@ -109,6 +137,8 @@ async function runActorWithRotation<T>(
         { error: error?.message?.slice(0, 200), statusCode: error?.statusCode },
       );
       throw error;
+    } finally {
+      releaseToken(token);
     }
   }
 
@@ -157,10 +187,23 @@ interface FollowerData {
   followsCount?: number;
 }
 
+export interface ProcessFetchOptions {
+  /**
+   * Plan the fetch is being run for. Drives which Apify key funds it — a
+   * 28-day pro fetch is steered at a fat key, a 7-day free fetch at a
+   * nearly-spent one. Defaults to "free" so any existing caller keeps working.
+   */
+  plan?: PlanType;
+  /** Called with the key id as soon as one is committed to, for attribution. */
+  onKeySelected?: (keyId: string) => void | Promise<void>;
+}
+
 export async function processApifyFetch(
   fetchRun: FetchRun,
-  usernames: string[]
+  usernames: string[],
+  options: ProcessFetchOptions = {}
 ): Promise<void> {
+  const plan: PlanType = options.plan ?? "free";
   console.log(`Starting Apify fetch for run ${fetchRun.id} with ${usernames.length} usernames: ${usernames.join(', ')}`);
 
   await storage.updateFetchRun(fetchRun.id, {
@@ -198,13 +241,14 @@ export async function processApifyFetch(
       addParentData: false,
     };
 
-    const { result: postsRun, token: postsToken } = await runActorWithRotation((client) =>
+    const { result: postsRun, token: postsToken, keyId: postsKeyId } = await runActorWithRotation(plan, (client) =>
       client.actor(INSTAGRAM_SCRAPER_ACTOR_ID).call(reelsInput, {
         timeout: APIFY_RUN_TIMEOUT_SECS,
         waitSecs: APIFY_WAIT_SECS,
       })
     );
     console.log(`Instagram Scraper run completed with status: ${postsRun.status}`);
+    await options.onKeySelected?.(postsKeyId);
     assertRunFinished(postsRun, "Instagram Scraper");
 
     const { items: postsData } = await new ApifyClient({ token: postsToken })
@@ -337,7 +381,7 @@ export async function processApifyFetch(
 
       try {
         const followersInput = { usernames: uniqueUsernames };
-        const { result: followersRun, token: followersToken } = await runActorWithRotation((client) =>
+        const { result: followersRun, token: followersToken } = await runActorWithRotation(plan, (client) =>
           client.actor(FOLLOWERS_SCRAPER_ACTOR_ID).call(followersInput, {
             timeout: APIFY_RUN_TIMEOUT_SECS,
             waitSecs: APIFY_WAIT_SECS,

@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import { processApifyFetch, FetchTimeoutError } from "./services/apify";
+import { planForPriority } from "@shared/queue";
 
 const POLL_INTERVAL_MS = 5000;
 const MAX_ATTEMPTS = 3;
@@ -60,7 +61,22 @@ async function processJob(jobId: string): Promise<void> {
       throw new Error("No competitors to fetch");
     }
 
-    await processApifyFetch(fetchRun, usernames);
+    // The job's frozen priority is the same classification the queue ordered
+    // by, so key selection and scheduling always agree on which plan this job
+    // belongs to — even if the profile changed after it was enqueued.
+    const plan = planForPriority(job.priority);
+
+    await processApifyFetch(fetchRun, usernames, {
+      plan,
+      onKeySelected: async (keyId) => {
+        // Attribution only — a failure here must never sink a live fetch.
+        try {
+          await storage.setJobApifyKey(job.id, keyId);
+        } catch (err) {
+          console.error(`[Worker] Could not record Apify key for job ${job.id}:`, err);
+        }
+      },
+    });
 
     await storage.updateJob(job.id, {
       status: "completed",

@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { eq, desc, and, lt, sql, count } from "drizzle-orm";
+import { eq, asc, desc, and, lt, sql, count } from "drizzle-orm";
 import { db } from "./db";
 import {
   profiles, competitors, fetchRuns, reels, competitorStats, rawPayloads, jobs, apifyKeys,
@@ -110,7 +110,7 @@ export interface IStorage {
   createRawPayload(payload: InsertRawPayload): Promise<RawPayload>;
   
   createJob(job: InsertJob): Promise<Job>;
-  getQueuedJobs(): Promise<Job[]>;
+  getQueuedJobs(limit?: number): Promise<Job[]>;
   getJob(id: string): Promise<Job | undefined>;
   updateJob(id: string, updates: Partial<Job>): Promise<Job | undefined>;
   claimJob(jobId: string): Promise<Job | undefined>;
@@ -571,13 +571,20 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getQueuedJobs(): Promise<Job[]> {
+  /**
+   * Pop the head of the priority queue.
+   *
+   * Ordering is (priority ASC, created_at ASC): a pro user's job outranks a
+   * free user's regardless of who queued first, and within one priority it is
+   * strict FIFO. Backed by idx_jobs_priority_queue.
+   */
+  async getQueuedJobs(limit = 10): Promise<Job[]> {
     return await db
       .select()
       .from(jobs)
       .where(eq(jobs.status, "queued"))
-      .orderBy(jobs.createdAt)
-      .limit(10);
+      .orderBy(asc(jobs.priority), asc(jobs.createdAt))
+      .limit(limit);
   }
 
   async getJob(id: string): Promise<Job | undefined> {

@@ -5,6 +5,7 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integra
 import subscriptionRouter from "./routes/subscription";
 import { z } from "zod";
 import { planLimits, type PlanType, type RoleType } from "@shared/schema";
+import { estimatedCostForPlan, priorityForPlan } from "@shared/queue";
 import { fetchLimiter } from "./middleware/rate-limit";
 
 const addCompetitorSchema = z.object({
@@ -274,12 +275,17 @@ export async function registerRoutes(
         status: "queued",
       });
       
+      // Scheduling class is frozen here, from the plan the user holds at the
+      // moment they enqueue. Deriving it later would let a mid-queue upgrade
+      // reorder work other users are already waiting behind.
       await storage.createJob({
         userId,
         fetchRunId: fetchRun.id,
         type: "fetch_apify",
         status: "queued",
         attempts: 0,
+        priority: priorityForPlan(profile.plan),
+        estimatedApifyCost: estimatedCostForPlan(profile.plan).toFixed(4),
       });
       
       await storage.updateProfile(userId, {

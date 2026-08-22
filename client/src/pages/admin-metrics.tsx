@@ -101,6 +101,8 @@ interface ActivityFeedData {
     competitors_count: number;
     time_range_days: number;
     status: string;
+    /** Developer-facing failure classification. Admin-only by construction. */
+    internal_error_code: string | null;
     created_at: string;
   }[];
   upgrades: {
@@ -545,6 +547,11 @@ function ActivityFeed({ activity }: { activity?: ActivityFeedData }) {
               <p className="font-mono text-[10px] text-text-muted">
                 {fmt(row.competitors_count)} competitors · {row.status} · {time(row.created_at)}
               </p>
+              {row.internal_error_code && (
+                <p className="font-mono text-[10px] text-danger/70">
+                  {row.internal_error_code}
+                </p>
+              )}
             </div>
           ))}
         </div>

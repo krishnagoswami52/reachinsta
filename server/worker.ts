@@ -8,6 +8,7 @@ import {
   planForPriority,
 } from "@shared/queue";
 import type { Job } from "@shared/schema";
+import { handleError, messageForCode } from "./utils/errorMessages";
 
 const POLL_INTERVAL_MS = 5000;
 const MAX_ATTEMPTS = 3;
@@ -160,6 +161,10 @@ async function runClaimedJob(job: Job): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error(`Job ${job.id} failed:`, errorMessage);
 
+    // jobs.last_error keeps the raw text — it is the developer-facing column
+    // and nothing renders it. fetch_runs gets the translated pair.
+    const { userMessage, internalCode } = handleError(error, `Worker:${job.id}`);
+
     const attempts = job.attempts + 1;
 
     // A timeout means Apify was given its full budgeted wall-clock and still
@@ -177,7 +182,8 @@ async function runClaimedJob(job: Job): Promise<void> {
 
       await storage.updateFetchRun(job.fetchRunId, {
         status: "failed",
-        errorMessage,
+        errorMessage: messageForCode("APIFY_TIMEOUT"),
+        internalErrorCode: "APIFY_TIMEOUT",
       });
 
       const refunded = await storage.refundFetchCredit(job.userId);
@@ -192,9 +198,13 @@ async function runClaimedJob(job: Job): Promise<void> {
         lastError: errorMessage,
       });
 
+      // Back in the queue and still going to run, so there is nothing for the
+      // user to act on yet. Showing "Retry 2/3: <stack trace>" next to a
+      // spinner only makes a recoverable hiccup look like a failure.
       await storage.updateFetchRun(job.fetchRunId, {
         status: "queued",
-        errorMessage: `Retry ${attempts}/${MAX_ATTEMPTS}: ${errorMessage}`,
+        errorMessage: null,
+        internalErrorCode: internalCode,
       });
 
       console.log(`Job ${job.id} will be retried (attempt ${attempts + 1}/${MAX_ATTEMPTS})`);
@@ -207,7 +217,8 @@ async function runClaimedJob(job: Job): Promise<void> {
 
       await storage.updateFetchRun(job.fetchRunId, {
         status: "failed",
-        errorMessage,
+        errorMessage: userMessage,
+        internalErrorCode: internalCode,
       });
 
       console.log(`Job ${job.id} failed permanently after ${MAX_ATTEMPTS} attempts`);
@@ -257,9 +268,13 @@ async function recoverStuckJobs(): Promise<void> {
           continue;
         }
 
+        // Invisible on purpose. The run is going to be re-run and the user
+        // still gets their data — telling them a worker died is operational
+        // detail they cannot act on, and it reads as a failure.
         await storage.updateFetchRun(job.fetchRunId, {
           status: "queued",
-          errorMessage: `Recovering: ${reason}`,
+          errorMessage: null,
+          internalErrorCode: "JOB_RECOVERED",
         });
 
         console.warn(
@@ -273,9 +288,12 @@ async function recoverStuckJobs(): Promise<void> {
           continue;
         }
 
+        // Terminal this time, so the user does need to hear something — but
+        // the "no heartbeat for 50724m" detail stays in jobs.last_error.
         await storage.updateFetchRun(job.fetchRunId, {
           status: "failed",
-          errorMessage: reason,
+          errorMessage: messageForCode("WORKER_TIMEOUT"),
+          internalErrorCode: "JOB_RECOVERED",
         });
 
         const refunded = await storage.refundFetchCredit(job.userId);

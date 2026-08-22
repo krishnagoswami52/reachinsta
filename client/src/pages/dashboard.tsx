@@ -179,7 +179,7 @@ export default function DashboardPage() {
       {/* Fetch in progress */}
       {isProcessing && fetchRun && (
         <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
-          <FetchStatusStepper status={fetchRun.status} />
+          <FetchStatusStepper status={fetchRun.status} errorMessage={fetchRun.errorMessage} />
           <div className="mt-5">
             <QueuePositionCard runId={fetchRun.id} isActive={!!isProcessing} />
           </div>
@@ -196,6 +196,15 @@ export default function DashboardPage() {
               {cancelFetchMutation.isPending ? "Stopping..." : "Stop Fetching"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Last fetch failed. The copy comes from the server already translated
+          (server/utils/errorMessages.ts) — a run recovered by the stuck-job
+          sweep carries no message at all and never reaches this branch. */}
+      {!isProcessing && fetchRun?.status === "failed" && (
+        <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
+          <FetchStatusStepper status="failed" errorMessage={fetchRun.errorMessage} />
         </div>
       )}
 

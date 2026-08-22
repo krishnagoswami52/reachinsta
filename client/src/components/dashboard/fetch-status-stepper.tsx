@@ -4,6 +4,12 @@ import type { FetchStatusType } from "@shared/schema";
 
 interface FetchStatusStepperProps {
   status: FetchStatusType;
+  /**
+   * Copy from fetch_runs.error_message. Already translated server-side by
+   * server/utils/errorMessages.ts — it is safe to render verbatim, and it is
+   * the only error text that ever reaches a user.
+   */
+  errorMessage?: string | null;
   className?: string;
 }
 
@@ -24,7 +30,7 @@ const statusOrder: Record<FetchStatusType, number> = {
   failed: -1,
 };
 
-export function FetchStatusStepper({ status, className }: FetchStatusStepperProps) {
+export function FetchStatusStepper({ status, errorMessage, className }: FetchStatusStepperProps) {
   const currentStep = statusOrder[status];
   const isFailed = status === "failed";
 
@@ -35,8 +41,8 @@ export function FetchStatusStepper({ status, className }: FetchStatusStepperProp
           <AlertCircle className="w-5 h-5 text-danger" />
           <div>
             <p className="font-mono text-[13px] text-danger">Fetch Failed</p>
-            <p className="font-mono text-[11px] text-text-muted">
-              Something went wrong. Please try again.
+            <p className="font-mono text-[11px] text-text-muted" data-testid="text-fetch-error">
+              {errorMessage || "Something went wrong. Please try again."}
             </p>
           </div>
         </div>

@@ -215,6 +215,7 @@ async function getRecentActivity() {
               COALESCE(array_length(f.competitor_usernames, 1), 0) AS competitors_count,
               f.time_range_days,
               f.status,
+              f.internal_error_code,
               ${utc('f.created_at', 'created_at')}
        FROM fetch_runs f
        LEFT JOIN users u ON u.id = f.user_id

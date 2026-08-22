@@ -10,6 +10,7 @@ import {
   recordUsage,
   releaseToken,
 } from "./keyManager";
+import { handleError } from "../utils/errorMessages";
 
 const INSTAGRAM_SCRAPER_ACTOR_ID = "shu8hvrXbJbY3Eb9W";
 const FOLLOWERS_SCRAPER_ACTOR_ID = "7RQ4RlfRihUhflQtJ";
@@ -460,6 +461,12 @@ export async function processApifyFetch(
     await storage.updateFetchRun(fetchRun.id, {
       status: "completed",
       completedAt: new Date(),
+      // A run that succeeded must not carry copy from an earlier attempt. A
+      // retried or recovered run reaches this point with a stale message
+      // still on the row, and "completed" plus an error string is exactly the
+      // combination that made a working fetch look broken.
+      errorMessage: null,
+      internalErrorCode: null,
     });
 
     console.log(`Fetch run ${fetchRun.id} completed successfully with ${reelsToInsert.length} posts`);
@@ -470,9 +477,14 @@ export async function processApifyFetch(
     } else {
       console.error(`Fetch run ${fetchRun.id} failed:`, error.message);
     }
+    // The raw error keeps travelling — the worker still needs it to decide
+    // retry vs. refund, and it is logged in full. Only the translated half is
+    // written where a user can read it.
+    const { userMessage, internalCode } = handleError(error, `ApifyFetch:${fetchRun.id}`);
     await storage.updateFetchRun(fetchRun.id, {
       status: "failed",
-      errorMessage: error.message,
+      errorMessage: userMessage,
+      internalErrorCode: internalCode,
     });
     throw error;
   }

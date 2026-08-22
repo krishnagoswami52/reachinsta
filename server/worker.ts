@@ -1,6 +1,11 @@
 import { storage } from "./storage";
 import { processApifyFetch, FetchTimeoutError } from "./services/apify";
-import { MAX_CONCURRENT_JOBS, planForPriority } from "@shared/queue";
+import {
+  FREE_USER_RESERVED_SLOTS,
+  MAX_CONCURRENT_JOBS,
+  QUEUE_PRIORITY,
+  planForPriority,
+} from "@shared/queue";
 import type { Job } from "@shared/schema";
 
 const POLL_INTERVAL_MS = 5000;
@@ -25,6 +30,33 @@ const CANDIDATE_WINDOW = MAX_CONCURRENT_JOBS * 4;
  * would race with itself.
  */
 const activeJobs = new Map<string, { userId: string; priority: number }>();
+
+/**
+ * Ceiling on how many slots paid work may hold at once.
+ *
+ * Free users are the overwhelming majority of the user base and always lose a
+ * strict priority ordering, so without a hard ceiling a steady trickle of paid
+ * fetches would keep every slot full and no free fetch would ever start.
+ * Holding one slot back bounds a free user's wait at roughly one job duration
+ * no matter how much paid traffic is queued ahead of them.
+ *
+ * The cost is that the pool runs at four slots when the queue happens to hold
+ * nothing but paid work. That is the deliberate trade: the reservation is
+ * unconditional, so the guarantee does not depend on how deep the queue is.
+ */
+const PAID_SLOT_CEILING = MAX_CONCURRENT_JOBS - FREE_USER_RESERVED_SLOTS;
+
+function isPaidPriority(priority: number): boolean {
+  return priority < QUEUE_PRIORITY.free;
+}
+
+function countActivePaidJobs(): number {
+  let n = 0;
+  for (const active of activeJobs.values()) {
+    if (isPaidPriority(active.priority)) n++;
+  }
+  return n;
+}
 
 /**
  * Stuck-job recovery.
@@ -268,6 +300,18 @@ async function scheduleFromQueue(): Promise<void> {
     if (activeJobs.size >= MAX_CONCURRENT_JOBS) break;
     if (activeJobs.has(candidate.id)) continue;
 
+    // Starvation guard: paid work cannot fill the last slot. Skip, don't
+    // break — a free job further down the window is still startable, and
+    // that is exactly the slot being held for it.
+    if (isPaidPriority(candidate.priority) && countActivePaidJobs() >= PAID_SLOT_CEILING) {
+      console.log(
+        `[Worker] Job ${candidate.id} (priority ${candidate.priority}) held: ` +
+          `paid work already holds ${PAID_SLOT_CEILING}/${MAX_CONCURRENT_JOBS} slots, ` +
+          `${FREE_USER_RESERVED_SLOTS} reserved for free users`,
+      );
+      continue;
+    }
+
     // claimJob is a CAS on status='queued', so a job cannot be started twice
     // even if two ticks (or two processes) reach it together.
     const job = await storage.claimJob(candidate.id);
@@ -322,7 +366,10 @@ async function pollForJobs(): Promise<void> {
 export async function startWorker(): Promise<void> {
   console.log("Starting background worker...");
   console.log(`Poll interval: ${POLL_INTERVAL_MS}ms`);
-  console.log(`Concurrency: ${MAX_CONCURRENT_JOBS} parallel slot(s)`);
+  console.log(
+    `Concurrency: ${MAX_CONCURRENT_JOBS} parallel slot(s), ` +
+      `${FREE_USER_RESERVED_SLOTS} reserved for free users`,
+  );
   console.log(`Max attempts: ${MAX_ATTEMPTS}`);
   console.log(
     `Stuck-job sweep: every ${STUCK_SWEEP_INTERVAL_MS / 60000}m, ` +

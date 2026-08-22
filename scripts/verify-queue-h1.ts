@@ -20,14 +20,37 @@ const pg = (await import("pg")).default;
 
 const { canStartJob } = await import("../server/worker");
 type ActiveSlot = { userId: string; priority: number };
-const { getKeyForPlan, remainingBudget } = await import("../server/services/keyManager");
+const { chooseKeyForPlan, getKeyForPlan, remainingBudget } = await import(
+  "../server/services/keyManager"
+);
 const { detectErrorCode, getUserFriendlyError } = await import("../server/utils/errorMessages");
 const {
+  KEY_BUDGET_FLOOR,
   MAX_CONCURRENT_JOBS,
+  MIN_KEY_BUDGET,
   estimateQueueWaitSeconds,
   queuePositionMessage,
   planForPriority,
 } = await import("../shared/queue");
+
+/**
+ * Minimal ApifyKey stand-in: selection only ever reads token/budget fields.
+ *
+ * The budget is expressed as total minus zero rather than 5.00 minus spend, so
+ * remainingBudget() returns the requested figure exactly. Going through a
+ * subtraction reintroduces binary-float drift (5 - 4.6 = 0.40000000000000036)
+ * that would make the assertions below test IEEE 754, not the selection rules.
+ */
+function fakeKey(remaining: number, id = `k${remaining}`): any {
+  return {
+    id,
+    token: `apify_api_${id}`,
+    totalBudget: remaining.toFixed(4),
+    usedBudget: "0.0000",
+    isExhausted: false,
+  };
+}
+const rem = (k: any) => remainingBudget(k);
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -272,8 +295,85 @@ async function main() {
     client.release();
   }
 
-  heading("Test 3", "Smart Apify key selection (live key pool, read-only)");
+  heading("Test 3a", "Key selection rules (constructed pools)");
   {
+    check("floor is $0.30", KEY_BUDGET_FLOOR === 0.3, `$${KEY_BUDGET_FLOOR}`);
+    check("pro filters at the floor", MIN_KEY_BUDGET.pro === KEY_BUDGET_FLOOR);
+    check("free filters at the floor", MIN_KEY_BUDGET.free === KEY_BUDGET_FLOOR);
+    check("plus filters at $2.00", MIN_KEY_BUDGET.plus === 2.0);
+
+    // A pool spanning every interesting boundary.
+    const mixed = [fakeKey(0.2), fakeKey(0.4), fakeKey(1.9), fakeKey(2.5), fakeKey(4.0)];
+
+    const pro = chooseKeyForPlan(mixed, "pro")!;
+    check("pro takes the highest ($4.00)", rem(pro.key) === 4.0, `$${rem(pro.key)}`);
+    check("pro never falls back (its threshold is the floor)", pro.usedFallback === false);
+
+    const plus = chooseKeyForPlan(mixed, "plus")!;
+    check("plus takes the lowest above $2.00 ($2.50)", rem(plus.key) === 2.5, `$${rem(plus.key)}`);
+    check("plus ignores the $1.90 and $0.40 keys", rem(plus.key) > 2.0);
+    check("plus did not need the fallback here", plus.usedFallback === false);
+
+    const free = chooseKeyForPlan(mixed, "free")!;
+    check("free takes the lowest above the floor ($0.40)", rem(free.key) === 0.4, `$${rem(free.key)}`);
+
+    check(
+      "no plan touches the $0.20 key",
+      [pro, plus, free].every((c) => rem(c.key) > KEY_BUDGET_FLOOR),
+    );
+
+    // Plus fallback: nothing clears $2.00, so it drops to free's set.
+    const lean = [fakeKey(0.25), fakeKey(0.5), fakeKey(1.2), fakeKey(1.9)];
+    const plusFallback = chooseKeyForPlan(lean, "plus")!;
+    check("plus falls back when no key clears $2.00", plusFallback.usedFallback === true);
+    check(
+      "plus fallback takes the lowest above the floor ($0.50)",
+      rem(plusFallback.key) === 0.5,
+      `$${rem(plusFallback.key)}`,
+    );
+    check("plus fallback still skips the $0.25 key", rem(plusFallback.key) > KEY_BUDGET_FLOOR);
+    check(
+      "plus fallback matches what free would pick",
+      plusFallback.key.id === chooseKeyForPlan(lean, "free")!.key.id,
+    );
+    check(
+      "pro on the same lean pool still takes the highest ($1.90)",
+      rem(chooseKeyForPlan(lean, "pro")!.key) === 1.9,
+    );
+
+    // Nothing above the floor at all -> hard failure for every plan.
+    const spent = [fakeKey(0.3), fakeKey(0.29), fakeKey(0.05)];
+    check(
+      "a pool entirely at/below the floor yields no key, on any plan",
+      (["pro", "plus", "free"] as const).every((p) => chooseKeyForPlan(spent, p) === null),
+    );
+    check("$0.30 exactly is not selectable (strict >)", chooseKeyForPlan([fakeKey(0.3)], "pro") === null);
+    check("$0.31 is selectable", chooseKeyForPlan([fakeKey(0.31)], "pro") !== null);
+
+    // In-flight preference still applies on top of the new rules.
+    const busy = new Set([fakeKey(0.4).token]);
+    const spread = chooseKeyForPlan(mixed, "free", busy)!;
+    check(
+      "free skips an in-flight key and takes the next lowest ($1.90)",
+      rem(spread.key) === 1.9,
+      `$${rem(spread.key)}`,
+    );
+    const allBusy = new Set(mixed.map((k) => k.token));
+    const forced = chooseKeyForPlan(mixed, "free", allBusy)!;
+    check("preference is dropped when every key is in flight", forced.allInFlight === true);
+    check("...and it still returns a usable key", rem(forced.key) === 0.4);
+  }
+
+  heading("Test 3b", "Live key pool (read-only) — what production would pick");
+  {
+    const all = await pool.query(
+      `SELECT id, left(token, 14) AS token, (total_budget::numeric - used_budget::numeric)::float8 AS remaining
+         FROM apify_keys WHERE is_exhausted = false
+        ORDER BY remaining DESC`,
+    );
+    const remaining = all.rows.map((r: any) => r.remaining);
+    console.log(`  pool: ${remaining.map((r: number) => `$${r.toFixed(4)}`).join(", ")}`);
+
     const proKey = await getKeyForPlan("pro");
     const plusKey = await getKeyForPlan("plus");
     const freeKey = await getKeyForPlan("free");
@@ -284,19 +384,26 @@ async function main() {
     console.log(
       `  pro -> $${pro.toFixed(4)} | plus -> $${plus.toFixed(4)} | free -> $${free.toFixed(4)}`,
     );
-    check("pro takes the richest key", pro >= plus && pro >= free);
-    check("free takes the poorest key", free <= plus && free <= pro);
-    check("plus lands between the two", plus >= free && plus <= pro);
-    check("pro and free are different keys", proKey.id !== freeKey.id);
 
-    const all = await pool.query(
-      `SELECT (total_budget::numeric - used_budget::numeric) AS remaining
-         FROM apify_keys WHERE is_exhausted = false
-        ORDER BY remaining`,
+    check("pro takes the pool maximum", Math.abs(pro - Math.max(...remaining)) < 1e-6);
+    check("free takes the pool minimum", Math.abs(free - Math.min(...remaining)) < 1e-6);
+
+    const abovePlusThreshold = remaining.filter((r: number) => r > MIN_KEY_BUDGET.plus);
+    if (abovePlusThreshold.length > 0) {
+      check(
+        "plus takes the lowest key above $2.00",
+        Math.abs(plus - Math.min(...abovePlusThreshold)) < 1e-6,
+        `$${plus.toFixed(4)} vs $${Math.min(...abovePlusThreshold).toFixed(4)}`,
+      );
+    } else {
+      check("plus fell back to the floor set", Math.abs(plus - Math.min(...remaining)) < 1e-6);
+    }
+
+    check(
+      "every selection clears the $0.30 floor",
+      [pro, plus, free].every((r) => r > KEY_BUDGET_FLOOR),
     );
-    const remaining = all.rows.map((r: any) => parseFloat(r.remaining));
-    check("pro matches the pool maximum", Math.abs(pro - Math.max(...remaining)) < 1e-6);
-    check("free matches the pool minimum", Math.abs(free - Math.min(...remaining)) < 1e-6);
+    check("pro and free are different keys", proKey.id !== freeKey.id);
   }
 
   heading("Phase 9", "No technical error text reaches a user");

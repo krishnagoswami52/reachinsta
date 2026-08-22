@@ -5,7 +5,13 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integra
 import subscriptionRouter from "./routes/subscription";
 import { z } from "zod";
 import { planLimits, type PlanType, type RoleType } from "@shared/schema";
-import { estimatedCostForPlan, priorityForPlan } from "@shared/queue";
+import {
+  AVG_JOB_SECONDS,
+  MAX_CONCURRENT_JOBS,
+  estimatedCostForPlan,
+  planForPriority,
+  priorityForPlan,
+} from "@shared/queue";
 import { fetchLimiter } from "./middleware/rate-limit";
 
 const addCompetitorSchema = z.object({
@@ -47,6 +53,30 @@ if (!SUPER_ADMIN_EMAIL) {
   throw new Error("SUPER_ADMIN_EMAIL env var is required");
 }
 const ADMIN_EMAILS: string[] = [SUPER_ADMIN_EMAIL];
+
+/**
+ * Copy for the queue card. Deliberately never mentions internals — no key
+ * pool, no worker counts, no error strings.
+ */
+function queuePositionMessage(position: number, waitSeconds: number, plan: PlanType): string {
+  if (position === 1) {
+    return "You're next — your fetch starts in a moment.";
+  }
+
+  const waitMin = Math.max(1, Math.round(waitSeconds / 60));
+  const ahead = position - 1;
+  const aheadLabel = `${ahead} fetch${ahead === 1 ? "" : "es"} ahead of you`;
+
+  if (plan === "pro") {
+    return `#${position} in the priority queue — ${aheadLabel}. Starting in about ${waitMin} min.`;
+  }
+
+  if (plan === "plus") {
+    return `#${position} in the queue — ${aheadLabel}. About ${waitMin} min to go.`;
+  }
+
+  return `#${position} in the queue — ${aheadLabel}. About ${waitMin} min to go.`;
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -296,6 +326,96 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error creating fetch:", error);
       res.status(500).json({ message: "Failed to create fetch" });
+    }
+  });
+
+  /**
+   * Live queue telemetry for one fetch run.
+   *
+   * Registered ahead of /api/fetch/:id so the literal path is not swallowed by
+   * the parameterised route.
+   *
+   * Takes run_id (what the dashboard already holds, and what every other fetch
+   * route keys on); job_id is accepted as an alias for the underlying work
+   * item. Everything it returns is derived — no new state, and no change to
+   * the shape of POST /api/fetch.
+   */
+  app.get("/api/fetch/queue-position", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const runId = typeof req.query.run_id === "string" ? req.query.run_id : undefined;
+      const jobId = typeof req.query.job_id === "string" ? req.query.job_id : undefined;
+
+      if (!runId && !jobId) {
+        return res.status(400).json({ message: "run_id or job_id is required" });
+      }
+
+      const job = runId
+        ? await storage.getJobByFetchRun(runId)
+        : await storage.getJob(jobId!);
+
+      if (!job || job.userId !== userId) {
+        return res.status(404).json({ message: "Fetch run not found" });
+      }
+
+      const profile = await storage.getProfile(userId);
+      const plan: PlanType = profile?.plan ?? "free";
+
+      // The frozen priority is what the scheduler actually orders by, so the
+      // tier it maps to is the honest description of this job's treatment —
+      // even if the user's plan changed after they queued.
+      const queuePlan = planForPriority(job.priority);
+
+      const workerSlotsBusy = await storage.countRunningJobs();
+
+      if (job.status !== "queued") {
+        // running / completed / failed all leave the queue behind.
+        const fetchRun = await storage.getFetchRun(job.fetchRunId);
+        return res.json({
+          status: fetchRun?.status ?? job.status,
+          position: 0,
+          ahead_of_you: 0,
+          estimated_wait_seconds: 0,
+          worker_slots_busy: workerSlotsBusy,
+          worker_slots_total: MAX_CONCURRENT_JOBS,
+          your_priority: plan,
+          queue_priority: job.priority,
+          message:
+            job.status === "running"
+              ? "Your fetch is running now."
+              : job.status === "completed"
+              ? "Fetch complete."
+              : "This fetch is no longer in the queue.",
+        });
+      }
+
+      const ahead = await storage.countJobsAheadInQueue(job.priority, job.createdAt);
+      const position = ahead + 1;
+
+      // Anything that fits in a slot that is free right now starts on the next
+      // poll tick, so it has no meaningful queue wait. Past that, each full
+      // pass of the pool clears MAX_CONCURRENT_JOBS jobs in roughly one
+      // average run.
+      const slotsFree = Math.max(0, MAX_CONCURRENT_JOBS - workerSlotsBusy);
+      const estimatedWaitSeconds =
+        position <= slotsFree
+          ? 0
+          : Math.ceil((position - slotsFree) / MAX_CONCURRENT_JOBS) * AVG_JOB_SECONDS;
+
+      res.json({
+        status: "queued",
+        position,
+        ahead_of_you: ahead,
+        estimated_wait_seconds: estimatedWaitSeconds,
+        worker_slots_busy: workerSlotsBusy,
+        worker_slots_total: MAX_CONCURRENT_JOBS,
+        your_priority: plan,
+        queue_priority: job.priority,
+        message: queuePositionMessage(position, estimatedWaitSeconds, queuePlan),
+      });
+    } catch (error) {
+      console.error("Error reading queue position:", error);
+      res.status(500).json({ message: "Failed to read queue position" });
     }
   });
 

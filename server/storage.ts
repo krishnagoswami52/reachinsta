@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { eq, asc, desc, and, lt, sql, count } from "drizzle-orm";
+import { eq, asc, desc, and, or, lt, sql, count } from "drizzle-orm";
 import { db } from "./db";
 import {
   profiles, competitors, fetchRuns, reels, competitorStats, rawPayloads, jobs, apifyKeys,
@@ -112,6 +112,9 @@ export interface IStorage {
   createJob(job: InsertJob): Promise<Job>;
   getQueuedJobs(limit?: number): Promise<Job[]>;
   getJob(id: string): Promise<Job | undefined>;
+  getJobByFetchRun(fetchRunId: string): Promise<Job | undefined>;
+  countJobsAheadInQueue(priority: number, createdAt: Date): Promise<number>;
+  countRunningJobs(): Promise<number>;
   updateJob(id: string, updates: Partial<Job>): Promise<Job | undefined>;
   claimJob(jobId: string): Promise<Job | undefined>;
   getStuckJobs(staleBeforeMs: number): Promise<Job[]>;
@@ -592,6 +595,51 @@ export class DatabaseStorage implements IStorage {
   async getJob(id: string): Promise<Job | undefined> {
     const [result] = await db.select().from(jobs).where(eq(jobs.id, id));
     return result;
+  }
+
+  /**
+   * The work item behind a fetch run.
+   *
+   * Newest first: a run that was requeued by the stuck-job sweep, or retried,
+   * still has exactly one job row, but ordering explicitly keeps this correct
+   * if that ever stops being true.
+   */
+  async getJobByFetchRun(fetchRunId: string): Promise<Job | undefined> {
+    const [result] = await db
+      .select()
+      .from(jobs)
+      .where(eq(jobs.fetchRunId, fetchRunId))
+      .orderBy(desc(jobs.createdAt))
+      .limit(1);
+    return result;
+  }
+
+  /**
+   * How many queued jobs would be popped before this one.
+   *
+   * Mirrors the ORDER BY in getQueuedJobs exactly — anything else would
+   * report a position the scheduler does not honour.
+   */
+  async countJobsAheadInQueue(priority: number, createdAt: Date): Promise<number> {
+    const [result] = await db
+      .select({ n: count() })
+      .from(jobs)
+      .where(
+        and(
+          eq(jobs.status, "queued"),
+          or(
+            lt(jobs.priority, priority),
+            and(eq(jobs.priority, priority), lt(jobs.createdAt, createdAt)),
+          ),
+        ),
+      );
+    return result?.n ?? 0;
+  }
+
+  /** Slots busy across the whole platform, not just this process. */
+  async countRunningJobs(): Promise<number> {
+    const [result] = await db.select({ n: count() }).from(jobs).where(eq(jobs.status, "running"));
+    return result?.n ?? 0;
   }
 
   async updateJob(id: string, updates: Partial<Job>): Promise<Job | undefined> {

@@ -8,7 +8,7 @@ import { initApifyKeys } from "./services/keyManager";
 import paddleWebhookRouter from "./routes/paddleWebhook";
 import cron from "node-cron";
 import { downgradeExpiredSubscriptions } from "./jobs/downgrade-expired";
-import { autoResetKeysMonthly } from "./jobs/reset-apify-keys";
+import { autoResetExhaustedKeys } from "./jobs/reset-apify-keys";
 import { apiLimiter } from "./middleware/rate-limit";
 import adminAnalyticsRouter from "./routes/admin";
 import { trackPageView } from "./middleware/tracking";
@@ -152,18 +152,20 @@ app.use((req, res, next) => {
             console.error("[Cron] Downgrade job failed:", err);
           }
 
-          // No-ops on all but the 1st UTC — Apify free credit renews monthly,
-          // so retired keys go back in the pool then. The gate is inside the
-          // job so it stays testable.
+          // Polls each retired Apify key for its own renewal date and
+          // returns the ones whose credit has come back. Runs every day, not
+          // on a calendar day: Apify anchors each account's cycle to its
+          // signup date, so there is no single date that is right for the
+          // pool. Only retired keys are polled.
           try {
-            await autoResetKeysMonthly();
+            await autoResetExhaustedKeys();
           } catch (err) {
             console.error("[Cron] Apify key reset failed:", err);
           }
         },
         { timezone: "Etc/UTC" },
       );
-      log("Daily cron scheduled at 01:00 UTC (downgrade-expired + Apify key reset)");
+      log("Daily cron scheduled at 01:00 UTC (downgrade-expired + Apify key renewal check)");
     },
   );
 })();

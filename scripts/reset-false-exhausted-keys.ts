@@ -7,23 +7,26 @@
  * isBudgetError() used to match the bare substring "insufficient", so an
  * "insufficient permissions" or "insufficient data returned from Instagram"
  * response retired the key that produced it. That matching is fixed
- * (server/services/keyManager.ts) and a monthly job now clears the flag
- * (server/jobs/reset-apify-keys.ts), but neither helps the keys already
- * retired: the monthly job only fires on the 1st, and these have been out of
- * the pool for weeks.
+ * (server/services/keyManager.ts) and a daily job now polls each retired key
+ * for its own renewal date (server/jobs/reset-apify-keys.ts).
  *
  * The local remaining figure is not trusted as evidence here. It is our own
- * accounting — cost-per-item multiplied by item count — and the whole reason
- * these keys are suspect is that our bookkeeping disagreed with reality. So
- * every candidate is checked against the Apify API for what the account has
- * actually spent this month, using the same two endpoints as
- * scripts/apify-audit.ts, and the reset writes Apify's figure rather than
- * ours.
+ * accounting — cost-per-item multiplied by item count, never reset when the
+ * real cycle rolls over — and the whole reason these keys are suspect is that
+ * our bookkeeping disagreed with reality. So every candidate is checked
+ * against the account itself via server/services/apifyAccount.ts, and the
+ * reset writes Apify's figures rather than ours.
  *
  * A key is only reset when Apify confirms it holds more than the selection
  * floor. Anything that cannot be verified — a dead token, a network failure —
  * is left retired, because a retired key with credit costs throughput while a
  * live key without credit costs a user's fetch.
+ *
+ * Now that the daily job (server/jobs/reset-apify-keys.ts) polls each key's
+ * own renewal date, this script is only needed for the backlog it was written
+ * for: keys retired before that job existed, whose cycle had already turned
+ * over. The job will reach them on its next run regardless — this is the way
+ * to do it immediately, and to see the reasoning per key first.
  */
 import { config } from "dotenv";
 import path from "path";
@@ -33,6 +36,7 @@ config({ path: path.resolve(process.cwd(), ".env.local"), override: true });
 
 const { KEY_BUDGET_FLOOR } = await import("../shared/queue");
 const { maskToken } = await import("../server/services/keyManager");
+const { fetchApifyAccountUsage } = await import("../server/services/apifyAccount");
 
 const apply = process.argv.includes("--apply");
 
@@ -51,54 +55,9 @@ interface Check {
   apifyRemaining?: number;
   apifyUsed?: number;
   limit?: number;
+  cycle?: string;
   verdict: Verdict;
   note?: string;
-}
-
-/**
- * What Apify says this account has left this month.
- *
- * Mirrors scripts/apify-audit.ts: /users/me for the plan and its ceiling,
- * /users/me/usage/monthly for the spend. monthlyServiceUsage arrives as
- * either an array of service rows or an object keyed by service name
- * depending on the account, so both shapes are handled.
- */
-async function apifyRemaining(token: string): Promise<{ used: number; limit: number }> {
-  const auth = { Authorization: `Bearer ${token}` };
-
-  const userRes = await fetch("https://api.apify.com/v2/users/me", { headers: auth });
-  if (!userRes.ok) throw new Error(`GET /users/me -> HTTP ${userRes.status}`);
-  const planRaw = ((await userRes.json()) as any)?.data?.plan;
-
-  const usageRes = await fetch("https://api.apify.com/v2/users/me/usage/monthly", {
-    headers: auth,
-  });
-  if (!usageRes.ok) throw new Error(`GET /users/me/usage/monthly -> HTTP ${usageRes.status}`);
-  const usage = ((await usageRes.json()) as any)?.data;
-
-  let used = 0;
-  const msu = usage?.monthlyServiceUsage;
-  if (Array.isArray(msu)) {
-    used = msu.find((s: any) => s.serviceName === "TOTAL")?.priceUsd ?? usage?.usdSpent ?? 0;
-  } else if (msu && typeof msu === "object") {
-    const total = (msu as any).TOTAL;
-    used =
-      total?.priceUsd ??
-      Object.values(msu as Record<string, any>).reduce(
-        (sum: number, v: any) => sum + (v?.priceUsd ?? 0),
-        0,
-      );
-  } else {
-    used = usage?.usdSpent ?? 0;
-  }
-
-  const planLimits: Record<string, number> = { FREE: 5, PERSONAL: 49, TEAM: 499 };
-  const planId =
-    typeof planRaw === "object" && planRaw !== null ? (planRaw.id ?? planRaw.tier ?? "FREE") : (planRaw ?? "FREE");
-  const limit =
-    (typeof planRaw === "object" && planRaw?.maxMonthlyUsageUsd) || planLimits[planId] || 5;
-
-  return { used, limit };
 }
 
 (async () => {
@@ -135,12 +94,14 @@ async function apifyRemaining(token: string): Promise<{ used: number; limit: num
       };
 
       try {
-        const { used, limit } = await apifyRemaining(row.token);
-        const remaining = Math.max(0, limit - used);
-        check.apifyUsed = used;
-        check.apifyRemaining = remaining;
-        check.limit = limit;
-        check.verdict = remaining > KEY_BUDGET_FLOOR ? "reset" : "keep";
+        const usage = await fetchApifyAccountUsage(row.token);
+        check.apifyUsed = usage.usedUsd;
+        check.apifyRemaining = usage.remainingUsd;
+        check.limit = usage.limitUsd;
+        check.cycle =
+          `${usage.cycleStart.toISOString().slice(0, 10)} -> ` +
+          `${usage.cycleEnd.toISOString().slice(0, 10)}`;
+        check.verdict = usage.remainingUsd > KEY_BUDGET_FLOOR ? "reset" : "keep";
       } catch (err: any) {
         check.note = err?.message ?? "unknown error";
       }
@@ -156,9 +117,10 @@ async function apifyRemaining(token: string): Promise<{ used: number; limit: num
         console.log(`   apify:     unreachable — ${check.note}`);
         console.log(`   verdict:   SKIP (cannot verify; stays retired)`);
       } else {
+        console.log(`   cycle:     ${check.cycle}`);
         console.log(
           `   apify:     $${check.apifyRemaining!.toFixed(4)} remaining ` +
-            `($${check.apifyUsed!.toFixed(4)} of $${check.limit!.toFixed(2)} used this month)`,
+            `($${check.apifyUsed!.toFixed(4)} of $${check.limit!.toFixed(2)} spent this cycle)`,
         );
         console.log(
           check.verdict === "reset"
@@ -189,13 +151,19 @@ async function apifyRemaining(token: string): Promise<{ used: number; limit: num
       // is derived from it everywhere (total - used), so writing the spend is
       // what makes the local books agree with the account again.
       const used = Math.min(c.apifyUsed!, c.limit!).toFixed(4);
+      // monthly_reset_at is stamped for the same reason the daily job stamps
+      // it: if this key is retired again inside the cycle it was just credited
+      // for, the job's same-cycle guard must see that it has already had its
+      // allowance and hold it until the cycle really turns over.
       await pool.query(
         `UPDATE apify_keys
-            SET is_exhausted  = false,
-                used_budget   = $1,
-                total_budget  = $2,
-                last_error_at = NULL,
-                updated_at    = NOW()
+            SET is_exhausted        = false,
+                used_budget         = $1,
+                total_budget        = $2,
+                last_error_at       = NULL,
+                monthly_reset_at    = NOW(),
+                last_reset_check_at = NOW(),
+                updated_at          = NOW()
           WHERE id = $3`,
         [used, c.limit!.toFixed(4), c.id],
       );

@@ -130,7 +130,13 @@ export interface IStorage {
   getSelectableApifyKeys(): Promise<ApifyKey[]>;
   recordApifyKeyUsage(token: string, cost: number): Promise<number | undefined>;
   markApifyKeyExhausted(token: string): Promise<void>;
-  resetExhaustedApifyKeys(resetBefore: Date, now: Date): Promise<ApifyKey[]>;
+  getExhaustedApifyKeys(): Promise<ApifyKey[]>;
+  resetApifyKeyForNewCycle(
+    id: string,
+    budget: { usedUsd: number; limitUsd: number },
+    now: Date,
+  ): Promise<void>;
+  markApifyKeyResetChecked(id: string, now: Date): Promise<void>;
   getAllApifyKeys(): Promise<ApifyKey[]>;
 }
 
@@ -802,38 +808,57 @@ export class DatabaseStorage implements IStorage {
       .where(eq(apifyKeys.token, token));
   }
 
-  /**
-   * Return retired keys to the pool for a new Apify billing month.
-   *
-   * Zeroes used_budget rather than writing a remaining figure: remaining is
-   * derived (total_budget - used_budget) in selection, seeding and the admin
-   * views, so a written figure would contradict all three.
-   *
-   * `resetBefore` is the eligibility cutoff — a key whose monthly_reset_at is
-   * newer than that has already been credited this cycle and is skipped, which
-   * is what makes a same-day rerun a no-op. NULL passes: keys retired before
-   * the column existed have never been reset.
-   *
-   * The date gate itself lives in server/jobs/reset-apify-keys.ts. This will
-   * reset whatever it is handed, so the caller owns "is it the 1st".
-   */
-  async resetExhaustedApifyKeys(resetBefore: Date, now: Date): Promise<ApifyKey[]> {
+  /** Every key currently out of the rotation, for the reset job to poll. */
+  async getExhaustedApifyKeys(): Promise<ApifyKey[]> {
     return await db
+      .select()
+      .from(apifyKeys)
+      .where(eq(apifyKeys.isExhausted, true))
+      .orderBy(desc(apifyKeys.lastErrorAt));
+  }
+
+  /**
+   * Return one key to the pool because its Apify credit cycle has turned over.
+   *
+   * Writes Apify's own figures rather than zeroing: used_budget takes the
+   * account's real cycle spend and total_budget its real ceiling, so the local
+   * books are re-synced to the account instead of merely being made optimistic.
+   * Remaining is derived (total - used) in selection, seeding and the admin
+   * views, which is why it is not stored.
+   *
+   * monthly_reset_at is the double-credit guard — the job only resets a key
+   * whose cycle started after this timestamp.
+   */
+  async resetApifyKeyForNewCycle(
+    id: string,
+    budget: { usedUsd: number; limitUsd: number },
+    now: Date,
+  ): Promise<void> {
+    await db
       .update(apifyKeys)
       .set({
         isExhausted: false,
-        usedBudget: "0.0000",
+        usedBudget: budget.usedUsd.toFixed(4),
+        totalBudget: budget.limitUsd.toFixed(4),
         lastErrorAt: null,
         monthlyResetAt: now,
+        lastResetCheckAt: now,
         updatedAt: now,
       })
-      .where(
-        and(
-          eq(apifyKeys.isExhausted, true),
-          or(isNull(apifyKeys.monthlyResetAt), lt(apifyKeys.monthlyResetAt, resetBefore)),
-        ),
-      )
-      .returning();
+      .where(eq(apifyKeys.id, id));
+  }
+
+  /**
+   * Record that a key was polled and left retired.
+   *
+   * Deliberately touches nothing but the check timestamp: a held key's budget
+   * and error history are still the ones that retired it.
+   */
+  async markApifyKeyResetChecked(id: string, now: Date): Promise<void> {
+    await db
+      .update(apifyKeys)
+      .set({ lastResetCheckAt: now })
+      .where(eq(apifyKeys.id, id));
   }
 
   async getAllApifyKeys(): Promise<ApifyKey[]> {

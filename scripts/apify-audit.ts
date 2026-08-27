@@ -16,6 +16,7 @@
 import 'dotenv/config';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { readCycleSpend } from '../server/services/apifyAccount';
 
 // ===== Token loader =====
 
@@ -76,6 +77,9 @@ interface AccountReport {
   monthlyLimit?: number;
   percentUsed?: number;
   remainingCredit?: number;
+  /** Apify anchors each account's cycle to its signup date, not the 1st. */
+  cycleStart?: string;
+  cycleEnd?: string;
   lastError?: string;
   proxyGbUsed?: number;
 }
@@ -122,26 +126,13 @@ async function getAccountInfo(token: string): Promise<AccountReport> {
     const usageJson = await usageRes.json() as any;
     const usage = usageJson.data;
 
-    // Monthly spend — Apify may return monthlyServiceUsage as an array OR an object.
-    // Fall back to usdSpent if structure is unexpected.
-    let monthlyUsageUsd: number = 0;
-    const msu = usage?.monthlyServiceUsage;
-    if (Array.isArray(msu)) {
-      const totalRow = msu.find((s: any) => s.serviceName === 'TOTAL');
-      monthlyUsageUsd = totalRow?.priceUsd ?? usage?.usdSpent ?? 0;
-    } else if (msu && typeof msu === 'object') {
-      // Object keyed by service name, e.g. { ACTOR: { ..., priceUsd }, STORAGE: ... }
-      const totalEntry = (msu as any)['TOTAL'];
-      if (totalEntry?.priceUsd != null) {
-        monthlyUsageUsd = totalEntry.priceUsd;
-      } else {
-        // Sum all service price values
-        monthlyUsageUsd = Object.values(msu as Record<string, any>)
-          .reduce((sum: number, v: any) => sum + (v?.priceUsd ?? 0), 0);
-      }
-    } else {
-      monthlyUsageUsd = usage?.usdSpent ?? 0;
-    }
+    // Spend for the cycle. This used to sum `entry.priceUsd` across
+    // monthlyServiceUsage, which does not exist at that level — priceUsd sits
+    // inside each entry's priceTiers array — so every account reported $0.00
+    // used and 🟢 healthy no matter how much it had actually spent. The
+    // top-level total is the right field; readCycleSpend() is shared with the
+    // reset job so this cannot drift again.
+    const monthlyUsageUsd: number = readCycleSpend(usage);
 
     // Plan may be a string ID or a full plan object — normalise to string ID
     const planRaw = ud?.plan;
@@ -173,6 +164,8 @@ async function getAccountInfo(token: string): Promise<AccountReport> {
       monthlyLimit,
       percentUsed: Math.round(percentUsed * 10) / 10,
       remainingCredit: Math.round(remaining * 100) / 100,
+      cycleStart: usage?.usageCycle?.startAt,
+      cycleEnd: usage?.usageCycle?.endAt,
       proxyGbUsed: ud?.proxy?.usedGB != null
         ? Math.round(ud.proxy.usedGB * 100) / 100
         : undefined,
@@ -229,6 +222,9 @@ async function main() {
       console.log(`   Plan:      ${r.plan}`);
       console.log(`   Used:      $${(r.usageThisMonth ?? 0).toFixed(2)} / $${r.monthlyLimit} (${r.percentUsed}%)`);
       console.log(`   Remaining: $${(r.remainingCredit ?? 0).toFixed(2)}`);
+      if (r.cycleStart) {
+        console.log(`   Cycle:     ${r.cycleStart.slice(0, 10)} -> ${r.cycleEnd?.slice(0, 10)}`);
+      }
       if (r.proxyGbUsed !== undefined) {
         console.log(`   Proxy:     ${r.proxyGbUsed} GB used`);
       }
@@ -251,7 +247,7 @@ async function main() {
   console.log(SEP);
   console.log(`  🟢 Healthy:    ${healthy.length} account(s) — safe to use`);
   console.log(`  🟡 Warning:    ${warning.length} account(s) — >75% used`);
-  console.log(`  🔴 Exhausted:  ${exhausted.length} account(s) — resets on the 1st UTC`);
+  console.log(`  🔴 Exhausted:  ${exhausted.length} account(s) — each resets on its own cycle date, shown above`);
   console.log(`  ⚫ Invalid:    ${invalid.length} token(s) — bad credentials`);
   console.log(`  💰 Total remaining credit: $${totalRemaining.toFixed(2)}`);
   console.log(SEP + '\n');
@@ -259,7 +255,7 @@ async function main() {
   // Recommendations
   const recs: string[] = [];
   if (exhausted.length > 0)
-    recs.push(`${exhausted.length} account(s) exhausted — rotation should skip these until the 1st.`);
+    recs.push(`${exhausted.length} account(s) exhausted — rotation skips these until each one's own cycle turns over.`);
   if (invalid.length > 0)
     recs.push(`${invalid.length} token(s) invalid — remove from apify_api.txt to stop wasted attempts.`);
   if (healthy.length === 0 && warning.length === 0)

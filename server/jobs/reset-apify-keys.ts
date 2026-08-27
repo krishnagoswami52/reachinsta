@@ -1,70 +1,197 @@
 import { storage } from "../storage";
 import { maskToken } from "../services/keyManager";
+import { fetchApifyAccountUsage, type ApifyAccountUsage } from "../services/apifyAccount";
+import { KEY_BUDGET_FLOOR } from "@shared/queue";
 
 /**
- * Days that must pass since a key's last monthly reset before it is eligible
- * again. Guards the case the cron cannot: the job runs daily and only acts on
- * the 1st UTC, but a container restart on that day runs it a second time, and
- * a second reset would hand the same key another fresh $5 of accounting on
- * top of what it had already been credited.
+ * What the job decided about one retired key.
  *
- * 25 rather than 28: February is 28 days, and a job that fires at 01:00 on
- * the 1st is comparing against a timestamp written at 01:00 on the previous
- * 1st, so the shortest real gap is exactly 28 days. 25 leaves room for clock
- * skew and a late run without ever letting two resets land in one cycle.
+ * "held" carries a reason because the two are operationally different: a key
+ * waiting out its cycle needs nothing, while a key that reached a fresh cycle
+ * and still has no budget was genuinely spent and its retirement was correct.
  */
-const MIN_DAYS_BETWEEN_RESETS = 25;
+export type ResetDecision =
+  | { action: "reset"; usage: ApifyAccountUsage }
+  | { action: "hold"; reason: "same-cycle"; usage: ApifyAccountUsage; daysUntilRenewal: number }
+  | { action: "hold"; reason: "no-budget"; usage: ApifyAccountUsage }
+  | { action: "skip"; reason: string };
+
+export interface KeyOutcome {
+  id: string;
+  token: string;
+  decision: ResetDecision;
+}
+
+export interface ResetRunSummary {
+  checked: number;
+  reset: number;
+  held: number;
+  skipped: number;
+  outcomes: KeyOutcome[];
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
- * Return the pool's retired keys to service at the start of each Apify
- * billing month.
+ * Should this key go back in the pool?
  *
- * Apify free-tier credit renews on the 1st UTC. is_exhausted did not: it was
- * set once and never cleared, so a key retired in July was still retired in
- * August with a full $5 behind it. Combined with the loose error matching
- * this change accompanies (see isBudgetError), the pool only ever shrank.
+ * Pure, and exported so the rules can be driven against constructed cycles —
+ * including the ones the live pool does not currently contain, like a cycle
+ * that turned over while the key was retired but left it still overspent.
  *
- * The reset zeroes used_budget rather than writing a remaining figure,
- * because remaining is derived (total_budget - used_budget) everywhere else
- * in the codebase and a written figure would immediately disagree with it.
+ * Two conditions, both required:
  *
- * Idempotent in two ways: it no-ops on all but one day of the month, and
- * monthly_reset_at stops a same-day rerun. Safe to call on every boot.
+ * 1. *A new cycle.* The account's cycle must have started after the last time
+ *    we credited this key. Without it a key retired again mid-cycle would be
+ *    handed its allowance a second time, and a key failing for a reason that
+ *    is not budget at all would flip in and out of the pool every night.
+ *    A key never reset before has no such timestamp, so any cycle counts —
+ *    which is what lets this rescue the keys retired in error before the job
+ *    existed.
  *
- * `now` is injectable so the date gate can be tested without waiting for the
- * 1st.
- *
- * KNOWN LIMITATION — the 1st is not when the credit actually renews. Apify
- * anchors each account's usage cycle to its own signup date, and
- * GET /v2/users/me/usage/monthly reports it per token. Across the ten
- * accounts in the pool today those cycles start on the 27th (seven of them),
- * the 30th, the 12th and the 1st — only one lines up with this job. So a key
- * retired the day after its own cycle rolls over waits until the next 1st to
- * come back, which can be up to 29 days after its credit was actually
- * restored. That is still strictly better than the current behaviour (never),
- * and the reset itself is correct whenever it fires. The follow-up is to gate
- * on usageCycle.startAt per key instead of the calendar; it needs one API
- * call per retired key per run, which is why it is not folded in here.
+ * 2. *Money in it.* Apify's own figure, not ours, must clear the same floor
+ *    selection uses. A cycle turning over does not by itself mean the credit
+ *    came back: an account can carry spend past its allowance, and one in
+ *    this pool does.
  */
-export async function autoResetKeysMonthly(now: Date = new Date()): Promise<number> {
-  if (now.getUTCDate() !== 1) {
-    return 0;
+export function decideKeyReset(
+  usage: ApifyAccountUsage,
+  lastResetAt: Date | null,
+  now: Date,
+): ResetDecision {
+  const creditedThrough = lastResetAt ?? new Date(0);
+
+  if (usage.cycleStart <= creditedThrough) {
+    return {
+      action: "hold",
+      reason: "same-cycle",
+      usage,
+      daysUntilRenewal: Math.max(
+        0,
+        Math.ceil((usage.cycleEnd.getTime() - now.getTime()) / MS_PER_DAY),
+      ),
+    };
   }
 
-  console.log("[KeyManager] Monthly reset day — checking exhausted keys...");
-
-  const cutoff = new Date(now.getTime() - MIN_DAYS_BETWEEN_RESETS * 24 * 60 * 60 * 1000);
-  const reset = await storage.resetExhaustedApifyKeys(cutoff, now);
-
-  if (reset.length === 0) {
-    console.log("[KeyManager] No keys needed reset");
-    return 0;
+  if (usage.remainingUsd <= KEY_BUDGET_FLOOR) {
+    return { action: "hold", reason: "no-budget", usage };
   }
 
-  for (const key of reset) {
-    console.log(`[KeyManager] Reset ${maskToken(key.token)} — $${key.totalBudget} available again`);
-  }
-  console.log(`[KeyManager] Auto-reset ${reset.length} key(s) for the new month`);
+  return { action: "reset", usage };
+}
 
-  return reset.length;
+function describe(outcome: KeyOutcome): string {
+  const key = maskToken(outcome.token);
+  const d = outcome.decision;
+
+  if (d.action === "skip") {
+    return `[KeyManager] ${key} — could not check (${d.reason}); staying retired`;
+  }
+
+  const cycle =
+    `${d.usage.cycleStart.toISOString().slice(0, 10)} -> ` +
+    `${d.usage.cycleEnd.toISOString().slice(0, 10)}`;
+  const money = `$${d.usage.remainingUsd.toFixed(2)} of $${d.usage.limitUsd.toFixed(2)} left`;
+
+  if (d.action === "reset") {
+    return `[KeyManager] ${key} — new cycle ${cycle}, ${money}; returning to the pool`;
+  }
+  if (d.reason === "same-cycle") {
+    return `[KeyManager] ${key} — still in cycle ${cycle}, renews in ${d.daysUntilRenewal} day(s)`;
+  }
+  return `[KeyManager] ${key} — new cycle ${cycle} but only ${money}; genuinely spent`;
+}
+
+/**
+ * Return retired keys to the pool as their own Apify credit cycles turn over.
+ *
+ * Runs daily on the 01:00 UTC tick. It used to run only on the 1st, on the
+ * assumption that Apify credit renews with the calendar — it does not. Each
+ * account's cycle is anchored to its own signup date, reported per token by
+ * GET /v2/users/me/usage/monthly. Across the ten accounts in this pool those
+ * cycles start on the 27th (seven of them), the 30th, the 12th and the 1st,
+ * so the calendar rule was right for one key in ten and left the rest retired
+ * for up to 29 days after their credit had actually come back.
+ *
+ * So there is no date gate any more. Every retired key is polled for where it
+ * actually stands, and the decision is per key. Healthy keys are never
+ * polled: the cost is one API call per RETIRED key per day, which at today's
+ * four is ~120 calls a month against a limit measured in calls per second.
+ *
+ * Nothing here can retire a key or spend credit — the only writes are
+ * un-retiring one and stamping a check timestamp — so the worst a bad run can
+ * do is leave the pool exactly as it found it. A key whose account cannot be
+ * reached stays retired, deliberately: a retired key with credit costs
+ * throughput, while a key put back without credit costs a user their fetch.
+ *
+ * `now` and `dryRun` are injectable so the job itself can be driven against
+ * the live pool without writing.
+ */
+export async function autoResetExhaustedKeys(
+  opts: { now?: Date; dryRun?: boolean } = {},
+): Promise<ResetRunSummary> {
+  const now = opts.now ?? new Date();
+  const dryRun = opts.dryRun ?? false;
+
+  const exhausted = await storage.getExhaustedApifyKeys();
+
+  const summary: ResetRunSummary = {
+    checked: exhausted.length,
+    reset: 0,
+    held: 0,
+    skipped: 0,
+    outcomes: [],
+  };
+
+  if (exhausted.length === 0) {
+    console.log("[KeyManager] Reset check — no retired keys");
+    return summary;
+  }
+
+  console.log(
+    `[KeyManager] Reset check — polling ${exhausted.length} retired key(s)` +
+      (dryRun ? " (dry run, nothing will be written)" : ""),
+  );
+
+  for (const key of exhausted) {
+    let decision: ResetDecision;
+
+    try {
+      const usage = await fetchApifyAccountUsage(key.token);
+      decision = decideKeyReset(usage, key.monthlyResetAt, now);
+    } catch (err: any) {
+      decision = { action: "skip", reason: err?.message ?? "unknown error" };
+    }
+
+    const outcome: KeyOutcome = { id: key.id, token: key.token, decision };
+    summary.outcomes.push(outcome);
+    console.log(describe(outcome));
+
+    if (decision.action === "reset") {
+      summary.reset++;
+      if (!dryRun) {
+        await storage.resetApifyKeyForNewCycle(
+          key.id,
+          { usedUsd: decision.usage.usedUsd, limitUsd: decision.usage.limitUsd },
+          now,
+        );
+      }
+    } else if (decision.action === "hold") {
+      summary.held++;
+      // A held key is still evidence the poll ran, which is the whole point of
+      // recording the check separately from the reset.
+      if (!dryRun) {
+        await storage.markApifyKeyResetChecked(key.id, now);
+      }
+    } else {
+      summary.skipped++;
+    }
+  }
+
+  console.log(
+    `[KeyManager] Reset check complete: ${summary.reset} returned to the pool, ` +
+      `${summary.held} still retired, ${summary.skipped} unreachable`,
+  );
+
+  return summary;
 }

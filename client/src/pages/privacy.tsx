@@ -51,7 +51,7 @@ export default function PrivacyPage() {
               // TL;DR
             </div>
             <ul className="space-y-2 text-[14px] text-text-secondary">
-              <li>● We collect email, name, hashed password, and your billing details (via Paddle).</li>
+              <li>● We collect email, name, hashed password, and your billing details (via our payment provider).</li>
               <li>● We track which Instagram handles you&apos;ve added — that&apos;s it for personal data.</li>
               <li>● We don&apos;t sell, share, or rent your data to anyone, ever.</li>
               <li>● We use cookies for auth sessions. No tracking cookies, no ad pixels.</li>
@@ -70,7 +70,7 @@ export default function PrivacyPage() {
                 <li>● Email address (sign-up + login)</li>
                 <li>● Password (stored as bcrypt hash — we never see plaintext)</li>
                 <li>● Avatar image (optional, profile page)</li>
-                <li>● Payment details (billing name, last 4 digits of card — handled by Paddle, we never see full card numbers)</li>
+                <li>● Payment details (billing name, last 4 digits of card — handled by our payment provider, we never see full card numbers)</li>
               </ul>
 
               <h3 className="font-tight font-semibold text-[16px] tracking-tighter-2 mb-2 mt-5 text-text-primary">Automatically:</h3>
@@ -98,7 +98,7 @@ export default function PrivacyPage() {
               </p>
               <ul className="space-y-2 text-[15px] text-text-secondary leading-[1.7] pl-5">
                 <li>● Authenticate you and keep your dashboard secure</li>
-                <li>● Process payments (via Paddle)</li>
+                <li>● Process payments (via our payment provider)</li>
                 <li>● Run the Instagram fetches you initiate</li>
                 <li>● Send you transactional emails (password reset, payment receipts, important account updates)</li>
                 <li>● Improve the product (aggregated, anonymized usage patterns only)</li>
@@ -115,8 +115,8 @@ export default function PrivacyPage() {
               </p>
               <ul className="space-y-2 text-[15px] text-text-secondary leading-[1.7] pl-5">
                 <li>● <strong className="text-text-primary">Supabase</strong> — our database and auth provider</li>
-                <li>● <strong className="text-text-primary">Paddle</strong> — payment processing (handles billing data)</li>
-                <li>● <strong className="text-text-primary">Apify</strong> — runs the Instagram public data fetches you initiate</li>
+                <li>● <strong className="text-text-primary">Our payment provider</strong> — payment processing and billing records (receives your name, email and payment details; we never see full card numbers)</li>
+                <li>● <strong className="text-text-primary">Our data collection provider</strong> — runs the Instagram public data fetches you initiate (receives the public handles you ask us to look up; no personal data of yours is sent)</li>
                 <li>● <strong className="text-text-primary">Hostinger</strong> — our hosting provider</li>
               </ul>
               <p className="text-[15px] text-text-secondary leading-[1.7] mt-4">
@@ -140,7 +140,7 @@ export default function PrivacyPage() {
               <ul className="space-y-2 text-[15px] text-text-secondary leading-[1.7] pl-5">
                 <li>● <strong className="text-text-primary">Active accounts:</strong> retained as long as your account exists</li>
                 <li>● <strong className="text-text-primary">Deleted accounts:</strong> all personal data wiped within 24 hours of deletion request</li>
-                <li>● <strong className="text-text-primary">Billing records:</strong> Paddle retains these for 7 years per Indian tax law (we cannot delete these from their side)</li>
+                <li>● <strong className="text-text-primary">Billing records:</strong> our payment provider retains these for 7 years per Indian tax law (we cannot delete these from their side)</li>
                 <li>● <strong className="text-text-primary">Server logs:</strong> auto-deleted after 30 days</li>
               </ul>
             </section>

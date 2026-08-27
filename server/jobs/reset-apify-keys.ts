@@ -33,6 +33,18 @@ const MIN_DAYS_BETWEEN_RESETS = 25;
  *
  * `now` is injectable so the date gate can be tested without waiting for the
  * 1st.
+ *
+ * KNOWN LIMITATION — the 1st is not when the credit actually renews. Apify
+ * anchors each account's usage cycle to its own signup date, and
+ * GET /v2/users/me/usage/monthly reports it per token. Across the ten
+ * accounts in the pool today those cycles start on the 27th (seven of them),
+ * the 30th, the 12th and the 1st — only one lines up with this job. So a key
+ * retired the day after its own cycle rolls over waits until the next 1st to
+ * come back, which can be up to 29 days after its credit was actually
+ * restored. That is still strictly better than the current behaviour (never),
+ * and the reset itself is correct whenever it fires. The follow-up is to gate
+ * on usageCycle.startAt per key instead of the calendar; it needs one API
+ * call per retired key per run, which is why it is not folded in here.
  */
 export async function autoResetKeysMonthly(now: Date = new Date()): Promise<number> {
   if (now.getUTCDate() !== 1) {

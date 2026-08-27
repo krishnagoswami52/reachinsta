@@ -1,0 +1,56 @@
+// Applies supabase/migrations/20260827000001_add_apify_reset_check.sql.
+//
+// Targeted, idempotent DDL rather than `drizzle-kit push` — the live Supabase
+// schema has drifted from the drizzle definitions in places, and push would
+// happily "fix" objects this change has no business touching. Same pattern as
+// scripts/apply-queue-priority.ts.
+//
+// Additive and nullable, so it is safe to run against a live server ahead of
+// the deploy: existing code never reads the column, and NULL simply means the
+// key has not been polled yet.
+//
+//   npx tsx scripts/apply-apify-reset-check.ts
+import { config } from "dotenv";
+import path from "path";
+import { readFileSync } from "fs";
+
+config({ path: path.resolve(process.cwd(), ".env") });
+config({ path: path.resolve(process.cwd(), ".env.local"), override: true });
+
+const pg = (await import("pg")).default;
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes("supabase.co") ? { rejectUnauthorized: false } : undefined,
+});
+
+(async () => {
+  try {
+    const sql = readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260827000001_add_apify_reset_check.sql"),
+      "utf-8",
+    );
+    await pool.query(sql);
+    console.log("Migration applied.");
+
+    const { rows } = await pool.query(
+      `SELECT column_name, data_type, is_nullable
+         FROM information_schema.columns
+        WHERE table_name = 'apify_keys' AND column_name = 'last_reset_check_at'`,
+    );
+    console.table(rows);
+
+    const state = await pool.query(
+      `SELECT count(*)::int AS keys,
+              count(*) FILTER (WHERE is_exhausted)::int AS retired,
+              count(monthly_reset_at)::int AS ever_reset,
+              count(last_reset_check_at)::int AS ever_checked
+         FROM apify_keys`,
+    );
+    console.table(state.rows);
+  } catch (e) {
+    console.error("ERROR:", e);
+    process.exitCode = 1;
+  } finally {
+    await pool.end();
+  }
+})();

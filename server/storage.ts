@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { eq, asc, desc, and, or, lt, sql, count } from "drizzle-orm";
+import { eq, asc, desc, and, or, lt, isNull, sql, count } from "drizzle-orm";
 import { db } from "./db";
 import {
   profiles, competitors, fetchRuns, reels, competitorStats, rawPayloads, jobs, apifyKeys,
@@ -130,6 +130,7 @@ export interface IStorage {
   getSelectableApifyKeys(): Promise<ApifyKey[]>;
   recordApifyKeyUsage(token: string, cost: number): Promise<number | undefined>;
   markApifyKeyExhausted(token: string): Promise<void>;
+  resetExhaustedApifyKeys(resetBefore: Date, now: Date): Promise<ApifyKey[]>;
   getAllApifyKeys(): Promise<ApifyKey[]>;
 }
 
@@ -799,6 +800,40 @@ export class DatabaseStorage implements IStorage {
       .update(apifyKeys)
       .set({ isExhausted: true, lastErrorAt: new Date(), updatedAt: new Date() })
       .where(eq(apifyKeys.token, token));
+  }
+
+  /**
+   * Return retired keys to the pool for a new Apify billing month.
+   *
+   * Zeroes used_budget rather than writing a remaining figure: remaining is
+   * derived (total_budget - used_budget) in selection, seeding and the admin
+   * views, so a written figure would contradict all three.
+   *
+   * `resetBefore` is the eligibility cutoff — a key whose monthly_reset_at is
+   * newer than that has already been credited this cycle and is skipped, which
+   * is what makes a same-day rerun a no-op. NULL passes: keys retired before
+   * the column existed have never been reset.
+   *
+   * The date gate itself lives in server/jobs/reset-apify-keys.ts. This will
+   * reset whatever it is handed, so the caller owns "is it the 1st".
+   */
+  async resetExhaustedApifyKeys(resetBefore: Date, now: Date): Promise<ApifyKey[]> {
+    return await db
+      .update(apifyKeys)
+      .set({
+        isExhausted: false,
+        usedBudget: "0.0000",
+        lastErrorAt: null,
+        monthlyResetAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(apifyKeys.isExhausted, true),
+          or(isNull(apifyKeys.monthlyResetAt), lt(apifyKeys.monthlyResetAt, resetBefore)),
+        ),
+      )
+      .returning();
   }
 
   async getAllApifyKeys(): Promise<ApifyKey[]> {

@@ -131,7 +131,7 @@ export default function FeaturesPage() {
               <div className="grid grid-cols-4 gap-6 mt-6 text-center">
                 {[
                   { step: "step 01", desc: "Paste competitor handles" },
-                  { step: "step 02", desc: "Apify fetches last 28 days of Reels" },
+                  { step: "step 02", desc: "We fetch the last 28 days of Reels" },
                   { step: "step 03", desc: "Algorithm weighs velocity + engagement" },
                   { step: "step 04", desc: "Ranked Reels, ready in ~2m", highlight: true },
                 ].map(({ step, desc, highlight }) => (

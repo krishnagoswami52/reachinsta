@@ -24,7 +24,7 @@ export function MetricsNotes() {
           Post timing is based on when competitors uploaded their reels, shown in your local time
         </li>
         <li className="font-mono text-[12px] text-text-secondary">
-          Data fetched via Apify — slight delays possible
+          Data is fetched on demand from public Instagram profiles — slight delays possible
         </li>
       </ul>
     </div>

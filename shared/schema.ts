@@ -145,6 +145,11 @@ export const apifyKeys = pgTable("apify_keys", {
   isExhausted: boolean("is_exhausted").default(false).notNull(),
   lastUsedAt: timestamp("last_used_at"),
   lastErrorAt: timestamp("last_error_at"),
+  // Last time the monthly job cleared this key back into the pool. Apify
+  // free-tier credit renews on the 1st UTC; without this the reset job could
+  // clear the same key twice in one cycle (it runs daily and only acts on the
+  // 1st, but a restart on that day would run it again).
+  monthlyResetAt: timestamp("monthly_reset_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

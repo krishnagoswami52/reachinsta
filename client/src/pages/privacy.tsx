@@ -114,10 +114,10 @@ export default function PrivacyPage() {
                 We share data only with these service providers, strictly to operate ReachInsta:
               </p>
               <ul className="space-y-2 text-[15px] text-text-secondary leading-[1.7] pl-5">
-                <li>● <strong className="text-text-primary">Supabase</strong> — our database and auth provider</li>
+                <li>● <strong className="text-text-primary">Our database and authentication provider</strong> — stores your account, the handles you track and your fetch history (holds everything in section 1)</li>
                 <li>● <strong className="text-text-primary">Our payment provider</strong> — payment processing and billing records (receives your name, email and payment details; we never see full card numbers)</li>
                 <li>● <strong className="text-text-primary">Our data collection provider</strong> — runs the Instagram public data fetches you initiate (receives the public handles you ask us to look up; no personal data of yours is sent)</li>
-                <li>● <strong className="text-text-primary">Hostinger</strong> — our hosting provider</li>
+                <li>● <strong className="text-text-primary">Our hosting provider</strong> — runs the servers the app itself runs on (sees traffic in transit; stores nothing beyond server logs)</li>
               </ul>
               <p className="text-[15px] text-text-secondary leading-[1.7] mt-4">
                 We do NOT sell, rent, lease, or share your data with anyone else. Period.
@@ -131,7 +131,7 @@ export default function PrivacyPage() {
               </p>
               <p className="text-[15px] text-text-secondary leading-[1.7]">
                 Specifically: <span className="font-mono text-text-primary">sb-access-token</span> and{" "}
-                <span className="font-mono text-text-primary">sb-refresh-token</span> (Supabase auth session cookies).
+                <span className="font-mono text-text-primary">sb-refresh-token</span> (authentication session cookies).
               </p>
             </section>
 
@@ -172,7 +172,7 @@ export default function PrivacyPage() {
                 <li>● Passwords stored as bcrypt hashes (never plaintext)</li>
                 <li>● Row-Level Security (RLS) enabled on all database tables</li>
                 <li>● HTTPS-only across the entire app</li>
-                <li>● Supabase auth handles session tokens with industry-standard JWT</li>
+                <li>● Session tokens are issued by our authentication provider as industry-standard JWTs</li>
                 <li>● Regular security audits (manual + automated)</li>
               </ul>
               <p className="text-[15px] text-text-secondary leading-[1.7] mt-4">

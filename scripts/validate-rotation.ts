@@ -1,72 +1,30 @@
 /**
- * Phase 3 validation script — runs locally, no server needed.
+ * Rotation validation — runs locally, no server needed, no query issued.
  *
  * Tests:
- *   1. isBudgetError() catches all required quota phrases + 402
- *   2. isBudgetError() does NOT fire on transient errors
+ *   1. isBudgetError() catches real credit/quota exhaustion + 402 + error type
+ *   2. isBudgetError() does NOT fire on transient or merely limit-shaped errors
  *   3. Simulated failover: token 0 force-fails, rotation moves to token 1
  *   4. Exhausted token is skipped on subsequent attempt
+ *
+ * Test 2 is the H2 regression suite. Every "insufficient <not-money>" and
+ * "<something> limit reached" case in it was a TRUE before the phrase list was
+ * tightened, and each one retired a key holding real budget until the next
+ * monthly reset.
  */
 
+import { config } from 'dotenv';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-// ── Re-implement isBudgetError & maskToken inline so this script is self-contained ──
+config({ path: join(process.cwd(), '.env') });
 
-function maskToken(token: string): string {
-  if (!token || token.length < 16) return token;
-  return `${token.slice(0, 12)}...${token.slice(-4)}`;
-}
-
-function isBudgetError(error: any): boolean {
-  if (!error) return false;
-
-  const statusCode =
-    error?.statusCode ??
-    error?.status ??
-    error?.response?.status ??
-    error?.cause?.statusCode;
-
-  if (statusCode === 402) return true;
-
-  const messageParts = [
-    error?.message,
-    error?.error?.message,
-    error?.response?.data?.error?.message,
-    error?.response?.data?.message,
-    error?.cause?.message,
-    typeof error === 'string' ? error : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  const budgetPhrases = [
-    'monthly usage limit reached',
-    'monthly usage hard limit',
-    'usage limit exceeded',
-    'usage hard limit exceeded',
-    'reached your plan limit',
-    'reached the limit',
-    'exceeded the limit',
-    'limit for your current plan',
-    'insufficient credit',
-    'insufficient platform credit',
-    'payment required',
-    'account has been limited',
-    'platform usage credits',
-    'monthly platform usage',
-    'you have exceeded',
-    'quota exceeded',
-    'out of credit',
-    'no credit',
-    'credit limit',
-    'account is suspended',
-    'insufficient',
-  ];
-
-  return budgetPhrases.some((phrase) => messageParts.includes(phrase));
-}
+// The real production function, not a copy of it. This script used to inline
+// its own isBudgetError() "so it is self-contained"; the copy then drifted
+// from the original and kept asserting the loose matching that retired four
+// healthy keys. Importing keyManager costs a lazily-constructed pg Pool that
+// never connects — no query is issued below.
+const { isBudgetError, maskToken } = await import('../server/services/keyManager');
 
 // ── Helpers ──
 
@@ -93,25 +51,30 @@ const shouldMatch: Array<[string, any]> = [
   ['HTTP 402 statusCode',          { statusCode: 402 }],
   ['HTTP 402 status',              { status: 402 }],
   ['HTTP 402 response.status',     { response: { status: 402 } }],
+  ['type insufficient-credits',    { type: 'insufficient-credits' }],
+  ['type account-blocked-for-budget', { type: 'account-blocked-for-budget' }],
+  ['nested error.type',            { error: { type: 'insufficient-credits' } }],
   ['monthly usage limit reached',  new Error('monthly usage limit reached')],
-  ['monthly usage hard limit',     new Error('monthly usage hard limit exceeded')],
+  ['monthly usage hard limit',     new Error('Monthly usage hard limit exceeded')],
   ['usage limit exceeded',         new Error('usage limit exceeded')],
   ['usage hard limit exceeded',    new Error('usage hard limit exceeded')],
   ['reached your plan limit',      new Error('you have reached your plan limit')],
-  ['reached the limit',            new Error("you've reached the limit for your current plan")],
-  ['exceeded the limit',           new Error('exceeded the limit')],
-  ['limit for your current plan',  new Error('limit for your current plan')],
-  ['insufficient credit',          new Error('insufficient credit')],
+  ['limit for your current plan',  new Error("you've reached the limit for your current plan")],
+  ['insufficient credit',          new Error('Actor: insufficient credit remaining')],
+  ['insufficient credits',         new Error('insufficient credits on this account')],
+  ['insufficient balance',         new Error('Insufficient balance in account')],
+  ['insufficient funds',           new Error('insufficient funds')],
   ['payment required',             new Error('payment required')],
   ['account has been limited',     new Error('account has been limited')],
   ['platform usage credits',       new Error('platform usage credits exhausted')],
-  ['you have exceeded',            new Error('you have exceeded your monthly quota')],
+  ['budget exceeded',              new Error('budget exceeded for this account')],
   ['quota exceeded',               new Error('quota exceeded')],
+  ['quota exhausted',              new Error('quota exhausted')],
   ['out of credit',                new Error('out of credit')],
-  ['no credit',                    new Error('no credit remaining')],
+  ['no credit remaining',          new Error('no credit remaining')],
   ['credit limit',                 new Error('credit limit reached')],
+  ['account credit is depleted',   new Error('account credit is depleted')],
   ['account is suspended',         new Error('account is suspended')],
-  ['insufficient (generic)',       new Error('insufficient funds')],
   ['nested error object',          { error: { message: 'monthly usage limit reached' } }],
   ['nested response.data.message', { response: { data: { message: 'payment required' } } }],
   ['string error value',           'monthly usage limit reached'],
@@ -135,6 +98,20 @@ const shouldNotMatch: Array<[string, any]> = [
   ['actor failed',          new Error('Actor run failed with status FAILED')],
   ['dataset not found',     new Error('Dataset not found')],
   ['empty message',         new Error('')],
+
+  // ── H2 regressions: every one of these returned TRUE before the phrase
+  // list was tightened, and every TRUE retired a funded key ──────────────
+  ['insufficient permissions',   new Error('Insufficient permissions')],
+  ['insufficient data',          new Error('Insufficient data returned from Instagram')],
+  ['insufficient privileges',    new Error('insufficient privileges for this resource')],
+  ['rate limit reached',         new Error('Rate limit reached')],
+  ['result limit reached',       new Error('reached the limit of 100 results')],
+  ['concurrency limit exceeded', new Error('exceeded the limit of concurrent actor runs')],
+  ['too many runs',              new Error('You have exceeded the maximum number of concurrent runs')],
+  ['memory limit',               new Error('Actor exceeded the memory limit')],
+  ['no credit card on file',     new Error('no credit card on file for this account')],
+  ['actor exited',               new Error('Actor exited with error')],
+  ['unknown error type',         { type: 'actor-run-failed' }],
 ];
 
 for (const [label, err] of shouldNotMatch) {

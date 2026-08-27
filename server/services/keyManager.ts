@@ -190,6 +190,65 @@ export async function getKeyForPlan(
   return choice.key;
 }
 
+/**
+ * Phrases that mean "this account is out of money", and only that.
+ *
+ * Every entry has to be specific enough that no non-budget Apify error can
+ * contain it. The bare word "insufficient" used to be on this list and is the
+ * reason four healthy keys were retired holding $2.33-$4.71: it matched
+ * "insufficient permissions" and "insufficient data" (docs/fetch-flow-audit.md
+ * H2/H3). Same for the old "reached the limit" / "exceeded the limit" /
+ * "you have exceeded" entries, which match concurrency and result-count
+ * errors word for word. Anything added here must name credit, budget, quota,
+ * or payment explicitly.
+ */
+const BUDGET_ERROR_PHRASES = [
+  // Apify's own monthly-usage wording
+  "monthly usage limit reached",
+  "monthly usage hard limit",
+  "usage limit exceeded",
+  "usage hard limit exceeded",
+  "reached your plan limit",
+  "limit for your current plan",
+  "platform usage credits",
+  "monthly platform usage",
+  "account has been limited",
+  // Credit / balance
+  "insufficient credit",
+  "insufficient credits",
+  "insufficient platform credit",
+  "insufficient balance",
+  "insufficient funds",
+  "out of credit",
+  "no credit remaining",
+  "no credits remaining",
+  "credit limit",
+  "account credit is depleted",
+  // Budget / quota
+  "budget exceeded",
+  "quota exceeded",
+  "quota exhausted",
+  // Payment
+  "payment required",
+  // Account state that rotation should route around the same way
+  "account is suspended",
+] as const;
+
+/** Apify error `type` values that mean the account cannot pay for the run. */
+const BUDGET_ERROR_TYPES = ["insufficient-credits", "account-blocked-for-budget"] as const;
+
+/**
+ * Is this error the account running out of Apify credit?
+ *
+ * A true here retires the key from the rotation pool, so a false positive
+ * costs the pool a healthy key until the next monthly reset. That asymmetry
+ * is why matching is phrase-precise rather than keyword-loose: a missed
+ * budget error just fails one fetch and the key retires on its own the next
+ * time recordUsage() charges it below the floor.
+ *
+ * Three independent signals, cheapest first: HTTP 402, a known Apify error
+ * `type`, then the message text.
+ */
 export function isBudgetError(error: any): boolean {
   if (!error) return false;
 
@@ -201,6 +260,17 @@ export function isBudgetError(error: any): boolean {
     error?.cause?.statusCode;
 
   if (statusCode === 402) return true;
+
+  // Structured error type, when Apify sends one — no string matching involved
+  const type =
+    error?.type ??
+    error?.error?.type ??
+    error?.response?.data?.error?.type ??
+    error?.cause?.type;
+
+  if (typeof type === "string" && (BUDGET_ERROR_TYPES as readonly string[]).includes(type)) {
+    return true;
+  }
 
   // Collect all message text from every location Apify may use
   const messageParts = [
@@ -215,31 +285,7 @@ export function isBudgetError(error: any): boolean {
     .join(" ")
     .toLowerCase();
 
-  const budgetPhrases = [
-    "monthly usage limit reached",
-    "monthly usage hard limit",
-    "usage limit exceeded",
-    "usage hard limit exceeded",
-    "reached your plan limit",
-    "reached the limit",
-    "exceeded the limit",
-    "limit for your current plan",
-    "insufficient credit",
-    "insufficient platform credit",
-    "payment required",
-    "account has been limited",
-    "platform usage credits",
-    "monthly platform usage",
-    "you have exceeded",
-    "quota exceeded",
-    "out of credit",
-    "no credit",
-    "credit limit",
-    "account is suspended",
-    "insufficient",
-  ];
-
-  return budgetPhrases.some((phrase) => messageParts.includes(phrase));
+  return BUDGET_ERROR_PHRASES.some((phrase) => messageParts.includes(phrase));
 }
 
 export async function recordUsage(

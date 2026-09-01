@@ -110,3 +110,20 @@ export const changePasswordLimiter = rateLimit({
     code: "PASSWORD_CHANGE_RATE_LIMITED",
   },
 });
+
+/**
+ * Public contact form (POST /api/contact).
+ * Unauthenticated and it sends an email on every success, so keep it tight:
+ * a real person needs one submission, not three. Matches the
+ * passwordResetRequestLimiter budget for the same reason (email bombing).
+ */
+export const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // 3 submissions per IP per hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: "Too many messages sent. Try again in an hour, or email krishna@reachinsta.co directly.",
+    code: "CONTACT_RATE_LIMITED",
+  },
+});

@@ -18,8 +18,14 @@ import type { Request } from "express";
  */
 
 /**
- * Authentication endpoints (login, register).
+ * Login (and other credential-checking endpoints).
  * Strict — blunts password spraying / brute force.
+ *
+ * Deliberately NOT applied to /api/auth/register any more: sharing one bucket
+ * between login and registration was wrong in both directions (audit V2).
+ * 10/15min is far too generous for account creation, and a burst of signups
+ * from a shared corporate or mobile-carrier NAT used to lock the people behind
+ * that NAT out of *login*. Registration now has its own bucket below.
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -29,6 +35,26 @@ export const authLimiter = rateLimit({
   message: {
     message: "Too many authentication attempts. Try again in 15 minutes.",
     code: "AUTH_RATE_LIMITED",
+  },
+});
+
+/**
+ * Account creation (/api/auth/register) only.
+ *
+ * Every registration costs real money downstream — it provisions a profile with
+ * a free fetch credit (~$0.08 of Apify) and sends a Resend email to an
+ * attacker-chosen address. The old shared budget allowed 960 accounts per day
+ * per IP, more than enough to drain the whole $42 Apify pool. 5/hour caps a
+ * single IP at 120/day, and a real human needs exactly one.
+ */
+export const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 signups per IP per hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: "Too many signup attempts. Please try again in an hour.",
+    code: "REGISTER_RATE_LIMITED",
   },
 });
 

@@ -19,6 +19,7 @@ import {
 } from "../../services/email";
 import {
   authLimiter,
+  registerLimiter,
   passwordResetRequestLimiter,
   passwordResetCodeLimiter,
   changePasswordLimiter,
@@ -57,7 +58,7 @@ export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
 
-  app.post("/api/auth/register", authLimiter, async (req, res) => {
+  app.post("/api/auth/register", registerLimiter, async (req, res) => {
     try {
       const parseResult = registerSchema.safeParse(req.body);
       if (!parseResult.success) {

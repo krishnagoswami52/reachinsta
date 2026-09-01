@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import subscriptionRouter from "./routes/subscription";
+import contactRouter from "./routes/contact";
 import { z } from "zod";
 import { planLimits, type PlanType, type RoleType } from "@shared/schema";
 import {
@@ -63,6 +64,8 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
   app.use(subscriptionRouter);
+  // Public contact form — unauthenticated, carries its own rate limit.
+  app.use(contactRouter);
 
   app.get("/api/profile", isAuthenticated, async (req: any, res) => {
     try {

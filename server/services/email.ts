@@ -180,3 +180,110 @@ export function canResendPasswordReset(userId: string): { allowed: boolean; wait
 export function markPasswordResetSent(userId: string): void {
   passwordResetThrottleMap.set(userId, Date.now());
 }
+
+/**
+ * Where contact-form submissions land. Deliberately a constant, not an env
+ * var: one inbox, decided once.
+ */
+const CONTACT_NOTIFICATION_TO = "krishna@reachinsta.co";
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&": return "&amp;";
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case '"': return "&quot;";
+      default: return "&#39;";
+    }
+  });
+}
+
+export interface ContactNotification {
+  queryId: number;
+  name: string;
+  email: string;
+  company?: string | null;
+  message: string;
+  ip: string | null;
+  createdAt: Date;
+}
+
+/**
+ * Notify the inbox about a new contact-form submission.
+ *
+ * The query row is already committed by the time this runs, so a failure here
+ * costs a notification, never the lead. Every visitor-supplied value is
+ * HTML-escaped — this content is untrusted and lands in a mail client.
+ *
+ * replyTo is set to the visitor's address so hitting Reply in the inbox
+ * answers them directly. There is no auto-reply to the visitor by design.
+ */
+export async function sendContactNotification(
+  data: ContactNotification,
+): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.warn("Email service not configured (RESEND_API_KEY missing). Contact query saved but notification not sent.");
+    return { success: false, error: "Email service not configured" };
+  }
+
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+  const name = escapeHtml(data.name);
+  const email = escapeHtml(data.email);
+  const company = data.company ? escapeHtml(data.company) : null;
+  const message = escapeHtml(data.message).replace(/\n/g, "<br>");
+  const submitted = data.createdAt.toISOString().replace("T", " ").slice(0, 16) + " UTC";
+
+  try {
+    const { error } = await resend.emails.send({
+      from: fromEmail,
+      to: CONTACT_NOTIFICATION_TO,
+      replyTo: data.email,
+      subject: `New contact query from ${data.name}${data.company ? ` (${data.company})` : ""}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">ReachInsta</h1>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+              <h2 style="margin-top: 0; color: #333;">New contact form submission</h2>
+              <table style="width: 100%; font-size: 14px; border-collapse: collapse; margin-bottom: 24px;">
+                <tr><td style="padding: 4px 0; color: #666; width: 90px;">Name</td><td style="padding: 4px 0;"><strong>${name}</strong></td></tr>
+                <tr><td style="padding: 4px 0; color: #666;">Email</td><td style="padding: 4px 0;"><a href="mailto:${email}" style="color: #667eea;">${email}</a></td></tr>
+                ${company ? `<tr><td style="padding: 4px 0; color: #666;">Company</td><td style="padding: 4px 0;">${company}</td></tr>` : ""}
+                <tr><td style="padding: 4px 0; color: #666;">Received</td><td style="padding: 4px 0;">${submitted}</td></tr>
+              </table>
+              <div style="background: #f7f7fb; border-left: 3px solid #7CFFB2; padding: 16px 20px; border-radius: 4px;">
+                ${message}
+              </div>
+              <p style="color: #666; font-size: 13px; margin-top: 24px;">
+                Reply to this email to answer ${name} directly.
+              </p>
+              <p style="color: #999; font-size: 12px; border-top: 1px solid #eee; padding-top: 16px; margin-top: 24px;">
+                Query #${data.queryId} &middot; IP ${escapeHtml(data.ip || "unknown")}
+              </p>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+
+    // resend.emails.send resolves with an { error } payload instead of
+    // throwing on an API-level rejection, so it has to be checked explicitly.
+    if (error) {
+      console.error("Failed to send contact notification:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send contact notification:", error);
+    return { success: false, error: "Failed to send email" };
+  }
+}

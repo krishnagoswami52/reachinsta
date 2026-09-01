@@ -20,7 +20,12 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export async function registerUser(input: RegisterInput): Promise<User> {
+/**
+ * @param ipAddress client IP at signup, already normalised by the caller.
+ *                  Written once and never updated — it records where the
+ *                  account was created, not where it was last used.
+ */
+export async function registerUser(input: RegisterInput, ipAddress: string | null = null): Promise<User> {
   const existingUser = await storage.getUserByEmail(input.email);
   if (existingUser) {
     throw new Error("Email already registered");
@@ -33,6 +38,7 @@ export async function registerUser(input: RegisterInput): Promise<User> {
     passwordHash,
     firstName: input.firstName || null,
     lastName: input.lastName || null,
+    ipAddress,
   });
 
   return user;
@@ -80,14 +86,14 @@ export async function destroyUserSessions(userId: string, exceptCurrentSid?: str
   return count;
 }
 
-export function sanitizeUser(user: User): Omit<User, "passwordHash"> {
-  const { passwordHash, ...safeUser } = user;
+export function sanitizeUser(user: User): Omit<User, "passwordHash" | "ipAddress"> {
+  const { passwordHash, ipAddress, ...safeUser } = user;
   return safeUser;
 }
 
 /** Merges auth user with profile subscription fields into one response object. */
 export function buildSanitizedUser(user: User, profile: Profile | undefined): SanitizedUser {
-  const { passwordHash, ...safeUser } = user;
+  const { passwordHash, ipAddress, ...safeUser } = user;
   return {
     ...safeUser,
     plan: profile?.plan ?? "free",

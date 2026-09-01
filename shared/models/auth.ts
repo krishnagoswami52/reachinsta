@@ -21,6 +21,10 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   emailVerified: boolean("email_verified").default(false),
+  // Client IP at registration. NULL for every row created before
+  // 2026-09-02 — we genuinely do not know where those came from.
+  // Written once, never updated. Abuse investigation only.
+  ipAddress: varchar("ip_address", { length: 45 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

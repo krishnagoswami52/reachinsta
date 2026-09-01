@@ -1,5 +1,5 @@
 import session from "express-session";
-import type { Express, RequestHandler } from "express";
+import type { Express, Request, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { registerUser, loginUser, sanitizeUser, hashPassword, verifyPassword, destroyUserSessions } from "../../services/auth";
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/models/auth";
@@ -55,6 +55,26 @@ export function getSession() {
   });
 }
 
+/**
+ * The client IP to record against a new account.
+ *
+ * `app.set("trust proxy", 1)` is configured below, so Express already resolves
+ * req.ip from the last X-Forwarded-For hop rather than Traefik's own address —
+ * without it every signup would look like it came from the proxy.
+ *
+ * The ::ffff: prefix is stripped. Node reports an IPv4 client on a dual-stack
+ * socket as the IPv4-mapped IPv6 form (::ffff:127.0.0.1), so the same address
+ * can arrive in two spellings depending on how the connection was made.
+ * Storing both would silently split the per-IP counts this column exists to
+ * make possible. Truncated to the column width (45) so an absurd
+ * X-Forwarded-For can never fail a registration.
+ */
+function clientIp(req: Request): string | null {
+  const raw = req.ip || req.socket.remoteAddress || null;
+  if (!raw) return null;
+  return raw.replace(/^::ffff:/i, "").slice(0, 45);
+}
+
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
@@ -68,7 +88,7 @@ export async function setupAuth(app: Express) {
         });
       }
 
-      const user = await registerUser(parseResult.data);
+      const user = await registerUser(parseResult.data, clientIp(req));
       req.session.userId = user.id;
       
       await storage.upsertProfile({

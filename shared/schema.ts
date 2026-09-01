@@ -345,10 +345,15 @@ export const planLimits: Record<PlanType, { maxCompetitors: number; monthlyFetch
 };
 
 /**
- * Shape returned by GET /api/auth/user — User fields (minus passwordHash)
- * merged with subscription fields from the profiles table.
+ * Shape returned by GET /api/auth/user — User fields (minus passwordHash and
+ * ipAddress) merged with subscription fields from the profiles table.
+ *
+ * ipAddress is dropped for the same reason it is stored: it exists for abuse
+ * investigation, and nothing in the UI has any use for it. Keeping it out of
+ * the response keeps it out of the client bundle, browser caches and any
+ * future error report that serialises a user object.
  */
-export type SanitizedUser = Omit<User, "passwordHash"> & {
+export type SanitizedUser = Omit<User, "passwordHash" | "ipAddress"> & {
   plan: PlanType;
   subscriptionStatus: SubscriptionStatusType;
   currentPeriodEnd: Date | null;

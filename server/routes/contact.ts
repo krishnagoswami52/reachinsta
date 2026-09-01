@@ -21,11 +21,11 @@ const router = Router();
 // Lengths mirror contact_queries in shared/schema.ts. Anything longer is a
 // bug or an attack, not a real message.
 const contactSchema = z.object({
-  name: z.string().trim().min(2, "Please enter your name").max(100, "Name is too long"),
-  email: z.string().trim().email("Please enter a valid email address").max(255, "Email is too long"),
+  name: z.string({ required_error: "Please enter your name" }).trim().min(2, "Please enter your name").max(100, "Name is too long"),
+  email: z.string({ required_error: "Please enter your email address" }).trim().email("Please enter a valid email address").max(255, "Email is too long"),
   company: z.string().trim().max(200, "Company name is too long").optional(),
   message: z
-    .string()
+    .string({ required_error: "Please write a message" })
     .trim()
     .min(10, "Please write at least 10 characters")
     .max(5000, "Message is too long (5000 characters max)"),

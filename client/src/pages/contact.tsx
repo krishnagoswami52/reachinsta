@@ -1,30 +1,51 @@
 import { useState, useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Send, Mail } from "lucide-react";
+
+const MESSAGE_MAX = 5000;
 
 export default function ContactPage() {
   useEffect(() => { document.title = "Contact — ReachInsta"; }, []);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [subject, setSubject] = useState("");
+  const [company, setCompany] = useState("");
   const [message, setMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  // Honeypot: hidden from real users, so anything in it means a bot.
+  const [website, setWebsite] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError("");
-    try {
-      const mailto = `mailto:krishna@reachinsta.co?subject=${encodeURIComponent(subject || "Hello from ReachInsta")}&body=${encodeURIComponent(`From: ${name} (${email})\n\n${message}`)}`;
-      window.location.href = mailto;
+  const sendMessage = useMutation({
+    mutationFn: async (data: { name: string; email: string; company: string; message: string; website: string }) => {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.message || "Couldn't send your message. Please try again.");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
       setSubmitted(true);
-    } catch {
-      setError("Something went wrong. Try emailing krishna@reachinsta.co directly.");
-    } finally {
-      setSubmitting(false);
-    }
+      setName("");
+      setEmail("");
+      setCompany("");
+      setMessage("");
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    sendMessage.mutate({ name, email, company, message, website });
   };
 
   return (
@@ -73,6 +94,22 @@ export default function ContactPage() {
               {!submitted ? (
                 <form onSubmit={handleSubmit} className="space-y-5">
 
+                  {/* Honeypot — off-screen, skipped by keyboard, ignored by autofill.
+                      Real users never see or fill it; bots that fill everything do. */}
+                  <div className="absolute left-[-9999px]" aria-hidden="true">
+                    <label>
+                      Website (leave this empty)
+                      <input
+                        type="text"
+                        name="website"
+                        value={website}
+                        onChange={(e) => setWebsite(e.target.value)}
+                        tabIndex={-1}
+                        autoComplete="off"
+                      />
+                    </label>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-2 block">
@@ -81,6 +118,8 @@ export default function ContactPage() {
                       <input
                         type="text"
                         required
+                        minLength={2}
+                        maxLength={100}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         className="w-full bg-transparent border border-border-subtle rounded-md px-3.5 py-2.5 text-[14px] text-text-primary placeholder:text-text-muted focus:border-mint focus:outline-none focus:shadow-[0_0_0_3px_rgba(124,255,178,0.1)] transition-all"
@@ -94,6 +133,7 @@ export default function ContactPage() {
                       <input
                         type="email"
                         required
+                        maxLength={255}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="w-full bg-transparent border border-border-subtle rounded-md px-3.5 py-2.5 text-[14px] text-text-primary placeholder:text-text-muted focus:border-mint focus:outline-none focus:shadow-[0_0_0_3px_rgba(124,255,178,0.1)] transition-all"
@@ -104,21 +144,16 @@ export default function ContactPage() {
 
                   <div>
                     <label className="font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-2 block">
-                      // SUBJECT
+                      // COMPANY <span className="text-text-muted">(optional)</span>
                     </label>
-                    <select
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      className="w-full bg-bg-base border border-border-subtle rounded-md px-3.5 py-2.5 text-[14px] text-text-primary focus:border-mint focus:outline-none focus:shadow-[0_0_0_3px_rgba(124,255,178,0.1)] transition-all appearance-none"
-                      style={{ backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%238B9199'><path d='M4 6 L8 10 L12 6'/></svg>")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center", backgroundSize: "14px" }}
-                    >
-                      <option value="">Pick a reason…</option>
-                      <option value="Bug report">Bug report</option>
-                      <option value="Feature request">Feature request</option>
-                      <option value="Billing question">Billing question</option>
-                      <option value="Partnership">Partnership / brand deal</option>
-                      <option value="Other">Other</option>
-                    </select>
+                    <input
+                      type="text"
+                      maxLength={200}
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                      className="w-full bg-transparent border border-border-subtle rounded-md px-3.5 py-2.5 text-[14px] text-text-primary placeholder:text-text-muted focus:border-mint focus:outline-none focus:shadow-[0_0_0_3px_rgba(124,255,178,0.1)] transition-all"
+                      placeholder="Where you work"
+                    />
                   </div>
 
                   <div>
@@ -128,11 +163,16 @@ export default function ContactPage() {
                     <textarea
                       required
                       rows={6}
+                      minLength={10}
+                      maxLength={MESSAGE_MAX}
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       className="w-full bg-transparent border border-border-subtle rounded-md px-3.5 py-2.5 text-[14px] text-text-primary placeholder:text-text-muted focus:border-mint focus:outline-none focus:shadow-[0_0_0_3px_rgba(124,255,178,0.1)] transition-all resize-y min-h-[140px]"
                       placeholder="What's on your mind?"
                     />
+                    <p className="font-mono text-[11px] text-text-muted mt-1.5">
+                      {message.length}/{MESSAGE_MAX}
+                    </p>
                   </div>
 
                   {error && (
@@ -141,15 +181,15 @@ export default function ContactPage() {
 
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={sendMessage.isPending}
                     className="bg-mint hover:bg-mint-hover disabled:bg-border-soft disabled:text-text-muted text-bg-base font-semibold text-[14px] px-5 py-3 rounded-md inline-flex items-center gap-2 transition-all"
                   >
-                    {submitting ? "Sending…" : "Send message"}
+                    {sendMessage.isPending ? "Sending…" : "Send message"}
                     <Send className="w-4 h-4" />
                   </button>
 
                   <p className="font-mono text-[11px] text-text-muted">
-                    This will open your email app with the message pre-filled. Direct email also works:{" "}
+                    Goes straight to my inbox — no mail client needed. Direct email also works:{" "}
                     <a href="mailto:krishna@reachinsta.co" className="text-mint hover:underline">krishna@reachinsta.co</a>
                   </p>
                 </form>
@@ -159,11 +199,10 @@ export default function ContactPage() {
                     <Send className="w-6 h-6 text-mint" />
                   </div>
                   <h2 className="font-tight font-bold text-[24px] tracking-tightest mb-3">
-                    Your mail client is open.
+                    Message received.
                   </h2>
                   <p className="text-[14px] text-text-secondary mb-6 max-w-[360px] mx-auto">
-                    Hit send from there and I&apos;ll reply within 12 hours. If your mail client didn&apos;t open, just email{" "}
-                    <a href="mailto:krishna@reachinsta.co" className="text-mint hover:underline">krishna@reachinsta.co</a> directly.
+                    It landed in my inbox and I&apos;ll reply within 12 hours — to the address you gave.
                   </p>
                   <button
                     onClick={() => setSubmitted(false)}

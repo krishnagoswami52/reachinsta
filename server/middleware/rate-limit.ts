@@ -138,6 +138,37 @@ export const changePasswordLimiter = rateLimit({
 });
 
 /**
+ * Verification-email actions: /api/auth/resend-verification and
+ * /api/auth/change-email.
+ *
+ * Keyed by USER, not IP — both endpoints are session-gated, and the abuse they
+ * enable is one account emitting mail to many arbitrary addresses, not many
+ * accounts from one IP. change-email in particular sends a Resend message to
+ * any address the caller names, so an unlimited endpoint is a spam cannon
+ * pointed at our own sending domain (audit V6). The pre-existing 60-second
+ * in-process throttle in services/email.ts still applies underneath; this is
+ * the hourly ceiling it was missing, and it survives nothing — like every
+ * limiter here it is in-memory and resets on deploy.
+ *
+ * Falls back to the IP key when there is no session, so an unauthenticated
+ * caller cannot spend someone else's budget or bypass the limit entirely.
+ */
+export const emailActionLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 verification emails per user per hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: "Too many email requests. Please wait an hour.",
+    code: "EMAIL_ACTION_RATE_LIMITED",
+  },
+  keyGenerator: (req: Request) => {
+    const userId = req.session?.userId;
+    return userId ?? ipKeyGenerator(req.ip ?? "");
+  },
+});
+
+/**
  * Public contact form (POST /api/contact).
  * Unauthenticated and it sends an email on every success, so keep it tight:
  * a real person needs one submission, not three. Matches the

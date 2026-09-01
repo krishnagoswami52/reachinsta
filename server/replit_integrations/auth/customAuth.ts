@@ -20,6 +20,7 @@ import {
 import {
   authLimiter,
   registerLimiter,
+  emailActionLimiter,
   passwordResetRequestLimiter,
   passwordResetCodeLimiter,
   changePasswordLimiter,
@@ -179,7 +180,7 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/resend-verification", async (req, res) => {
+  app.post("/api/auth/resend-verification", emailActionLimiter, async (req, res) => {
     try {
       const userId = req.session?.userId;
       if (!userId) {
@@ -215,7 +216,7 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/change-email", async (req, res) => {
+  app.post("/api/auth/change-email", emailActionLimiter, async (req, res) => {
     try {
       const userId = req.session?.userId;
       if (!userId) {

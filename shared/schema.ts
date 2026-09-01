@@ -204,6 +204,29 @@ export const processedWebhookEvents = pgTable("processed_webhook_events", {
 
 export type ProcessedWebhookEvent = typeof processedWebhookEvents.$inferSelect;
 
+// Public contact-form submissions (/contact -> POST /api/contact). Written
+// before the notification email is sent, so an email failure never loses a
+// lead. Read by hand in SQL — there is no admin UI for these by design.
+export const contactQueries = pgTable("contact_queries", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  company: varchar("company", { length: 200 }),
+  message: text("message").notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  // Triage state, maintained manually. Nothing in the app updates it.
+  status: varchar("status", { length: 20 }).default("new").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("contact_queries_created_at_idx").on(table.createdAt),
+  index("contact_queries_email_idx").on(table.email),
+  index("contact_queries_status_idx").on(table.status),
+]);
+
+export type InsertContactQuery = typeof contactQueries.$inferInsert;
+export type ContactQuery = typeof contactQueries.$inferSelect;
+
 export const profilesRelations = relations(profiles, ({ many }) => ({
   competitors: many(competitors),
   fetchRuns: many(fetchRuns),

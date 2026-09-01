@@ -418,10 +418,56 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
         email: user.email,
       },
     };
-    
+    // Full row, for middleware that needs more than the claims (see
+    // requireVerifiedEmail). Kept separate from req.user so the existing
+    // claims shape — which every route handler reads — is untouched.
+    req.authUser = user;
+
     next();
   } catch (error) {
     console.error("Auth check error:", error);
     res.status(401).json({ message: "Unauthorized" });
+  }
+};
+
+/**
+ * Blocks a route until the account's email address has actually been proven.
+ *
+ * Until this existed the verification gate lived only in the React router
+ * (client/src/App.tsx), which is a redirect — irrelevant to anything speaking
+ * HTTP directly (audit V1). Registration returns a live session cookie on the
+ * same response that dispatches the verification email, so the whole sequence
+ * "register -> add competitor -> fetch" ran without a mailbox ever being
+ * involved, and spent real Apify credit doing it.
+ *
+ * MUST be mounted AFTER isAuthenticated — it reads the user that middleware
+ * resolved. It re-reads the row only as a fallback, so the common path costs
+ * no extra query.
+ *
+ * Deliberately NOT applied to the endpoints an unverified user needs in order
+ * to *become* verified, or to see why they are stuck: /api/auth/verify-email,
+ * /api/auth/resend-verification, /api/auth/change-email, /api/auth/user and
+ * /api/profile.
+ */
+export const requireVerifiedEmail: RequestHandler = async (req: any, res, next) => {
+  try {
+    const user = req.authUser ?? (await storage.getUserById(req.user?.claims?.sub));
+
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        message: "Please verify your email to use this feature",
+        code: "EMAIL_NOT_VERIFIED",
+        email: user.email,
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error("Email verification check error:", error);
+    res.status(500).json({ message: "Something went wrong. Please try again." });
   }
 };

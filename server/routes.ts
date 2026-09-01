@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { setupAuth, registerAuthRoutes, isAuthenticated, requireVerifiedEmail } from "./replit_integrations/auth";
 import subscriptionRouter from "./routes/subscription";
 import contactRouter from "./routes/contact";
 import { z } from "zod";
@@ -121,7 +121,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/competitors", isAuthenticated, async (req: any, res) => {
+  app.post("/api/competitors", isAuthenticated, requireVerifiedEmail, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       
@@ -156,7 +156,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/competitors/bulk", isAuthenticated, async (req: any, res) => {
+  app.post("/api/competitors/bulk", isAuthenticated, requireVerifiedEmail, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       
@@ -223,7 +223,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/fetch", isAuthenticated, fetchLimiter, async (req: any, res) => {
+  app.post("/api/fetch", isAuthenticated, requireVerifiedEmail, fetchLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       

@@ -140,12 +140,12 @@ export function CompetitorList({
   };
 
   return (
-    <div className="bg-bg-surface border border-border-subtle rounded-lg p-5">
+    <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
-          <h3 className="font-tight font-semibold text-[15px] text-text-primary">Competitors</h3>
+          <h3 className="font-tight font-semibold text-[16px] text-text-primary">Competitors</h3>
         </div>
         <span className="font-mono text-[11px] text-text-muted">
           {competitors.length}/{maxCompetitors}

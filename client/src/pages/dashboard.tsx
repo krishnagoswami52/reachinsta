@@ -355,8 +355,9 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Right sidebar */}
-        <div className="space-y-4">
+        {/* Right sidebar. space-y-6 matches both the main column's stack and the
+            grid's own gap-6, so the two columns keep the same vertical rhythm. */}
+        <div className="space-y-6">
           <CompetitorList
             competitors={competitors}
             maxCompetitors={profile?.maxCompetitors || 5}
@@ -365,9 +366,9 @@ export default function DashboardPage() {
           />
 
           {profile && (
-            <div className="bg-bg-surface border border-border-subtle rounded-lg p-5">
+            <div className="bg-bg-surface border border-border-subtle rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-tight font-semibold text-[15px] text-text-primary">Plan Usage</h3>
+                <h3 className="font-tight font-semibold text-[16px] text-text-primary">Plan Usage</h3>
                 <PlanBadge plan={profile.plan} />
               </div>
               <div className="space-y-4">

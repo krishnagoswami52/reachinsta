@@ -20,7 +20,7 @@ import { CompetitorCard } from "@/components/dashboard/competitor-card";
 import { EmptyState } from "@/components/dashboard/empty-state";
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { RefreshCw, TrendingUp, Eye, Users, BarChart3, Play, Sparkles } from "lucide-react";
+import { RefreshCw, TrendingUp, Eye, Users, BarChart3, Play, Sparkles, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { formatNumber, getTimeAgo } from "@/lib/utils";
 import type { Profile, Competitor, FetchRun, Reel, CompetitorStats } from "@shared/schema";
@@ -104,6 +104,40 @@ export default function DashboardPage() {
     profile.fetchesUsed < profile.monthlyFetchLimit &&
     competitors.length > 0 &&
     !isProcessing;
+
+  // One-shot attention pulse on the "View Full Analytics" CTA. It fires the
+  // first time a completed run is rendered and is remembered per run id, so a
+  // fresh fetch earns a new pulse but re-visiting the dashboard does not.
+  const completedRunId = fetchRun?.status === "completed" ? fetchRun.id : undefined;
+  const [pulseRunId, setPulseRunId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!completedRunId) return;
+    const key = `analytics-cta-pulsed:${completedRunId}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      // Private mode / storage disabled — pulse once and move on.
+    }
+    setPulseRunId(completedRunId);
+  }, [completedRunId]);
+
+  const stopPulse = () => setPulseRunId(null);
+  const isPulsing = pulseRunId !== null && pulseRunId === completedRunId;
+
+  // Retire the pulse once the three cycles finish, or the moment the user
+  // interacts anywhere on the page. Unmounting covers navigating away.
+  useEffect(() => {
+    if (!isPulsing) return;
+    const done = () => setPulseRunId(null);
+    const timer = window.setTimeout(done, 3 * 1600);
+    document.addEventListener("pointerdown", done, { once: true });
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("pointerdown", done);
+    };
+  }, [isPulsing]);
 
   return (
     <div className="space-y-6">
@@ -209,7 +243,7 @@ export default function DashboardPage() {
       )}
 
       <div className="grid lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3 space-y-6">
+        <div className="lg:col-span-3 min-w-0 space-y-6">
           {competitors.length === 0 ? (
             <EmptyState
               icon={Users}
@@ -242,12 +276,29 @@ export default function DashboardPage() {
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full sm:w-auto">
-                  <TabsTrigger value="overview"     data-testid="tab-overview">Overview</TabsTrigger>
-                  <TabsTrigger value="viral"        data-testid="tab-viral">Viral Reels</TabsTrigger>
-                  <TabsTrigger value="timing"       data-testid="tab-timing">Timing</TabsTrigger>
-                  <TabsTrigger value="competitors"  data-testid="tab-competitors">Competitors</TabsTrigger>
-                </TabsList>
+                {/* The underline now lives on this row rather than on TabsList so it
+                    runs the full width, past the CTA. TabsList keeps its own
+                    horizontal scroll; the CTA sits outside it and stays put. */}
+                <div className="flex items-center gap-3 border-b border-border -mx-4 px-4 lg:mx-0 lg:px-0">
+                  <TabsList className="border-b-0 mx-0 px-0 flex-1 min-w-0">
+                    <TabsTrigger value="overview"     data-testid="tab-overview">Overview</TabsTrigger>
+                    <TabsTrigger value="viral"        data-testid="tab-viral">Viral Reels</TabsTrigger>
+                    <TabsTrigger value="timing"       data-testid="tab-timing">Timing</TabsTrigger>
+                    <TabsTrigger value="competitors"  data-testid="tab-competitors">Competitors</TabsTrigger>
+                  </TabsList>
+
+                  <Link
+                    href="/analytics"
+                    onMouseEnter={stopPulse}
+                    onClick={stopPulse}
+                    className={`shrink-0 bg-mint hover:bg-mint-hover text-bg-base font-semibold text-[13px] sm:text-[14px] px-3 sm:px-4 py-2 rounded-md inline-flex items-center gap-1.5 transition-all hover:-translate-y-px ${isPulsing ? "pulse-attention" : ""}`}
+                    data-testid="link-full-analytics"
+                  >
+                    <span className="hidden sm:inline">View Full Analytics</span>
+                    <span className="sm:hidden">Analytics</span>
+                    <ArrowRight className="w-4 h-4" strokeWidth={2} />
+                  </Link>
+                </div>
 
                 <TabsContent value="overview" className="space-y-6 mt-6">
                   <div className="grid lg:grid-cols-2 gap-6">

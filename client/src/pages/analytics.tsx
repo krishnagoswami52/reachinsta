@@ -55,16 +55,17 @@ function getStatusIcon(status: string) {
 export default function AnalyticsPage() {
   useEffect(() => { document.title = "Analytics - ReachInsta"; }, []);
   const [activeTab, setActiveTab] = useState("overview");
-  const [selectedFetchId, setSelectedFetchId] = useState<string | null>(null);
+  // null means "follow the newest completed run". Only an explicit pick from the
+  // run selector below pins this. It used to be plain state seeded by an effect
+  // guarded on !selectedFetchId, which latched onto whichever run the cached
+  // history listed first — so a run that finished after that cache was warmed
+  // never became the default and Analytics kept showing the previous fetch.
+  const [pickedFetchId, setPickedFetchId] = useState<string | null>(null);
 
   const { data: fetchHistory = [] } = useQuery<FetchRun[]>({ queryKey: ["/api/fetch/history"] });
   const completedFetches = fetchHistory.filter(f => f.status === "completed");
 
-  useEffect(() => {
-    if (completedFetches.length > 0 && !selectedFetchId) {
-      setSelectedFetchId(completedFetches[0].id);
-    }
-  }, [completedFetches, selectedFetchId]);
+  const selectedFetchId = pickedFetchId ?? completedFetches[0]?.id ?? null;
 
   const { data: fetchData, isLoading } = useQuery<{ fetchRun: FetchRun; reels: Reel[]; stats: CompetitorStats[] } | null>({
     queryKey: ["/api/fetch", selectedFetchId],
@@ -122,7 +123,7 @@ export default function AnalyticsPage() {
         {/* Fetch selector */}
         {completedFetches.length > 0 && (
           <div className="bg-bg-surface border border-border-subtle rounded-lg px-4 py-2.5 flex items-center gap-2">
-            <Select value={selectedFetchId || ""} onValueChange={setSelectedFetchId}>
+            <Select value={selectedFetchId || ""} onValueChange={setPickedFetchId}>
               <SelectTrigger className="w-full lg:w-[300px] border-0 bg-transparent p-0 h-auto font-mono text-[13px] text-text-primary focus:ring-0" data-testid="select-fetch-history">
                 <div className="flex items-center gap-3">
                   <Calendar className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.5} />

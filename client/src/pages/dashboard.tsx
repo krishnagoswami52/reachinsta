@@ -123,6 +123,16 @@ export default function DashboardPage() {
     setPulseRunId(completedRunId);
   }, [completedRunId]);
 
+  // /api/fetch/history is what the Analytics page reads to pick which run to
+  // show, and the query client runs with staleTime: Infinity — so once that
+  // list is cached it never notices a newer run and Analytics keeps rendering
+  // the previous fetch. Nothing else invalidates it, so do it here the moment
+  // a run reports completed. Covers the sidebar route too, not just the CTA.
+  useEffect(() => {
+    if (!completedRunId) return;
+    queryClient.invalidateQueries({ queryKey: ["/api/fetch/history"] });
+  }, [completedRunId]);
+
   const stopPulse = () => setPulseRunId(null);
   const isPulsing = pulseRunId !== null && pulseRunId === completedRunId;
 

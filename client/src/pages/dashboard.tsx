@@ -279,8 +279,8 @@ export default function DashboardPage() {
                 {/* The underline now lives on this row rather than on TabsList so it
                     runs the full width, past the CTA. TabsList keeps its own
                     horizontal scroll; the CTA sits outside it and stays put. */}
-                <div className="flex items-center gap-3 border-b border-border -mx-4 px-4 lg:mx-0 lg:px-0">
-                  <TabsList className="border-b-0 mx-0 px-0 flex-1 min-w-0">
+                <div className="flex items-center gap-2 border-b border-border -mx-4 px-4 lg:mx-0 lg:px-0">
+                  <TabsList className="border-b-0 mx-0 px-0 min-w-0">
                     <TabsTrigger value="overview"     data-testid="tab-overview">Overview</TabsTrigger>
                     <TabsTrigger value="viral"        data-testid="tab-viral">Viral Reels</TabsTrigger>
                     <TabsTrigger value="timing"       data-testid="tab-timing">Timing</TabsTrigger>

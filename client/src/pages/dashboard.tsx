@@ -287,17 +287,27 @@ export default function DashboardPage() {
                     <TabsTrigger value="competitors"  data-testid="tab-competitors">Competitors</TabsTrigger>
                   </TabsList>
 
-                  <Link
-                    href="/analytics"
-                    onMouseEnter={stopPulse}
-                    onClick={stopPulse}
-                    className={`shrink-0 bg-mint hover:bg-mint-hover text-bg-base font-semibold text-[13px] sm:text-[14px] px-3 sm:px-4 py-2 rounded-md inline-flex items-center gap-1.5 transition-all hover:-translate-y-px ${isPulsing ? "pulse-attention" : ""}`}
-                    data-testid="link-full-analytics"
-                  >
-                    <span className="hidden sm:inline">View Full Analytics</span>
-                    <span className="sm:hidden">Analytics</span>
-                    <ArrowRight className="w-4 h-4" strokeWidth={2} />
-                  </Link>
+                  {/* Only once there is something to look at: hidden while a run
+                      is queued/running/merging/analyzing, on failure, and for
+                      users who have never fetched. */}
+                  {completedRunId && (
+                    // The fade-in lives on the wrapper because .pulse-attention
+                    // and .animate-fade-up both set `animation` and would cancel
+                    // each other out on a single element.
+                    <span className="shrink-0 animate-fade-up">
+                      <Link
+                        href="/analytics"
+                        onMouseEnter={stopPulse}
+                        onClick={stopPulse}
+                        className={`bg-mint hover:bg-mint-hover text-bg-base font-semibold text-[13px] sm:text-[14px] px-3 sm:px-4 py-2 rounded-md inline-flex items-center gap-1.5 transition-all hover:-translate-y-px ${isPulsing ? "pulse-attention" : ""}`}
+                        data-testid="link-full-analytics"
+                      >
+                        <span className="hidden sm:inline">View Full Analytics</span>
+                        <span className="sm:hidden">Analytics</span>
+                        <ArrowRight className="w-4 h-4" strokeWidth={2} />
+                      </Link>
+                    </span>
+                  )}
                 </div>
 
                 <TabsContent value="overview" className="space-y-6 mt-6">

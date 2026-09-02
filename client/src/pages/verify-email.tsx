@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, CheckCircle, XCircle, RefreshCw, LogOut, ChevronDown, ChevronUp, LogIn } from "lucide-react";
-import logoImage from "@assets/ChatGPT_Image_Jan_16,_2026,_06_13_41_PM_1768567542199.png";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import type { User } from "@shared/models/auth";
@@ -131,8 +130,11 @@ export default function VerifyEmailPage() {
             className="flex items-center gap-2 hover-elevate rounded-md px-2 py-1"
             data-testid="button-logo-home"
           >
-            <img src={logoImage} alt="ReachInsta" className="w-8 h-8 rounded-md object-cover" />
-            <span className="font-semibold text-lg">ReachInsta</span>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="0.5" y="0.5" width="21" height="21" rx="5.5" stroke="#7CFFB2"/>
+              <path d="M8 6L16 11L8 16V6Z" fill="#7CFFB2"/>
+            </svg>
+            <span className="font-tight font-semibold text-[18px] tracking-tighter-2">ReachInsta</span>
           </button>
           <div className="flex items-center gap-2">
             <Button

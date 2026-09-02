@@ -7,8 +7,10 @@
 `SET default_transaction_read_only = on`. No schema, policy, grant, or row was
 modified during the audit. No anon key was obtained or used.
 
-> **STATUS: partially remediated 2026-09-02.** RLS is now enabled on **15/15
-> tables** and both `anon` and `authenticated` are confirmed blocked on every one.
+> **STATUS: remediated 2026-09-02** (bar one dashboard action). RLS is enabled on
+> **15/15 tables**, and the `anon`/`authenticated` grants and default privileges
+> are revoked — both roles now get `permission denied` on every table, before RLS
+> is even consulted.
 > The forensic check found the historical anon access was the owner's own
 > spot-check, not an intrusion. See **Remediation Log** at the end of this document
 > for what was done, what was verified, and what is still outstanding.
@@ -439,10 +441,93 @@ throughout. The application never noticed.
 
 | Item | Status |
 |---|---|
-| Revoke `anon`/`authenticated` grants + default privileges | **Not done** — awaiting decision |
+| Revoke `anon`/`authenticated` grants + default privileges | **Done** — see Step 4 below |
 | Disable the Data API entirely | **Not done** — dashboard-only, owner's call |
 | Rotate the anon key | **Not needed** on current evidence (access was the owner's) |
 | Rotate Apify tokens | **Not needed** on current evidence; tokens verified intact |
 | Run `scripts/test-rls-policies.js` | **Blocked** — needs `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` in `.env.test`, none of which exist. The `SET LOCAL ROLE` test above covers the same ground without credentials. |
 | Correct `SECURITY.md:135` (`VITE_SUPABASE_ANON_KEY` "safe only because RLS is enabled") | Precondition now true, but the variable should still not be set — the app has no use for it |
 | Correct the false RLS claim in `20260902000000_add_users_ip_address.sql` | Now true in production; comment no longer misleading |
+
+---
+
+## Step 4 — Grants and default privileges revoked (2026-09-02)
+
+Applied via `supabase/migrations/20260902120000_revoke_public_role_grants.sql` and
+`scripts/apply-revoke-public-grants.ts`.
+
+### Result
+
+| Grantee | Before | After |
+|---|---|---|
+| `anon` | 15 tables, 105 grant rows | **0** |
+| `authenticated` | 15 tables, 105 grant rows | **0** |
+| `postgres` | 15 tables, 105 grant rows | 15 tables, 105 grant rows (unchanged) |
+| `service_role` | 15 tables, 105 grant rows | 15 tables, 105 grant rows (unchanged) |
+
+Sequence and function privileges for both roles: **0 remaining**. (`public` contains
+two sequences and zero functions, so the FUNCTIONS statements were no-ops.)
+
+Default privileges under grantor `postgres` — the ones that governed every table this
+codebase creates — no longer mention `anon` or `authenticated`:
+
+```
+tables     {postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}
+sequences  {postgres=rwU/postgres,service_role=rwU/postgres}
+functions  {postgres=X/postgres,service_role=X/postgres}
+```
+
+**This is the fix that stops the original failure recurring.** Previously every new
+table in `public` arrived granting `anon` full DML, and safety depended on someone
+remembering to enable RLS on it. That is no longer the case.
+
+### Verification
+
+- `information_schema.table_privileges` for `anon`/`authenticated`: **0 rows**
+- `postgres`: `rolbypassrls = true`, `rolsuper = false` (unchanged)
+- Backend: **15/15 read, 15/15 write** (writes executed then rolled back)
+- `anon` and `authenticated`: **`permission denied` on 15/15 tables**, tested via
+  `SET LOCAL ROLE` — the mechanism PostgREST uses after validating a JWT. This is
+  strictly stronger than the post-RLS state, which returned 0 rows; access now fails
+  at the grant layer before RLS is consulted.
+- Live production after the change: `/`, `/api/health`, `/login`, `/signup`,
+  `/pricing`, `/contact` all HTTP 200; `/api/auth/user` and `/api/admin/users`
+  correctly 401 unauthenticated.
+- **INSERT and sequence paths proven live:** 9 `page_views` rows written in the
+  following 5 minutes, `page_views_id_seq` advanced to 1149, 23 sessions intact.
+  `page_views_id_seq` is one of the two sequences whose grants were revoked, so this
+  exercises exactly the object class most at risk from the change.
+
+### Residual gap — `supabase_admin` default privileges
+
+`ALTER DEFAULT PRIVILEGES` only affects the default privileges of the role issuing it.
+`pg_default_acl` for `public` has two grantors, and only one was clearable:
+
+| Grantor | Status |
+|---|---|
+| `postgres` | **Cleared** |
+| `supabase_admin` | **Not cleared** — `permission denied to change default privileges`; `postgres` is not a member of `supabase_admin` |
+
+Confirmed by attempting `ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin ...` inside a
+rolled-back transaction: denied.
+
+**Practical impact is low.** Application tables are created by migrations connecting as
+`postgres`, so the `postgres` defaults are the ones that have governed every table in
+this schema. The `supabase_admin` defaults would only apply to a table created in
+`public` by Supabase's own tooling. Any such table would arrive with anon grants and
+without RLS — the original failure mode, in a narrower window.
+
+Closing it needs either Supabase support/dashboard privileges, or removing `public`
+from the exposed schemas so PostgREST cannot reach it regardless. The latter is the
+recommended fix and is the owner's remaining action.
+
+### Not affected
+
+- **Supabase Auth / `auth.users`** — the `auth` schema has its own grants owned by
+  `supabase_auth_admin` and was not touched. This app does not use Supabase Auth.
+- **`storage`, `extensions`, `vault`, `graphql_public`** — untouched. `pg_graphql` is
+  not installed, so `graphql_public` is inert.
+- **`service_role`** — deliberately left intact; it is the legitimate admin/API
+  identity and holds `rolbypassrls`.
+- **No Supabase feature depends on `public` grants here**, because no Supabase client
+  or PostgREST call exists in this codebase.

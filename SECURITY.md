@@ -132,7 +132,13 @@ needs to query the table directly via the Supabase client.
 | `PADDLE_API_KEY` | No | Payment processing |
 | `PADDLE_WEBHOOK_SECRET` | No | Webhook signature validation |
 | `VITE_PADDLE_*` | **Yes** | Public Paddle client token and price IDs — safe to expose |
-| `VITE_SUPABASE_ANON_KEY` | **Yes** | PostgREST anon access — safe only because RLS is enabled |
+| `VITE_SUPABASE_ANON_KEY` | **Not set — do not set** | Was never used: this app ships no `@supabase/*` client and makes zero PostgREST calls. As of 2026-09-02 `anon` holds no grant in `public`, so the key would grant nothing anyway. |
+
+> The `VITE_SUPABASE_ANON_KEY` row previously read *"safe only because RLS is
+> enabled"*. That precondition was false for four months — see
+> `docs/supabase-security-audit.md`. RLS is now on for 15/15 tables and the
+> `anon`/`authenticated` grants are revoked, but the variable still has no
+> purpose here and should stay unset.
 
 ---
 
@@ -142,27 +148,50 @@ needs to query the table directly via the Supabase client.
 |---|---|
 | `supabase/migrations/20260501000000_enable_rls_security.sql` | Forward migration — enables RLS |
 | `supabase/migrations/20260501000001_rollback_rls_security.sql` | Rollback migration |
-| `scripts/test-rls-policies.js` | RLS test suite against PostgREST API |
+| `scripts/apply-rls-security.ts` | Applies the RLS migration (`--check` to report only) |
+| `supabase/migrations/20260902120000_revoke_public_role_grants.sql` | Revokes anon/authenticated grants + default privileges |
+| `scripts/apply-revoke-public-grants.ts` | Applies the revoke migration (`--check` to report only) |
+| `docs/supabase-security-audit.md` | 2026-08-31 advisor audit, forensics, and remediation log |
+| `scripts/test-rls-policies.js` | RLS test suite against PostgREST API (needs `.env.test`; unused — see below) |
 | `server/services/keyManager.ts` | Apify key rotation logic |
 | `server/db.ts` | Database connection (direct PostgreSQL, bypasses RLS) |
 | `server/services/auth.ts` | Custom auth implementation |
 
 ---
 
-## Applying the Migration
+## Applying the Migrations
 
-Run in the **Supabase SQL editor** (Dashboard → SQL Editor → New query):
+**Both migrations are applied as of 2026-09-02.** Use the scripts, not a manual paste:
 
+```bash
+npx tsx scripts/apply-rls-security.ts --check          # report current state only
+npx tsx scripts/apply-rls-security.ts                  # enable RLS on all tables
+npx tsx scripts/apply-revoke-public-grants.ts --check
+npx tsx scripts/apply-revoke-public-grants.ts          # revoke anon/authenticated grants
 ```
-Paste contents of: supabase/migrations/20260501000000_enable_rls_security.sql
-```
+
+Both are idempotent, run in a single transaction, and refuse to run unless the
+connected role has `BYPASSRLS` (without that, enabling RLS would lock the
+application out of its own tables).
+
+This replaces the previous instruction to paste the SQL into the Supabase SQL
+editor by hand. That manual step is exactly why the RLS migration sat unapplied
+from 2026-05-01 until 2026-09-02 while every other migration — each of which had
+a `scripts/apply-*.ts` — went out on time. **Any future migration needs an apply
+script; a migration file alone does not reach production.**
 
 Do not use `supabase db push` unless you have the Supabase CLI configured — the Drizzle
 migration folder (`migrations/`) is separate from Supabase migrations (`supabase/migrations/`).
 
-To verify after applying:
+### Verifying
 
-```bash
-# Create .env.test with SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
-node scripts/test-rls-policies.js
+`scripts/test-rls-policies.js` needs a `.env.test` containing `SUPABASE_URL`,
+`SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` — none of which exist in this
+project, and introducing them would reintroduce the keys the audit recommends
+against holding. Both apply scripts self-verify instead, and the state can be
+confirmed with no credentials at all by impersonating the roles PostgREST uses:
+
+```sql
+-- expect: permission denied for table users
+BEGIN; SET LOCAL ROLE anon; SELECT 1 FROM public.users LIMIT 1; ROLLBACK;
 ```

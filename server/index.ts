@@ -20,6 +20,9 @@ console.log('[Env Check]', {
   resend: !!process.env.RESEND_API_KEY,
   paddle_api: !!process.env.PADDLE_API_KEY,
   paddle_webhook: !!process.env.PADDLE_WEBHOOK_SECRET,
+  // false in production means every registration will be rejected —
+  // verifyTurnstileToken fails closed. See server/lib/turnstile.ts.
+  turnstile: !!process.env.TURNSTILE_SECRET_KEY,
 });
 
 const app = express();

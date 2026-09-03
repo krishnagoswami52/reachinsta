@@ -25,6 +25,7 @@ import {
   passwordResetCodeLimiter,
   changePasswordLimiter,
 } from "../../middleware/rate-limit";
+import { verifyTurnstileToken } from "../../lib/turnstile";
 
 declare module "express-session" {
   interface SessionData {
@@ -83,8 +84,29 @@ export async function setupAuth(app: Express) {
     try {
       const parseResult = registerSchema.safeParse(req.body);
       if (!parseResult.success) {
-        return res.status(400).json({ 
-          message: parseResult.error.errors[0]?.message || "Invalid input" 
+        return res.status(400).json({
+          message: parseResult.error.errors[0]?.message || "Invalid input"
+        });
+      }
+
+      // Bot check runs after schema validation and before any expensive work
+      // (bcrypt, DB writes, outbound mail). Turnstile tokens are single-use, so
+      // validating the shape of the request locally first avoids burning a
+      // token — and forcing a fresh challenge — on a typo'd email.
+      //
+      // registerSchema is a plain z.object, so it strips turnstile_token rather
+      // than rejecting it; the token is read off the raw body here.
+      const turnstile = await verifyTurnstileToken(
+        typeof req.body?.turnstile_token === "string" ? req.body.turnstile_token : null,
+        clientIp(req),
+      );
+      if (!turnstile.success) {
+        return res.status(400).json({
+          message:
+            turnstile.code === "TURNSTILE_EXPIRED"
+              ? "That verification expired. Please try again."
+              : "Verification failed. Please refresh the page and try again.",
+          code: turnstile.code,
         });
       }
 

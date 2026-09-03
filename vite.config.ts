@@ -27,6 +27,13 @@ export default defineConfig({
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
+  // envDir defaults to `root`, i.e. client/ — which has no .env, so every
+  // VITE_* var in the project-root .env was silently ignored locally and only
+  // worked in Docker (where they arrive as real process env vars). Point it at
+  // the repo root so local dev and builds read the same .env everything else does.
+  // Only VITE_-prefixed vars are ever exposed to client code; the secrets in
+  // that file are not.
+  envDir: path.resolve(import.meta.dirname),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,

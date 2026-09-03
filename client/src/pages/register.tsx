@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { loadTurnstile, turnstileSiteKey } from "@/lib/turnstile";
 
 export default function RegisterPage() {
   useEffect(() => { document.title = "Sign up - ReachInsta"; }, []);
@@ -18,6 +19,75 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // Turnstile. The widget id lives in a ref, not state: the cleanup below has
+  // to see the *current* id, and a state value captured by an effect that runs
+  // once would always read back as null.
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileStatus, setTurnstileStatus] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [turnstileAttempt, setTurnstileAttempt] = useState(0);
+
+  useEffect(() => {
+    const sitekey = turnstileSiteKey;
+    if (!sitekey) {
+      console.error("[Turnstile] VITE_TURNSTILE_SITE_KEY is not set — widget cannot render");
+      setTurnstileStatus("unavailable");
+      return;
+    }
+
+    let cancelled = false;
+
+    loadTurnstile()
+      .then(() => {
+        if (cancelled || !turnstileRef.current || widgetIdRef.current) return;
+        widgetIdRef.current = window.turnstile!.render(turnstileRef.current, {
+          sitekey,
+          theme: "dark",
+          action: "register",
+          callback: (token) => setTurnstileToken(token),
+          "error-callback": () => {
+            setTurnstileToken(null);
+            setTurnstileStatus("unavailable");
+          },
+          "expired-callback": () => setTurnstileToken(null),
+          "timeout-callback": () => setTurnstileToken(null),
+        });
+        setTurnstileStatus("ready");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("[Turnstile]", err);
+        setTurnstileStatus("unavailable");
+      });
+
+    return () => {
+      cancelled = true;
+      if (widgetIdRef.current && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+    };
+  }, [turnstileAttempt]);
+
+  // Turnstile tokens are single-use. Any failed registration — a duplicate
+  // email being by far the most common — has already spent this one, so the
+  // next submit would be rejected as timeout-or-duplicate unless the widget is
+  // reissued first.
+  const resetTurnstile = () => {
+    setTurnstileToken(null);
+    if (widgetIdRef.current && window.turnstile) {
+      window.turnstile.reset(widgetIdRef.current);
+    }
+  };
+
+  const retryTurnstile = () => {
+    widgetIdRef.current = null;
+    setTurnstileToken(null);
+    setTurnstileStatus("loading");
+    setTurnstileAttempt((n) => n + 1);
+  };
 
   const pwdStrength = useMemo(() => {
     if (!password) return 0;
@@ -37,7 +107,7 @@ export default function RegisterPage() {
   }, [password, pwdStrength]);
 
   const registerMutation = useMutation({
-    mutationFn: async (data: { email: string; password: string; firstName?: string; lastName?: string }) => {
+    mutationFn: async (data: { email: string; password: string; firstName?: string; lastName?: string; turnstile_token: string }) => {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,6 +128,7 @@ export default function RegisterPage() {
       setLocation(next ? `/verify-email?next=${encodeURIComponent(next)}` : "/verify-email");
     },
     onError: (error: Error) => {
+      resetTurnstile();
       toast({ title: "Registration failed", description: error.message, variant: "destructive" });
     },
   });
@@ -72,7 +143,24 @@ export default function RegisterPage() {
       toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
       return;
     }
-    registerMutation.mutate({ email, password, firstName: firstName || undefined, lastName: lastName || undefined });
+    if (!turnstileToken) {
+      toast({
+        title: "Verification needed",
+        description:
+          turnstileStatus === "unavailable"
+            ? "We couldn't load the bot check. Please retry it below, or disable your ad blocker for this page."
+            : "Hang on a second while we verify you're human, then try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    registerMutation.mutate({
+      email,
+      password,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+      turnstile_token: turnstileToken,
+    });
   };
 
   return (
@@ -210,6 +298,27 @@ export default function RegisterPage() {
                     {showConfirm ? "hide" : "show"}
                   </button>
                 </div>
+              </div>
+
+              {/* Turnstile. Managed mode is invisible for almost everyone, so
+                  this usually renders nothing at all — the empty div is
+                  expected, not a bug. */}
+              <div>
+                <div ref={turnstileRef} data-testid="turnstile-widget" />
+                {turnstileStatus === "unavailable" && (
+                  <div className="font-mono text-[11px] text-danger leading-relaxed">
+                    Couldn&apos;t load the bot check.{" "}
+                    <button
+                      type="button"
+                      onClick={retryTurnstile}
+                      data-testid="button-retry-turnstile"
+                      className="text-mint hover:underline"
+                    >
+                      Try again
+                    </button>
+                    {" "}&mdash; or allow challenges.cloudflare.com if you&apos;re blocking scripts.
+                  </div>
+                )}
               </div>
 
               <button

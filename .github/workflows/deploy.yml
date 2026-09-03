@@ -37,6 +37,7 @@ jobs:
             VITE_PADDLE_ENVIRONMENT=${{ secrets.VITE_PADDLE_ENVIRONMENT }}
             VITE_PADDLE_PRICE_PLUS=${{ secrets.VITE_PADDLE_PRICE_PLUS }}
             VITE_PADDLE_PRICE_PRO=${{ secrets.VITE_PADDLE_PRICE_PRO }}
+            VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY }}
 
       - name: Deploy to KVM4 via SSH
         uses: appleboy/ssh-action@v1.0.0

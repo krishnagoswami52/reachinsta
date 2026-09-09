@@ -55,7 +55,7 @@ export default function TermsPage() {
               <li>● Use ReachInsta to analyze publicly available Instagram Reels data.</li>
               <li>● Don&apos;t use it to harass, scrape private accounts, or do illegal stuff.</li>
               <li>● We can suspend you for abuse.</li>
-              <li>● Cancel anytime. Refunds available within 7 days of payment, no questions asked.</li>
+              <li>● Cancel anytime. Refunds available within 14 days of payment, no questions asked.</li>
               <li>● Your data stays yours. We don&apos;t sell it.</li>
             </ul>
           </div>
@@ -92,7 +92,9 @@ export default function TermsPage() {
                 <li>● Violate Instagram&apos;s own Terms of Service while using our analytics</li>
               </ul>
               <p className="text-[15px] text-text-secondary leading-[1.7] mt-4">
-                Violation may result in immediate account suspension without refund.
+                Violation may result in immediate account suspension. Our{" "}
+                <a href="/refund" className="text-mint hover:underline">14-day refund guarantee</a>{" "}
+                applies either way.
               </p>
             </section>
 
@@ -102,12 +104,14 @@ export default function TermsPage() {
                 Pricing is shown on the homepage. We currently offer Free ($0), Plus ($49/mo), and Pro ($99/mo) tiers. Payments are processed by our third-party payment provider, which acts as the merchant of record for your purchase.
               </p>
               <p className="text-[15px] text-text-secondary leading-[1.7] mb-3">
-                <strong className="text-text-primary">Refunds:</strong> We offer a 7-day full refund window from your payment date, no questions asked. Email{" "}
+                <strong className="text-text-primary">Refunds:</strong> We offer a 14-day full refund window from your payment date, no questions asked. Email{" "}
                 <a href="mailto:krishna@reachinsta.co" className="text-mint hover:underline">krishna@reachinsta.co</a>{" "}
-                with your payment reference and we&apos;ll process it within 48 hours.
+                with your payment reference and we&apos;ll process it within 48 hours. Full details in our{" "}
+                <a href="/refund" className="text-mint hover:underline">Refund Policy</a>.
               </p>
               <p className="text-[15px] text-text-secondary leading-[1.7]">
-                <strong className="text-text-primary">Cancellation:</strong> Cancel anytime from your profile settings. Your access continues until the end of the paid period. No partial refunds for unused time after the 7-day window.
+                <strong className="text-text-primary">Cancellation:</strong> Cancel anytime from{" "}
+                <a href="/account/billing" className="text-mint hover:underline">Account &rarr; Billing</a>. Your access continues until the end of the paid period. No partial refunds for unused time after the 14-day window.
               </p>
             </section>
 
@@ -202,6 +206,7 @@ export default function TermsPage() {
                 <li><a href="/contact" className="text-text-secondary hover:text-text-primary transition-colors">Contact</a></li>
                 <li><a href="/privacy" className="text-text-secondary hover:text-text-primary transition-colors">Privacy</a></li>
                 <li><a href="/terms" className="text-text-secondary hover:text-text-primary transition-colors">Terms</a></li>
+                <li><a href="/refund" className="text-text-secondary hover:text-text-primary transition-colors">Refund Policy</a></li>
               </ul>
             </div>
           </div>

@@ -466,6 +466,7 @@ export default function LandingPage() {
                 <li><a href="/contact" className="text-text-secondary hover:text-text-primary transition-colors">Contact</a></li>
                 <li><a href="/privacy" className="text-text-secondary hover:text-text-primary transition-colors">Privacy</a></li>
                 <li><a href="/terms" className="text-text-secondary hover:text-text-primary transition-colors">Terms</a></li>
+                <li><a href="/refund" className="text-text-secondary hover:text-text-primary transition-colors">Refund Policy</a></li>
               </ul>
             </div>
           </div>

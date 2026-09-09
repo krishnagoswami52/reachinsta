@@ -27,6 +27,7 @@ import NotFound from "@/pages/not-found";
 import ContactPage from "@/pages/contact";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
+import RefundPage from "@/pages/refund";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 
 function AuthenticatedRoutes() {
@@ -99,6 +100,10 @@ function AppRouter() {
 
   if (location === "/privacy") {
     return <PrivacyPage />;
+  }
+
+  if (location === "/refund") {
+    return <RefundPage />;
   }
 
   if (location === "/forgot-password") {

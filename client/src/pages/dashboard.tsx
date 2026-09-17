@@ -103,6 +103,26 @@ export default function DashboardPage() {
     [validReels]
   );
 
+  // What the run actually covered, frozen at enqueue time (routes.ts writes it,
+  // worker.ts scrapes it). The KPI row reports on the run, so it reads this
+  // rather than the live list — otherwise deleting a competitor made the row
+  // contradict itself ("2 competitors tracked / 33 reels analyzed").
+  // `competitorUsernames` is nullable, so legacy runs fall back to the number
+  // of creators that actually produced stats.
+  const fetchedUsernames = fetchRun?.competitorUsernames ?? [];
+  const fetchedCompetitorCount = fetchedUsernames.length || stats.length;
+
+  // The live list having drifted from the snapshot is correct but invisible,
+  // and "I deleted a competitor and nothing changed" is exactly the confusion
+  // that made this look like a bug. Say so explicitly instead.
+  const listHasDrifted = useMemo(() => {
+    if (fetchedUsernames.length === 0) return false;
+    const now = new Set(competitors.map((c) => c.username.toLowerCase()));
+    const then = new Set(fetchedUsernames.map((u) => u.toLowerCase()));
+    if (now.size !== then.size) return true;
+    return Array.from(then).some((u) => !now.has(u));
+  }, [competitors, fetchedUsernames]);
+
   const canFetch = profile &&
     profile.fetchesUsed < profile.monthlyFetchLimit &&
     competitors.length > 0 &&
@@ -257,32 +277,69 @@ export default function DashboardPage() {
 
       <div className="grid lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3 min-w-0 space-y-6">
-          {competitors.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title="No competitors tracked yet."
-              description="Drop an Instagram handle on the right and we'll start pulling their Reels. Up to 100 competitors, refreshed when you say so."
-              action={{
-                label: "Add your first competitor",
-                onClick: () => document.querySelector<HTMLInputElement>('[data-testid="input-add-competitor"]')?.focus(),
-              }}
-              footnote="PS: Your competitors won't be notified. Pinky promise."
-            />
-          ) : reels.length === 0 && !isProcessing ? (
-            <EmptyState
-              icon={BarChart3}
-              title="No data yet."
-              description='Run your first fetch to see the magic.'
-              action={canFetch ? {
-                label: "Fetch Data Now",
-                onClick: () => fetchMutation.mutate(),
-              } : undefined}
-            />
+          {/* The insight block is gated on whether there is data to show, NOT on
+              whether the user tracks anyone right now. It used to ask
+              `competitors.length === 0`, which meant deleting your last
+              competitor hid a perfectly good completed run behind the
+              onboarding empty state. List management and the frozen fetch view
+              are separate concerns. */}
+          {validReels.length === 0 && !isProcessing ? (
+            competitors.length === 0 && !fetchRun ? (
+              <EmptyState
+                icon={Users}
+                title="No competitors tracked yet."
+                description="Drop an Instagram handle on the right and we'll start pulling their Reels. Up to 100 competitors, refreshed when you say so."
+                action={{
+                  label: "Add your first competitor",
+                  onClick: () => document.querySelector<HTMLInputElement>('[data-testid="input-add-competitor"]')?.focus(),
+                }}
+                footnote="PS: Your competitors won't be notified. Pinky promise."
+              />
+            ) : fetchRun?.status === "completed" ? (
+              /* The run succeeded but yielded nothing we can chart. Now that
+                 photos and carousels are filtered out server-side, an account
+                 that posts no Reels lands here — saying "run your first fetch"
+                 to someone who just ran one reads as a broken app. */
+              <EmptyState
+                icon={BarChart3}
+                title="No Reels found."
+                description="That fetch came back without any Reels in the selected window. These accounts may only post photos or carousels, or nothing at all in that time range. Try a longer time range or a different handle."
+                action={canFetch ? {
+                  label: "Fetch Again",
+                  onClick: () => fetchMutation.mutate(),
+                } : undefined}
+              />
+            ) : (
+              <EmptyState
+                icon={BarChart3}
+                title="No data yet."
+                description='Run your first fetch to see the magic.'
+                action={canFetch ? {
+                  label: "Fetch Data Now",
+                  onClick: () => fetchMutation.mutate(),
+                } : undefined}
+              />
+            )
           ) : (
             <>
+              {/* The dashboard is frozen at the last fetch. If the competitor
+                  list has moved on since, say so — otherwise the stillness
+                  reads as a bug. */}
+              {listHasDrifted && !isProcessing && (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-md border border-border-subtle bg-bg-elevated px-4 py-3 text-[13px]" data-testid="banner-list-drift">
+                  <span className="text-text-secondary">
+                    Showing your fetch from{" "}
+                    <span className="text-text-primary">
+                      {fetchRun?.completedAt ? getTimeAgo(fetchRun.completedAt) : "earlier"}
+                    </span>
+                    . Your competitor list has changed since — run a new fetch to update these numbers.
+                  </span>
+                </div>
+              )}
+
               {/* KPI cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-                <KPICard title="competitors tracked" value={competitors.length} subtitle={`of ${profile?.maxCompetitors || 5} max`} icon={Users} />
+                <KPICard title="competitors fetched" value={fetchedCompetitorCount} subtitle={`of ${profile?.maxCompetitors || 5} max`} icon={Users} />
                 <KPICard title="reels analyzed" value={validReels.length} icon={Play} />
                 <KPICard title="total views" value={totalViews} icon={Eye} />
                 <KPICard title="avg engagement" value={`${(avgEngagement * 100).toFixed(2)}%`} icon={TrendingUp} highlight />

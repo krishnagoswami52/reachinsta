@@ -33,7 +33,8 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const { data: profile } = useQuery<Profile>({ queryKey: ["/api/profile"] });
-  const { data: competitors = [] } = useQuery<Competitor[]>({ queryKey: ["/api/competitors"] });
+  const { data: competitorsData } = useQuery<Competitor[]>({ queryKey: ["/api/competitors"] });
+  const competitors = competitorsData ?? [];
 
   const { data: latestFetch, isLoading: isFetchLoading } = useQuery<{ fetchRun: FetchRun; reels: Reel[]; stats: CompetitorStats[] } | null>({
     queryKey: ["/api/fetch/latest"],
@@ -115,13 +116,16 @@ export default function DashboardPage() {
   // The live list having drifted from the snapshot is correct but invisible,
   // and "I deleted a competitor and nothing changed" is exactly the confusion
   // that made this look like a bug. Say so explicitly instead.
+  // `competitorsData` rather than the defaulted list: until that query lands it
+  // is undefined, and treating it as an empty list would flash the banner on
+  // every dashboard load.
   const listHasDrifted = useMemo(() => {
-    if (fetchedUsernames.length === 0) return false;
-    const now = new Set(competitors.map((c) => c.username.toLowerCase()));
+    if (!competitorsData || fetchedUsernames.length === 0) return false;
+    const now = new Set(competitorsData.map((c) => c.username.toLowerCase()));
     const then = new Set(fetchedUsernames.map((u) => u.toLowerCase()));
     if (now.size !== then.size) return true;
     return Array.from(then).some((u) => !now.has(u));
-  }, [competitors, fetchedUsernames]);
+  }, [competitorsData, fetchedUsernames]);
 
   const canFetch = profile &&
     profile.fetchesUsed < profile.monthlyFetchLimit &&

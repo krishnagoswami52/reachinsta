@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +23,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { RefreshCw, TrendingUp, Eye, Users, BarChart3, Play, Sparkles, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { formatNumber, getTimeAgo } from "@/lib/utils";
+import { filterValidReels, computeReelAggregates } from "@/lib/reel-metrics";
 import type { Profile, Competitor, FetchRun, Reel, CompetitorStats } from "@shared/schema";
 
 export default function DashboardPage() {
@@ -93,12 +94,14 @@ export default function DashboardPage() {
   const fetchRun = latestFetch?.fetchRun;
   const isProcessing = fetchRun && ["queued", "running", "merging", "analyzing"].includes(fetchRun.status);
 
-  const totalViews    = reels.reduce((sum, r) => sum + r.views, 0);
-  const avgViews      = reels.length > 0 ? totalViews / reels.length : 0;
-  const avgEngagement = reels.length > 0
-    ? reels.reduce((sum, r) => sum + parseFloat(String(r.engagementRate)), 0) / reels.length
-    : 0;
-  const topViews = reels.length > 0 ? Math.max(...reels.map(r => r.views)) : 0;
+  // Same predicate the Analytics page uses. Without it the two pages reported
+  // different totals for one and the same run, and the "View Full Analytics"
+  // CTA below walks the user straight from one to the other.
+  const validReels = useMemo(() => filterValidReels(reels), [reels]);
+  const { totalViews, avgEngagement } = useMemo(
+    () => computeReelAggregates(validReels),
+    [validReels]
+  );
 
   const canFetch = profile &&
     profile.fetchesUsed < profile.monthlyFetchLimit &&
@@ -280,7 +283,7 @@ export default function DashboardPage() {
               {/* KPI cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                 <KPICard title="competitors tracked" value={competitors.length} subtitle={`of ${profile?.maxCompetitors || 5} max`} icon={Users} />
-                <KPICard title="reels analyzed" value={reels.length} icon={Play} />
+                <KPICard title="reels analyzed" value={validReels.length} icon={Play} />
                 <KPICard title="total views" value={totalViews} icon={Eye} />
                 <KPICard title="avg engagement" value={`${(avgEngagement * 100).toFixed(2)}%`} icon={TrendingUp} highlight />
               </div>
@@ -323,19 +326,19 @@ export default function DashboardPage() {
                 <TabsContent value="overview" className="space-y-6 mt-6">
                   <div className="grid lg:grid-cols-2 gap-6">
                     <LeaderboardChart stats={stats} />
-                    <HeatmapChart reels={reels} />
+                    <HeatmapChart reels={validReels} />
                   </div>
-                  <ViralReelsTable reels={reels.slice(0, 10)} />
+                  <ViralReelsTable reels={validReels.slice(0, 10)} />
                 </TabsContent>
 
                 <TabsContent value="viral" className="mt-6">
-                  <ViralReelsTable reels={reels} />
+                  <ViralReelsTable reels={validReels} />
                 </TabsContent>
 
                 <TabsContent value="timing" className="space-y-6 mt-6">
                   <div className="grid lg:grid-cols-2 gap-6">
-                    <DurationChart reels={reels} />
-                    <DurationScatterChart reels={reels} />
+                    <DurationChart reels={validReels} />
+                    <DurationScatterChart reels={validReels} />
                   </div>
                 </TabsContent>
 

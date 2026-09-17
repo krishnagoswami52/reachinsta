@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 
 import { BarChart3, Calendar, Users, CheckCircle2, XCircle, Loader2, TrendingUp, Eye, ChevronDown } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
+import { filterValidReels, computeReelAggregates } from "@/lib/reel-metrics";
 import { HelpText } from "@/components/analytics/HelpText";
 import { TierBadge } from "@/components/analytics/TierBadge";
 import { InsightsPanel } from "@/components/analytics/InsightsPanel";
@@ -77,27 +78,15 @@ export default function AnalyticsPage() {
   const stats  = fetchData?.stats  || [];
   const hasData = reels.length > 0;
 
-  // Zero-view reels are scrape failures (missing videoPlayCount), not real data —
-  // they carry ER=0 and drag every average down. ER above 30% is not achievable
-  // organically and indicates a broken view count. Both excluded from all aggregations.
-  const validReels = useMemo(
-    () => reels.filter(r => {
-      if (r.views <= 0) return false;
-      const er = parseFloat(String(r.engagementRate));
-      if (er > 0.30) {
-        console.warn(`[Analytics] Excluded reel with suspicious ER ${(er * 100).toFixed(1)}% from @${r.username}`);
-        return false;
-      }
-      return true;
-    }),
-    [reels]
-  );
+  // Scrape failures and impossible engagement rates are excluded from every
+  // aggregation. The predicate is shared with the Dashboard so both pages
+  // report the same numbers for the same run — see lib/reel-metrics.ts.
+  const validReels = useMemo(() => filterValidReels(reels), [reels]);
 
-  const totalViews    = validReels.reduce((sum, r) => sum + r.views, 0);
-  const avgViews      = validReels.length > 0 ? totalViews / validReels.length : 0;
-  const avgEngagement = validReels.length > 0
-    ? validReels.reduce((sum, r) => sum + parseFloat(String(r.engagementRate)), 0) / validReels.length : 0;
-  const topViews = validReels.length > 0 ? Math.max(...validReels.map(r => r.views)) : 0;
+  const { totalViews, avgViews, avgEngagement, topViews } = useMemo(
+    () => computeReelAggregates(validReels),
+    [validReels]
+  );
 
   // Overview is insight-led: the facts feed both the insights panel and the quick-stats row.
   const insightFacts = useMemo(() => computeInsightFacts(validReels), [validReels]);

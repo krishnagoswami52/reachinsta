@@ -24,6 +24,7 @@ import { RefreshCw, TrendingUp, Eye, Users, BarChart3, Play, Sparkles, ArrowRigh
 import { Link } from "wouter";
 import { formatNumber, formatRelativeTime, hoursSince } from "@/lib/utils";
 import { filterValidReels, computeReelAggregates } from "@/lib/reel-metrics";
+import { PLANS } from "@/lib/plans";
 import type { Profile, Competitor, FetchRun, Reel, CompetitorStats } from "@shared/schema";
 
 export default function DashboardPage() {
@@ -201,9 +202,15 @@ export default function DashboardPage() {
       {/* Free-plan upgrade nudge */}
       {profile?.plan === "free" && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-md border border-border-subtle bg-bg-elevated px-4 py-3 text-sm">
+          {/* Figures come from PLANS, never literals. The 28-vs-14 drift this
+              replaced (f6e0428) happened because three places restated the
+              plan table by hand and one of them went stale. */}
           <span className="text-text-secondary">
             You're on the <span className="text-text-primary font-medium">Free</span> plan.{" "}
-            Upgrade to unlock 50 competitors and 14-day analytics.
+            Upgrade to <span className="text-text-primary font-medium">{PLANS.plus.name}</span>{" "}
+            ({PLANS.plus.competitors} competitors, {PLANS.plus.timeRange} days) or{" "}
+            <span className="text-text-primary font-medium">{PLANS.pro.name}</span>{" "}
+            ({PLANS.pro.competitors} competitors, {PLANS.pro.timeRange} days).
           </span>
           <Link href="/pricing">
             <button className="shrink-0 w-full sm:w-auto inline-flex items-center gap-1.5 border border-border-subtle hover:border-mint text-text-secondary hover:text-mint text-[13px] px-3 py-1.5 rounded-md transition-colors">

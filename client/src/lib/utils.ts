@@ -56,6 +56,24 @@ export function getTimeAgo(date: Date | string): string {
   return `${Math.floor(diffDays / 30)} months ago`;
 }
 
+/**
+ * Age of a timestamp in hours, or null when it cannot be measured.
+ *
+ * Null covers a missing value and an unparseable one (`new Date("nonsense")`
+ * yields NaN, which would otherwise compare false against every threshold and
+ * silently behave like "brand new"). A future timestamp — clock skew between
+ * the server and the viewer's machine — comes back negative, so a caller
+ * testing `>= n` treats it as fresh.
+ *
+ * Epoch-ms arithmetic, so the result does not depend on either end's timezone.
+ */
+export function hoursSince(date: Date | string | null | undefined): number | null {
+  if (!date) return null;
+  const then = new Date(date).getTime();
+  if (!Number.isFinite(then)) return null;
+  return (Date.now() - then) / (1000 * 60 * 60);
+}
+
 export function parseInstagramUsername(input: string): string | null {
   const trimmed = input.trim().toLowerCase();
   if (!trimmed) return null;

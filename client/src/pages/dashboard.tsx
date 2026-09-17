@@ -22,7 +22,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RefreshCw, TrendingUp, Eye, Users, BarChart3, Play, Sparkles, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
-import { formatNumber, getTimeAgo } from "@/lib/utils";
+import { formatNumber, getTimeAgo, hoursSince } from "@/lib/utils";
 import { filterValidReels, computeReelAggregates } from "@/lib/reel-metrics";
 import type { Profile, Competitor, FetchRun, Reel, CompetitorStats } from "@shared/schema";
 
@@ -126,6 +126,26 @@ export default function DashboardPage() {
     if (now.size !== then.size) return true;
     return Array.from(then).some((u) => !now.has(u));
   }, [competitorsData, fetchedUsernames]);
+
+  // Drift alone is not worth interrupting for. Within a day of fetching, the
+  // user almost certainly ran it themselves and knows the data is current —
+  // the banner is just noise on top of an edit they made seconds ago. Past a
+  // day they may well have forgotten what the run covered, which is when the
+  // reminder earns its place.
+  const STALE_AFTER_HOURS = 24;
+
+  // completedAt is when the data was actually captured, so it is what
+  // "stale" should measure. createdAt (enqueue time, non-null) is only a
+  // fallback for rows where completedAt was never written.
+  const fetchAnchor = fetchRun?.completedAt ?? fetchRun?.createdAt ?? null;
+
+  const showDriftBanner = useMemo(() => {
+    if (!listHasDrifted || isProcessing) return false;
+    const ageHours = hoursSince(fetchAnchor);
+    // null = no timestamp or an unparseable one; negative = clock skew. Both
+    // are treated as "not stale" rather than shown a nonsense banner.
+    return ageHours !== null && ageHours >= STALE_AFTER_HOURS;
+  }, [listHasDrifted, isProcessing, fetchAnchor]);
 
   const canFetch = profile &&
     profile.fetchesUsed < profile.monthlyFetchLimit &&
@@ -327,9 +347,10 @@ export default function DashboardPage() {
           ) : (
             <>
               {/* The dashboard is frozen at the last fetch. If the competitor
-                  list has moved on since, say so — otherwise the stillness
-                  reads as a bug. */}
-              {listHasDrifted && !isProcessing && (
+                  list has moved on since AND the run is a day or more old, say
+                  so — otherwise the stillness reads as a bug. A fresh run needs
+                  no such reminder. */}
+              {showDriftBanner && (
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-md border border-border-subtle bg-bg-elevated px-4 py-3 text-[13px]" data-testid="banner-list-drift">
                   <span className="text-text-secondary">
                     Showing your fetch from{" "}

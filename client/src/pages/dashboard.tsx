@@ -22,7 +22,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RefreshCw, TrendingUp, Eye, Users, BarChart3, Play, Sparkles, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
-import { formatNumber, getTimeAgo, hoursSince } from "@/lib/utils";
+import { formatNumber, formatRelativeTime, hoursSince } from "@/lib/utils";
 import { filterValidReels, computeReelAggregates } from "@/lib/reel-metrics";
 import type { Profile, Competitor, FetchRun, Reel, CompetitorStats } from "@shared/schema";
 
@@ -225,7 +225,7 @@ export default function DashboardPage() {
           </div>
           <p className="font-mono text-[12px] text-text-muted">
             {fetchRun?.completedAt
-              ? `Last updated ${getTimeAgo(fetchRun.completedAt)}`
+              ? `Last updated ${formatRelativeTime(fetchRun.completedAt)}`
               : "No data fetched yet"}
           </p>
         </div>
@@ -355,7 +355,7 @@ export default function DashboardPage() {
                   <span className="text-text-secondary">
                     Showing your fetch from{" "}
                     <span className="text-text-primary">
-                      {fetchRun?.completedAt ? getTimeAgo(fetchRun.completedAt) : "earlier"}
+                      {formatRelativeTime(fetchAnchor)}
                     </span>
                     . Your competitor list has changed since — run a new fetch to update these numbers.
                   </span>

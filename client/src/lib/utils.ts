@@ -43,19 +43,6 @@ export function getDurationBucket(seconds: number): string {
   return bucket ? bucket.label : DURATION_BUCKETS[0].label;
 }
 
-export function getTimeAgo(date: Date | string): string {
-  const now = new Date();
-  const then = new Date(date);
-  const diffMs = now.getTime() - then.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  return `${Math.floor(diffDays / 30)} months ago`;
-}
-
 /**
  * Age of a timestamp in hours, or null when it cannot be measured.
  *
@@ -72,6 +59,45 @@ export function hoursSince(date: Date | string | null | undefined): number | nul
   const then = new Date(date).getTime();
   if (!Number.isFinite(then)) return null;
   return (Date.now() - then) / (1000 * 60 * 60);
+}
+
+/**
+ * How long ago something happened, in the coarsest unit that is still precise.
+ *
+ * Replaces the old getTimeAgo(), which topped out at day granularity: someone
+ * who fetched twenty minutes ago was told "Today", and a fetch from nine days
+ * back read "1 weeks ago". Anything older than a week becomes an absolute
+ * date, because by then "3 weeks ago" is harder to act on than the date
+ * itself.
+ *
+ * A missing or unparseable timestamp gives "recently" rather than a throw or
+ * an "Invalid Date" leaking into the UI, and a future timestamp (clock skew)
+ * collapses to "just now" instead of a negative count.
+ */
+export function formatRelativeTime(date: Date | string | null | undefined): string {
+  const ageHours = hoursSince(date);
+  if (ageHours === null) return "recently";
+
+  // Also catches negatives from clock skew.
+  if (ageHours < 1 / 60) return "just now";
+
+  if (ageHours < 1) {
+    const minutes = Math.floor(ageHours * 60);
+    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
+  if (ageHours < 24) {
+    const hours = Math.floor(ageHours);
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+  if (ageHours < 24 * 7) {
+    const days = Math.floor(ageHours / 24);
+    return `${days} day${days === 1 ? "" : "s"} ago`;
+  }
+  return new Date(date as Date | string).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export function parseInstagramUsername(input: string): string | null {

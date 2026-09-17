@@ -324,7 +324,7 @@ export default function LandingPage() {
               </div>
               <ul className="space-y-3 text-[14px] mb-8 flex-1">
                 <PricingFeature>50 competitors</PricingFeature>
-                <PricingFeature>28-day time range</PricingFeature>
+                <PricingFeature>14-day time range</PricingFeature>
                 <PricingFeature>2 fetches / month</PricingFeature>
                 <PricingFeatureMissing>No CSV export</PricingFeatureMissing>
               </ul>

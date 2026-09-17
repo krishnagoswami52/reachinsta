@@ -203,7 +203,7 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-md border border-border-subtle bg-bg-elevated px-4 py-3 text-sm">
           <span className="text-text-secondary">
             You're on the <span className="text-text-primary font-medium">Free</span> plan.{" "}
-            Upgrade to unlock 50 competitors and 28-day analytics.
+            Upgrade to unlock 50 competitors and 14-day analytics.
           </span>
           <Link href="/pricing">
             <button className="shrink-0 w-full sm:w-auto inline-flex items-center gap-1.5 border border-border-subtle hover:border-mint text-text-secondary hover:text-mint text-[13px] px-3 py-1.5 rounded-md transition-colors">

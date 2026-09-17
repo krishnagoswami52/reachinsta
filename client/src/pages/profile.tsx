@@ -309,7 +309,7 @@ export default function ProfilePage() {
               </div>
               <ul className="space-y-1 font-mono text-[11px] text-text-secondary">
                 {plan === "free" && <><li>5 competitors</li><li>1 fetch / month</li><li>7-day window</li></>}
-                {plan === "plus" && <><li>50 competitors</li><li>2 fetches / month</li><li>28-day window</li></>}
+                {plan === "plus" && <><li>50 competitors</li><li>2 fetches / month</li><li>14-day window</li></>}
                 {plan === "pro" && <><li>100 competitors</li><li>4 fetches / month</li><li>+ CSV export</li></>}
               </ul>
             </div>

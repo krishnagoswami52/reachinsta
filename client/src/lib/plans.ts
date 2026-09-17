@@ -14,7 +14,11 @@ export const PLANS = {
     name: 'Plus',
     price: 49,
     competitors: 50,
-    timeRange: 28,
+    // 14, not 28. The server enforces planLimits.plus.timeRangeMaxDays = 14
+    // (shared/schema.ts) and rejects anything longer with "Time range not
+    // allowed on your plan", so a 28 here advertised a window Plus users
+    // could never actually select.
+    timeRange: 14,
     fetchesPerMonth: 2,
     csvExport: false,
     paddlePriceId: import.meta.env.VITE_PADDLE_PRICE_PLUS as string,

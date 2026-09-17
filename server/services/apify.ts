@@ -175,6 +175,14 @@ interface InstagramPostData {
   images?: string[];
   inputUrl?: string;
   isPinned?: boolean;
+  /**
+   * Present on ~11% of scraped items. Instagram's collaborators for a post —
+   * the non-owner creators it also appears on. Not used for filtering today
+   * (a collab is attributed to its owner and nobody else), but declared so the
+   * field is not silently dropped if we later want to credit co-produced reels
+   * to both parties.
+   */
+  coauthorProducers?: { username?: string }[];
 }
 
 interface FollowerData {
@@ -215,6 +223,16 @@ export async function processApifyFetch(
   try {
     const directUrls = usernames.map(username => `https://www.instagram.com/${username}`);
 
+    // The allowlist for the parse loop below. `usernames` is what we actually
+    // asked Apify for (the fetch run's frozen snapshot); anything the scraper
+    // returns under a different owner is a collaboration or tagged post and is
+    // not this user's competitor. Normalised the same way the competitors
+    // table is written (routes.ts) so the comparison cannot miss on case or a
+    // stray "@".
+    const requestedUsernames = new Set(
+      usernames.map((u) => u.trim().toLowerCase().replace(/^@/, "")),
+    );
+
     const resultsLimitMap: Record<number, number> = {
       7: 11,
       14: 21,
@@ -237,8 +255,6 @@ export async function processApifyFetch(
       resultsType: "posts",
       resultsLimit: resultsLimit,
       onlyPostsNewerThan: onlyPostsNewerThan,
-      searchType: "hashtag",
-      searchLimit: 1,
       addParentData: false,
     };
 
@@ -283,6 +299,8 @@ export async function processApifyFetch(
     }>();
 
     let pinnedCount = 0;
+    let collabSkipped = 0;
+    let nonReelSkipped = 0;
     for (const item of postsData as InstagramPostData[]) {
       if ((item as any).error) {
         console.log("Skipping error item:", (item as any).error);
@@ -297,6 +315,28 @@ export async function processApifyFetch(
       const username = (item.ownerUsername || "").toLowerCase();
       if (!username) {
         console.log("Skipping item with no username");
+        continue;
+      }
+
+      // Collaboration posts appear on BOTH creators' grids but carry a single
+      // owner. Scraping @a returns a collab whose ownerUsername is @b, and
+      // without this guard @b is stored as if the user tracked them — they get
+      // reels, a competitor_stats row, a leaderboard slot and a paid follower
+      // lookup. Verified against raw_payloads: 152 of 5241 scraped items carry
+      // an owner other than the profile they were scraped from.
+      if (!requestedUsernames.has(username)) {
+        collabSkipped++;
+        continue;
+      }
+
+      // `resultsType: "posts"` returns photos and carousels alongside reels.
+      // They have no videoPlayCount, so they land as views=0 / ER=0 / 0s rows
+      // that drag every average down and inflate the reel count. Only clips are
+      // reels. Verified against raw_payloads: every item that lacks
+      // productType is an error row, a Sidecar or an Image — no genuine reel
+      // is missing the field, so a strict comparison drops nothing real.
+      if (item.productType !== "clips") {
+        nonReelSkipped++;
         continue;
       }
 
@@ -364,7 +404,10 @@ export async function processApifyFetch(
       stats.topViews = Math.max(stats.topViews, views);
     }
 
-    console.log(`Parsed ${reelsToInsert.length} valid posts to insert (skipped ${pinnedCount} pinned posts)`);
+    console.log(
+      `Parsed ${reelsToInsert.length} valid reels to insert ` +
+      `(skipped ${pinnedCount} pinned, ${collabSkipped} from non-requested accounts, ${nonReelSkipped} non-reels)`,
+    );
 
     if (reelsToInsert.length > 0) {
       await storage.createReels(reelsToInsert);

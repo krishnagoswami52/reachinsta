@@ -115,15 +115,16 @@ test.describe("2. Admin dashboard page", () => {
 });
 
 test.describe("3. Existing features unaffected", () => {
-  test("pricing page still shows Free / Plus / Pro at their current prices", async ({ page }) => {
+  test("pricing page shows Free / Plus / Pro at their current USD prices", async ({ page }) => {
     await page.goto(`${BASE}/pricing`);
     const body = await page.locator("body").innerText();
     expect(body).toContain("Free");
     expect(body).toContain("Plus");
     expect(body).toContain("Pro");
+    // Playwright's default timezone is not India, so this is the USD view.
+    expect(body).toContain("$19");
     expect(body).toContain("$49");
-    expect(body).toContain("$99");
-    console.log("✅ Pricing unchanged: Plus $49, Pro $99");
+    console.log("✅ Pricing shows Plus $19, Pro $49");
   });
 
   test("the existing /admin user-management page still loads", async ({ page }) => {

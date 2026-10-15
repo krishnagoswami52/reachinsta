@@ -37,6 +37,10 @@ export const profiles = pgTable("profiles", {
   subscriptionStatus: text("subscription_status").$type<SubscriptionStatusType>().default("free").notNull(),
   paddleCustomerId: text("paddle_customer_id").unique(),
   paddleSubscriptionId: text("paddle_subscription_id"),
+  // Which gateway bills this user: "paddle" (USD) or "razorpay" (INR, India).
+  // NULL on profiles that predate Razorpay; those are all Paddle customers.
+  billingProvider: text("billing_provider").$type<"paddle" | "razorpay">(),
+  razorpaySubscriptionId: text("razorpay_subscription_id").unique(),
   currentPeriodEnd: timestamp("current_period_end"),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
   cancelAt: timestamp("cancel_at"),

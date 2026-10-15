@@ -4,8 +4,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { loadPaddle, openCheckout } from "@/lib/paddle";
-import { PLANS } from "@/lib/plans";
+import { checkoutErrorMessage, preloadCheckout, startCheckout } from "@/lib/checkout";
+import { useCurrency } from "@/hooks/use-currency";
+import { currencyForProvider, planPrice } from "@shared/pricing";
 import { Camera, Crown, CreditCard, Shield, KeyRound, LogOut, ChevronDown, ArrowRight } from "lucide-react";
 import type { Profile, Competitor } from "@shared/schema";
 
@@ -136,28 +137,31 @@ export default function ProfilePage() {
     }
   }
 
-  const [paddleReady, setPaddleReady] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
 
-  useEffect(() => {
-    loadPaddle()
-      .then(() => setPaddleReady(true))
-      .catch((err) => console.error("[Paddle] Load failed:", err));
-  }, []);
+  // Existing subscribers see the currency they're billed in; everyone else
+  // sees the one for where they are (INR in India, USD elsewhere).
+  const detectedCurrency = useCurrency();
+  const currency = profile?.billingProvider
+    ? currencyForProvider(profile.billingProvider)
+    : detectedCurrency;
 
-  function handleUpgrade(planId: "plus" | "pro") {
+  useEffect(() => {
+    preloadCheckout(currency);
+  }, [currency]);
+
+  async function handleUpgrade(planId: "plus" | "pro") {
     if (!user) return;
-    const plan = PLANS[planId];
-    if (!plan.paddlePriceId) return;
     setUpgradeLoading(true);
     try {
-      openCheckout({ priceId: plan.paddlePriceId, userId: user.id, userEmail: user.email });
+      await startCheckout({ planId, currency, user });
     } catch (err) {
-      console.error("[Paddle] Checkout open failed:", err);
+      console.error("[Checkout] Failed to start:", err);
+      toast({ title: "Couldn't open checkout", description: checkoutErrorMessage(err), variant: "destructive" });
       setUpgradeLoading(false);
       return;
     }
-    setTimeout(() => setUpgradeLoading(false), 2000);
+    setTimeout(() => setUpgradeLoading(false), currency === "INR" ? 0 : 2000);
   }
 
   const displayAvatar = avatarPreview ?? user?.profileImageUrl ?? undefined;
@@ -305,7 +309,7 @@ export default function ProfilePage() {
                 {currentPlan === plan && <span className="font-mono text-[10px] text-mint">current</span>}
               </div>
               <div className="font-mono text-[24px] font-semibold text-text-primary mb-3">
-                {plan === "free" ? "$0" : plan === "plus" ? "$49" : "$99"}<span className="text-[12px] text-text-muted">/mo</span>
+                {planPrice(plan, currency)}<span className="text-[12px] text-text-muted">/mo</span>
               </div>
               <ul className="space-y-1 font-mono text-[11px] text-text-secondary">
                 {plan === "free" && <><li>5 competitors</li><li>1 fetch / month</li><li>7-day window</li></>}
@@ -320,7 +324,7 @@ export default function ProfilePage() {
           {currentPlan !== "pro" && (
             <button
               onClick={() => handleUpgrade(currentPlan === "free" ? "plus" : "pro")}
-              disabled={upgradeLoading || !paddleReady}
+              disabled={upgradeLoading}
               className="bg-mint hover:bg-mint-hover text-bg-base font-semibold text-[14px] px-5 py-2.5 rounded-md inline-flex items-center gap-2 transition-all disabled:opacity-50"
             >
               <Crown className="w-4 h-4" />

@@ -2,23 +2,26 @@ import { Router } from "express";
 import { pool } from "../db";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { requireAdmin } from "../middleware/adminAuth";
+import { PLAN_PRICES } from "@shared/pricing";
 
 /**
  * Admin analytics API — STRICTLY READ-ONLY.
  *
  * Every statement below is a SELECT. Nothing here writes, updates or deletes,
  * and nothing here touches pricing, plans or subscription state. The plan
- * amounts used for MRR are a read-only mirror of client/src/lib/plans.ts.
+ * amounts used for MRR come from shared/pricing.ts.
  *
  * Mounted at /api/admin (see server/index.ts). Sibling of the existing
  * /api/admin/users management routes in server/routes.ts — no path overlap.
  */
 const router = Router();
 
-// Monthly USD amount per paid plan. MIRROR ONLY — the source of truth is
-// client/src/lib/plans.ts / Paddle. Changing these changes a dashboard number,
-// never what a customer is charged.
-const PLAN_MRR: Record<string, number> = { plus: 49, pro: 99 };
+// Monthly amount per paid plan, per currency. Editing shared/pricing.ts
+// changes a dashboard number here, never what a customer is charged (that is
+// the Paddle price / Razorpay plan). Paddle subscribers who signed up before a
+// price change keep paying their old price, so USD MRR is an estimate.
+const PLAN_MRR: Record<string, number> = PLAN_PRICES.USD;
+const PLAN_MRR_INR: Record<string, number> = PLAN_PRICES.INR;
 
 // A subscriber is "paying" while active OR canceling (canceling = cancel at
 // period end, still paid for the current period).
@@ -121,10 +124,10 @@ async function getAdminStats() {
 
     // MRR / paying customers.
     pool.query(
-      `SELECT plan, COUNT(*) AS count
+      `SELECT plan, billing_provider, COUNT(*) AS count
        FROM profiles
        WHERE plan IN ('plus', 'pro') AND subscription_status = ANY($1)
-       GROUP BY plan`,
+       GROUP BY plan, billing_provider`,
       [PAYING_STATUSES],
     ),
 
@@ -150,14 +153,21 @@ async function getAdminStats() {
     plans[row.plan] = (plans[row.plan] || 0) + num(row.count);
   }
 
+  // mrr stays USD (Paddle). INR (Razorpay) is reported on its own rather than
+  // converted at an exchange rate we'd have to make up.
   let mrr = 0;
+  let mrrInr = 0;
   let payingCustomers = 0;
   const payingByPlan: Record<string, number> = {};
   for (const row of mrrData.rows) {
     const count = num(row.count);
-    payingByPlan[row.plan] = count;
+    payingByPlan[row.plan] = (payingByPlan[row.plan] ?? 0) + count;
     payingCustomers += count;
-    mrr += count * (PLAN_MRR[row.plan] ?? 0);
+    if (row.billing_provider === "razorpay") {
+      mrrInr += count * (PLAN_MRR_INR[row.plan] ?? 0);
+    } else {
+      mrr += count * (PLAN_MRR[row.plan] ?? 0);
+    }
   }
 
   return {
@@ -185,6 +195,7 @@ async function getAdminStats() {
       paying_customers: payingCustomers,
       mrr,
       arr: mrr * 12,
+      mrr_inr: mrrInr,
       churned_this_month: num(churnedMonth.rows[0].count),
     },
     traffic: {

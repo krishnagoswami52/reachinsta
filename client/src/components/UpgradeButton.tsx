@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { loadPaddle, openCheckout } from '@/lib/paddle';
 import { PLANS } from '@/lib/plans';
+import { checkoutErrorMessage, preloadCheckout, startCheckout } from '@/lib/checkout';
 import { useAuth } from '@/hooks/use-auth';
+import { useCurrency } from '@/hooks/use-currency';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -22,42 +24,38 @@ export function UpgradeButton({
   variant = 'default',
 }: Props) {
   const { user } = useAuth();
-  const [paddleReady, setPaddleReady] = useState(false);
+  const currency = useCurrency();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const plan = PLANS[planId];
   const isCurrentPlan = currentPlan === planId;
 
   useEffect(() => {
-    loadPaddle()
-      .then(() => setPaddleReady(true))
-      .catch((err) => console.error('[Paddle] Load failed:', err));
-  }, []);
+    if (user) preloadCheckout(currency);
+  }, [user, currency]);
 
-  const handleClick = () => {
+  const handleClick = async () => {
     // Unauthenticated → send to register, with ?next=/pricing so they return after signup
     if (!user) {
       window.location.href = '/register?next=/pricing';
       return;
     }
-    if (!plan.paddlePriceId) {
-      console.error('[Paddle] No price ID configured for plan:', planId);
-      return;
-    }
     setLoading(true);
     try {
-      openCheckout({
-        priceId: plan.paddlePriceId,
-        userId: user.id,
-        userEmail: user.email,
-      });
+      await startCheckout({ planId, currency, user });
     } catch (err) {
-      console.error('[Paddle] Checkout open failed:', err);
+      console.error('[Checkout] Failed to start:', err);
+      toast({
+        title: "Couldn't open checkout",
+        description: checkoutErrorMessage(err),
+        variant: 'destructive',
+      });
       setLoading(false);
       return;
     }
-    // Paddle overlay takes over — reset loading after overlay opens
-    setTimeout(() => setLoading(false), 2000);
+    // Paddle's overlay takes over / Razorpay's modal has closed by now
+    setTimeout(() => setLoading(false), currency === 'INR' ? 0 : 2000);
   };
 
   if (isCurrentPlan) {
@@ -71,7 +69,7 @@ export function UpgradeButton({
   return (
     <Button
       onClick={handleClick}
-      disabled={loading || (!!user && !paddleReady)}
+      disabled={loading}
       variant={variant}
       className={cn('w-full', className)}
     >

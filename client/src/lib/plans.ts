@@ -1,8 +1,9 @@
+// Plan features only. Prices live in shared/pricing.ts because they depend on
+// the visitor's currency (USD via Paddle, INR via Razorpay).
 export const PLANS = {
   free: {
     id: 'free' as const,
     name: 'Free',
-    price: 0,
     competitors: 5,
     timeRange: 7,
     fetchesPerMonth: 1,
@@ -12,7 +13,6 @@ export const PLANS = {
   plus: {
     id: 'plus' as const,
     name: 'Plus',
-    price: 49,
     competitors: 50,
     // 14, not 28. The server enforces planLimits.plus.timeRangeMaxDays = 14
     // (shared/schema.ts) and rejects anything longer with "Time range not
@@ -26,7 +26,6 @@ export const PLANS = {
   pro: {
     id: 'pro' as const,
     name: 'Pro',
-    price: 99,
     competitors: 100,
     timeRange: 28,
     fetchesPerMonth: 4,

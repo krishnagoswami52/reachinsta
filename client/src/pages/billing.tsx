@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { ArrowLeft, CreditCard, RefreshCw } from "lucide-react";
 import { PLANS } from "@/lib/plans";
+import { currencyForProvider, planPrice } from "@shared/pricing";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Profile } from "@shared/schema";
 
@@ -117,6 +118,7 @@ export default function BillingPage() {
   }, [profile, toast]);
 
   const plan = profile ? PLANS[profile.plan] : null;
+  const isRazorpay = profile?.billingProvider === "razorpay";
   const fetchProgress = profile
     ? Math.min(100, Math.round((profile.fetchesUsed / profile.monthlyFetchLimit) * 100))
     : 0;
@@ -159,7 +161,7 @@ export default function BillingPage() {
                 <div className="flex items-center gap-3">
                   <PlanBadge plan={profile.plan} />
                   <span className="text-2xl font-bold">
-                    ${plan.price}
+                    {planPrice(profile.plan, currencyForProvider(profile.billingProvider))}
                     <span className="text-sm font-normal text-muted-foreground">/mo</span>
                   </span>
                 </div>
@@ -223,18 +225,24 @@ export default function BillingPage() {
               <p className="text-sm text-muted-foreground">
                 You'll keep your {PLANS[profile.plan]?.name ?? profile.plan} plan until{" "}
                 <span className="font-medium text-foreground">{formatDate(profile.cancelAt ?? profile.currentPeriodEnd)}</span>,
-                then be downgraded to Free. Changed your mind?
+                then be downgraded to Free.{" "}
+                {isRazorpay
+                  ? "You can subscribe again from the pricing page once it ends."
+                  : "Changed your mind?"}
               </p>
             </div>
-            <Button
-              onClick={() => resumeMutation.mutate()}
-              disabled={resumeMutation.isPending}
-            >
-              {resumeMutation.isPending ? "Resuming…" : "Resume subscription"}
-            </Button>
+            {/* Razorpay can't undo a scheduled cancel, so there's nothing to resume. */}
+            {!isRazorpay && (
+              <Button
+                onClick={() => resumeMutation.mutate()}
+                disabled={resumeMutation.isPending}
+              >
+                {resumeMutation.isPending ? "Resuming…" : "Resume subscription"}
+              </Button>
+            )}
           </CardContent>
         </Card>
-      ) : profile?.paddleSubscriptionId && (profile.subscriptionStatus === "active" || profile.subscriptionStatus === "past_due") ? (
+      ) : (profile?.paddleSubscriptionId || profile?.razorpaySubscriptionId) && (profile.subscriptionStatus === "active" || profile.subscriptionStatus === "past_due") ? (
         <Card className="border-destructive/20">
           <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -261,8 +269,10 @@ export default function BillingPage() {
             <AlertDialogDescription>
               You'll keep access to your current plan until{" "}
               <span className="font-medium text-foreground">{formatDate(profile?.currentPeriodEnd)}</span>.
-              After that, you'll be downgraded to the Free plan. You can resume any
-              time before then.
+              After that, you'll be downgraded to the Free plan.
+              {isRazorpay
+                ? " You can subscribe again once it ends."
+                : " You can resume any time before then."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

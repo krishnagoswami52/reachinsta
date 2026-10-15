@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { planPrice } from "@shared/pricing";
 
 export default function RefundPage() {
   useEffect(() => { document.title = "Refund Policy — ReachInsta"; }, []);
@@ -38,7 +39,7 @@ export default function RefundPage() {
               Refund policy.
             </h1>
             <p className="text-[16px] text-text-secondary leading-relaxed mb-3">
-              Last updated <span className="font-mono text-text-primary">September 9, 2026</span>.
+              Last updated <span className="font-mono text-text-primary">October 15, 2026</span>.
             </p>
             <p className="font-mono text-[12px] text-text-muted italic">
               14 days, no questions asked. Email{" "}
@@ -90,7 +91,7 @@ export default function RefundPage() {
                 <a href="/contact" className="text-mint hover:underline">contact form</a>. Either route works.
               </p>
               <p className="text-[15px] text-text-secondary leading-[1.7]">
-                We approve refund requests within 48 hours of receiving them. Once approved, the refund is issued through our payment provider, which acts as the merchant of record for your purchase. Funds typically appear on your original payment method within 5&ndash;10 business days, depending on your bank or card issuer.
+                We approve refund requests within 48 hours of receiving them. Once approved, the refund is issued through the payment provider you paid with (our merchant of record for US dollar payments, or Razorpay for Indian rupee payments). Funds typically appear on your original payment method within 5&ndash;10 business days, depending on your bank or card issuer.
               </p>
             </section>
 
@@ -100,8 +101,8 @@ export default function RefundPage() {
                 The 14-day guarantee covers every paid ReachInsta subscription:
               </p>
               <ul className="space-y-2 text-[15px] text-text-secondary leading-[1.7] pl-5">
-                <li>● <strong className="text-text-primary">Plus</strong> ($49/mo) — monthly and annual billing</li>
-                <li>● <strong className="text-text-primary">Pro</strong> ($99/mo) — monthly and annual billing</li>
+                <li>● <strong className="text-text-primary">Plus</strong> ({planPrice("plus", "USD")}/mo, or {planPrice("plus", "INR")}/mo in India) — monthly and annual billing</li>
+                <li>● <strong className="text-text-primary">Pro</strong> ({planPrice("pro", "USD")}/mo, or {planPrice("pro", "INR")}/mo in India) — monthly and annual billing</li>
                 <li>● Any upgrade, downgrade, or plan-change charge</li>
                 <li>● Renewal charges, each with their own 14-day window</li>
               </ul>

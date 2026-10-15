@@ -2,12 +2,13 @@ import { Router } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { cancelSubscription, removeScheduledCancel } from "../lib/paddle";
+import { cancelSubscriptionAtCycleEnd } from "../lib/razorpay";
 
 const router = Router();
 
 /**
  * POST /api/subscription/cancel
- * Schedules cancellation at period end via Paddle.
+ * Schedules cancellation at period end via Paddle or Razorpay (whichever bills the user).
  * User keeps paid access until currentPeriodEnd; the daily cron downgrades after.
  */
 router.post("/api/subscription/cancel", isAuthenticated, async (req: any, res) => {
@@ -19,7 +20,10 @@ router.post("/api/subscription/cancel", isAuthenticated, async (req: any, res) =
       return res.status(404).json({ message: "Profile not found" });
     }
 
-    if (!profile.paddleSubscriptionId) {
+    const isRazorpay = profile.billingProvider === "razorpay";
+    const subscriptionId = isRazorpay ? profile.razorpaySubscriptionId : profile.paddleSubscriptionId;
+
+    if (!subscriptionId) {
       return res.status(400).json({
         message: "No active subscription to cancel",
         code: "NO_SUBSCRIPTION",
@@ -33,7 +37,25 @@ router.post("/api/subscription/cancel", isAuthenticated, async (req: any, res) =
       });
     }
 
-    const sub = await cancelSubscription(profile.paddleSubscriptionId);
+    if (isRazorpay) {
+      const rzpSub = await cancelSubscriptionAtCycleEnd(subscriptionId);
+      const cancelAt = rzpSub.current_end ? new Date(rzpSub.current_end * 1000) : profile.currentPeriodEnd;
+
+      await storage.updateProfileSubscription(userId, {
+        subscriptionStatus: "canceling",
+        cancelAtPeriodEnd: true,
+        cancelAt,
+      });
+
+      console.log(`[Subscription] User ${userId} canceled Razorpay ${subscriptionId}, access until ${cancelAt?.toISOString()}`);
+
+      return res.json({
+        message: "Subscription canceled. You keep access until the end of your billing period.",
+        cancelAt,
+      });
+    }
+
+    const sub = await cancelSubscription(subscriptionId);
 
     const cancelAt = sub.scheduled_change?.effective_at
       ? new Date(sub.scheduled_change.effective_at)
@@ -68,6 +90,16 @@ router.post("/api/subscription/resume", isAuthenticated, async (req: any, res) =
     const userId = req.user.claims.sub;
 
     const profile = await storage.getProfile(userId);
+
+    // Razorpay has no API to undo a cancel_at_cycle_end, so the user re-subscribes
+    // once the current period ends instead.
+    if (profile?.billingProvider === "razorpay") {
+      return res.status(400).json({
+        message: "This subscription can't be resumed. You can subscribe again from the pricing page once it ends.",
+        code: "RESUME_NOT_SUPPORTED",
+      });
+    }
+
     if (!profile?.paddleSubscriptionId) {
       return res.status(400).json({
         message: "No subscription found",

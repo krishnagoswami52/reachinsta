@@ -21,6 +21,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import type { Profile } from "@shared/schema";
+import { planPrice } from "@shared/pricing";
 
 /**
  * Admin analytics dashboard — READ-ONLY business metrics.
@@ -53,6 +54,7 @@ interface AdminStats {
     paying_customers: number;
     mrr: number;
     arr: number;
+    mrr_inr?: number;
     churned_this_month: number;
   };
   traffic: {
@@ -270,7 +272,7 @@ function KeyMetricsRow({ stats }: { stats: AdminStats }) {
         testId="kpi-mrr"
         label="mrr"
         value={`$${fmt(stats.revenue.mrr)}`}
-        sub={`${fmt(stats.revenue.paying_customers)} paying customers`}
+        sub={`${stats.revenue.mrr_inr ? `+ ₹${fmt(stats.revenue.mrr_inr)} · ` : ""}${fmt(stats.revenue.paying_customers)} paying customers`}
         accent
       />
     </div>
@@ -318,8 +320,9 @@ function PlanDistribution({ stats }: { stats: AdminStats }) {
 function RevenueSection({ stats }: { stats: AdminStats }) {
   return (
     <Panel title="revenue" icon={DollarSign} testId="admin-revenue">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatBlock label="mrr" value={`$${fmt(stats.revenue.mrr)}`} tone="mint" />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatBlock label="mrr (usd)" value={`$${fmt(stats.revenue.mrr)}`} tone="mint" />
+        <StatBlock label="mrr (inr)" value={`₹${fmt(stats.revenue.mrr_inr ?? 0)}`} tone="mint" />
         <StatBlock label="arr" value={`$${fmt(stats.revenue.arr)}`} />
         <StatBlock label="paying customers" value={fmt(stats.revenue.paying_customers)} />
         <StatBlock
@@ -329,8 +332,9 @@ function RevenueSection({ stats }: { stats: AdminStats }) {
         />
       </div>
       <p className="font-mono text-[10px] text-text-muted mt-4">
-        MRR uses the live plan prices (Plus $49/mo, Pro $99/mo). Read-only — this
-        page never changes pricing.
+        MRR uses the current plan prices (Plus {planPrice("plus", "USD")} / {planPrice("plus", "INR")},
+        Pro {planPrice("pro", "USD")} / {planPrice("pro", "INR")} a month). Paddle subscribers who joined
+        before a price change still pay their old price. Read-only — this page never changes pricing.
       </p>
     </Panel>
   );

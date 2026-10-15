@@ -1,4 +1,6 @@
 import { PLANS } from "@/lib/plans";
+import { planPrice } from "@shared/pricing";
+import { useCurrency } from "@/hooks/use-currency";
 import { UpgradeButton } from "@/components/UpgradeButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,6 +65,7 @@ const pricingPlans = [
 
 export function PricingSection({ profile, showHeader = true }: Props) {
   const currentPlan = profile?.plan;
+  const currency = useCurrency();
 
   return (
     <div>
@@ -87,7 +90,7 @@ export function PricingSection({ profile, showHeader = true }: Props) {
                 <p className="text-muted-foreground text-sm mt-1">{description}</p>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold">${plan.price}</span>
+                <span className="text-4xl font-bold">{planPrice(plan.id, currency)}</span>
                 <span className="text-muted-foreground">/month</span>
               </div>
               <ul className="space-y-3 text-sm">

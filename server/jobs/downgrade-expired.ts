@@ -5,7 +5,7 @@ import { storage } from "../storage";
 
 /**
  * Downgrades users whose canceled subscriptions have reached their period end.
- * Paddle does not always deliver a webhook at the exact moment access should
+ * Neither Paddle nor Razorpay always delivers a webhook at the exact moment access should
  * lapse, so this runs daily as the enforcement backstop. Idempotent: once
  * downgraded, the user no longer matches the "canceling" filter.
  */
@@ -35,6 +35,8 @@ export async function downgradeExpiredSubscriptions(): Promise<number> {
       plan: "free",
       subscriptionStatus: "canceled",
       paddleSubscriptionId: null,
+      razorpaySubscriptionId: null,
+      billingProvider: null,
       cancelAtPeriodEnd: false,
       cancelAt: null,
       currentPeriodEnd: null,

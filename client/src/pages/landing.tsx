@@ -1,8 +1,11 @@
 import { useEffect } from "react";
 import { FloatingVideoBadge } from "@/components/FloatingVideoBadge";
+import { useCurrency } from "@/hooks/use-currency";
+import { planPrice } from "@shared/pricing";
 
 export default function LandingPage() {
   useEffect(() => { document.title = "ReachInsta — Find viral Reels before your competitors do."; }, []);
+  const currency = useCurrency();
 
   return (
     <div className="min-h-screen bg-bg-base text-text-primary">
@@ -298,7 +301,7 @@ export default function LandingPage() {
               <h3 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-2">Free</h3>
               <p className="text-[13px] text-text-secondary mb-7">For getting started</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="font-tight font-bold text-[48px] tracking-tightest">$0</span>
+                <span className="font-tight font-bold text-[48px] tracking-tightest">{planPrice("free", currency)}</span>
                 <span className="font-mono text-[13px] text-text-muted">/month</span>
               </div>
               <ul className="space-y-3 text-[14px] mb-8 flex-1">
@@ -319,7 +322,7 @@ export default function LandingPage() {
               <h3 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-2">Plus</h3>
               <p className="text-[13px] text-text-secondary mb-7">For growing creators</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="font-tight font-bold text-[48px] tracking-tightest">$49</span>
+                <span className="font-tight font-bold text-[48px] tracking-tightest">{planPrice("plus", currency)}</span>
                 <span className="font-mono text-[13px] text-text-muted">/month</span>
               </div>
               <ul className="space-y-3 text-[14px] mb-8 flex-1">
@@ -337,7 +340,7 @@ export default function LandingPage() {
               <h3 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-2">Pro</h3>
               <p className="text-[13px] text-text-secondary mb-7">For agencies</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="font-tight font-bold text-[48px] tracking-tightest">$99</span>
+                <span className="font-tight font-bold text-[48px] tracking-tightest">{planPrice("pro", currency)}</span>
                 <span className="font-mono text-[13px] text-text-muted">/month</span>
               </div>
               <ul className="space-y-3 text-[14px] mb-8 flex-1">

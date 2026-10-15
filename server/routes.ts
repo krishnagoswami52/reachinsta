@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated, requireVerifiedEmail } from "./replit_integrations/auth";
 import subscriptionRouter from "./routes/subscription";
+import { razorpayRouter } from "./routes/razorpay";
 import contactRouter from "./routes/contact";
 import { z } from "zod";
 import { planLimits, type PlanType, type RoleType } from "@shared/schema";
@@ -64,6 +65,7 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
   app.use(subscriptionRouter);
+  app.use(razorpayRouter);
   // Public contact form — unauthenticated, carries its own rate limit.
   app.use(contactRouter);
 

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { planPrice } from "@shared/pricing";
 
 export default function TermsPage() {
   useEffect(() => { document.title = "Terms of Service — ReachInsta"; }, []);
@@ -38,7 +39,7 @@ export default function TermsPage() {
               Terms of service.
             </h1>
             <p className="text-[16px] text-text-secondary leading-relaxed mb-3">
-              In plain English. Last updated <span className="font-mono text-text-primary">May 19, 2026</span>.
+              In plain English. Last updated <span className="font-mono text-text-primary">October 15, 2026</span>.
             </p>
             <p className="font-mono text-[12px] text-text-muted italic">
               We tried to keep this readable. If anything&apos;s unclear, email{" "}
@@ -101,7 +102,7 @@ export default function TermsPage() {
             <section>
               <h2 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-4">4. Plans, billing, and refunds</h2>
               <p className="text-[15px] text-text-secondary leading-[1.7] mb-3">
-                Pricing is shown on the homepage. We currently offer Free ($0), Plus ($49/mo), and Pro ($99/mo) tiers. Payments are processed by our third-party payment provider, which acts as the merchant of record for your purchase.
+                Pricing is shown on the homepage. We currently offer Free, Plus ({planPrice("plus", "USD")}/mo, or {planPrice("plus", "INR")}/mo in India), and Pro ({planPrice("pro", "USD")}/mo, or {planPrice("pro", "INR")}/mo in India) tiers. Payments in US dollars are processed by our third-party payment provider, which acts as the merchant of record for your purchase. Payments in Indian rupees are processed by Razorpay on behalf of ReachInsta, which is the seller for those purchases.
               </p>
               <p className="text-[15px] text-text-secondary leading-[1.7] mb-3">
                 <strong className="text-text-primary">Refunds:</strong> We offer a 14-day full refund window from your payment date, no questions asked. Email{" "}

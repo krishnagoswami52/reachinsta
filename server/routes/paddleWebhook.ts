@@ -212,6 +212,7 @@ async function handleSubscriptionActivated(data: any) {
   await storage.updateProfileSubscription(profile.id, {
     paddleCustomerId: data.customer_id,
     paddleSubscriptionId: data.id,
+    paymentProvider: "paddle",
     subscriptionStatus: "active",
     plan,
     currentPeriodEnd: periodEnd,
@@ -257,6 +258,7 @@ async function handleSubscriptionUpdated(data: any) {
   await storage.updateProfileSubscription(profile.id, {
     paddleCustomerId: data.customer_id,
     paddleSubscriptionId: data.id,
+    paymentProvider: "paddle",
     subscriptionStatus,
     ...(plan ? { plan } : {}),
     ...(periodEnd !== undefined ? { currentPeriodEnd: periodEnd } : {}),
@@ -298,6 +300,7 @@ async function applyCanceledState(userId: string, data: any) {
       plan: "free",
       subscriptionStatus: "canceled",
       paddleSubscriptionId: null,
+      paymentProvider: null,
       cancelAtPeriodEnd: false,
       cancelAt: null,
       currentPeriodEnd: null,

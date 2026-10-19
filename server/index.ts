@@ -6,6 +6,7 @@ import { createServer } from "http";
 import { startWorker } from "./worker";
 import { initApifyKeys } from "./services/keyManager";
 import paddleWebhookRouter from "./routes/paddleWebhook";
+import razorpayWebhookRouter from "./routes/razorpayWebhook";
 import cron from "node-cron";
 import { downgradeExpiredSubscriptions } from "./jobs/downgrade-expired";
 import { autoResetExhaustedKeys } from "./jobs/reset-apify-keys";
@@ -20,6 +21,9 @@ console.log('[Env Check]', {
   resend: !!process.env.RESEND_API_KEY,
   paddle_api: !!process.env.PADDLE_API_KEY,
   paddle_webhook: !!process.env.PADDLE_WEBHOOK_SECRET,
+  razorpay_api: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
+  razorpay_plans: !!(process.env.RAZORPAY_PLAN_PLUS && process.env.RAZORPAY_PLAN_PRO),
+  razorpay_webhook: !!process.env.RAZORPAY_WEBHOOK_SECRET,
   // false in production means every registration will be rejected —
   // verifyTurnstileToken fails closed. See server/lib/turnstile.ts.
   turnstile: !!process.env.TURNSTILE_SECRET_KEY,
@@ -34,10 +38,11 @@ declare module "http" {
   }
 }
 
-// CRITICAL: Paddle webhook BEFORE express.json()
-// — uses its own express.raw() to get the unparsed body for signature verification
+// CRITICAL: Paddle + Razorpay webhooks BEFORE express.json()
+// — each uses its own express.raw() to get the unparsed body for signature verification
 app.use(paddleWebhookRouter);
-console.log('[Startup] Paddle webhook routes registered');
+app.use(razorpayWebhookRouter);
+console.log('[Startup] Paddle + Razorpay webhook routes registered');
 
 app.use(
   express.json({

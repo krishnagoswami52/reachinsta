@@ -16,6 +16,9 @@ export type RoleType = typeof roleTypes[number];
 export const subscriptionStatusTypes = ["free", "active", "canceling", "past_due", "canceled", "paused"] as const;
 export type SubscriptionStatusType = typeof subscriptionStatusTypes[number];
 
+export const paymentProviderTypes = ["paddle", "razorpay"] as const;
+export type PaymentProviderType = typeof paymentProviderTypes[number];
+
 export const fetchStatusTypes = ["queued", "running", "merging", "analyzing", "completed", "failed"] as const;
 export type FetchStatusType = typeof fetchStatusTypes[number];
 
@@ -41,6 +44,9 @@ export const profiles = pgTable("profiles", {
   cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
   cancelAt: timestamp("cancel_at"),
   periodResetAt: timestamp("period_reset_at"),
+  // Which provider bills the current subscription; null on free / never-paid.
+  paymentProvider: text("payment_provider").$type<PaymentProviderType>(),
+  razorpaySubscriptionId: text("razorpay_subscription_id").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -44,7 +44,7 @@ router.post("/api/razorpay/create-subscription", isAuthenticated, async (req: an
 
     if (hasLiveSubscription(profile)) {
       return res.status(409).json({
-        message: "You already have an active subscription. Manage it from the Billing page.",
+        message: "You already have an active subscription. To change plans, cancel from Billing and subscribe to the new plan.",
         code: "ALREADY_SUBSCRIBED",
       });
     }

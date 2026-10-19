@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { loadPaddle, openCheckout } from "@/lib/paddle";
+import { useCheckout } from "@/hooks/use-checkout";
 import { PLANS } from "@/lib/plans";
 import { useCurrency } from "@/lib/locationDetection";
 import { formatPlanPrice } from "@shared/pricing";
@@ -138,29 +138,7 @@ export default function ProfilePage() {
     }
   }
 
-  const [paddleReady, setPaddleReady] = useState(false);
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
-
-  useEffect(() => {
-    loadPaddle()
-      .then(() => setPaddleReady(true))
-      .catch((err) => console.error("[Paddle] Load failed:", err));
-  }, []);
-
-  function handleUpgrade(planId: "plus" | "pro") {
-    if (!user) return;
-    const plan = PLANS[planId];
-    if (!plan.paddlePriceId) return;
-    setUpgradeLoading(true);
-    try {
-      openCheckout({ priceId: plan.paddlePriceId, userId: user.id, userEmail: user.email });
-    } catch (err) {
-      console.error("[Paddle] Checkout open failed:", err);
-      setUpgradeLoading(false);
-      return;
-    }
-    setTimeout(() => setUpgradeLoading(false), 2000);
-  }
+  const { startCheckout, loading: upgradeLoading, ready: checkoutReady } = useCheckout();
 
   const displayAvatar = avatarPreview ?? user?.profileImageUrl ?? undefined;
   const initials = (user?.firstName?.charAt(0) ?? user?.email?.charAt(0) ?? "U").toUpperCase();
@@ -323,8 +301,8 @@ export default function ProfilePage() {
         <div className="flex flex-wrap gap-3">
           {currentPlan !== "pro" && (
             <button
-              onClick={() => handleUpgrade(currentPlan === "free" ? "plus" : "pro")}
-              disabled={upgradeLoading || !paddleReady}
+              onClick={() => startCheckout(currentPlan === "free" ? "plus" : "pro")}
+              disabled={upgradeLoading || !checkoutReady}
               className="bg-mint hover:bg-mint-hover text-bg-base font-semibold text-[14px] px-5 py-2.5 rounded-md inline-flex items-center gap-2 transition-all disabled:opacity-50"
             >
               <Crown className="w-4 h-4" />

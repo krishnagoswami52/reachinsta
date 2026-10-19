@@ -53,6 +53,9 @@ interface AdminStats {
   revenue: {
     paying_customers: number;
     mrr: number;
+    mrr_usd: number;
+    mrr_inr: number;
+    inr_per_usd: number;
     arr: number;
     churned_this_month: number;
   };
@@ -270,7 +273,7 @@ function KeyMetricsRow({ stats }: { stats: AdminStats }) {
       <MetricCard
         testId="kpi-mrr"
         label="mrr"
-        value={`$${fmt(stats.revenue.mrr)}`}
+        value={`≈ $${fmt(stats.revenue.mrr)}`}
         sub={`${fmt(stats.revenue.paying_customers)} paying customers`}
         accent
       />
@@ -320,8 +323,10 @@ function RevenueSection({ stats }: { stats: AdminStats }) {
   return (
     <Panel title="revenue" icon={DollarSign} testId="admin-revenue">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatBlock label="mrr" value={`$${fmt(stats.revenue.mrr)}`} tone="mint" />
-        <StatBlock label="arr" value={`$${fmt(stats.revenue.arr)}`} />
+        <StatBlock label="mrr · paddle (usd)" value={`$${fmt(stats.revenue.mrr_usd)}`} />
+        <StatBlock label="mrr · razorpay (inr)" value={`₹${stats.revenue.mrr_inr.toLocaleString("en-IN")}`} />
+        <StatBlock label="mrr · combined" value={`≈ $${fmt(stats.revenue.mrr)}`} tone="mint" />
+        <StatBlock label="arr · combined" value={`≈ $${fmt(stats.revenue.arr)}`} />
         <StatBlock label="paying customers" value={fmt(stats.revenue.paying_customers)} />
         <StatBlock
           label="churned (30d)"
@@ -330,8 +335,8 @@ function RevenueSection({ stats }: { stats: AdminStats }) {
         />
       </div>
       <p className="font-mono text-[10px] text-text-muted mt-4">
-        MRR uses the live plan prices (Plus ${PLANS.plus.priceUsd}/mo, Pro ${PLANS.pro.priceUsd}/mo). Read-only — this
-        page never changes pricing.
+        MRR uses the live plan prices (Plus ${PLANS.plus.priceUsd} / ₹{PLANS.plus.priceInr.toLocaleString("en-IN")}, Pro ${PLANS.pro.priceUsd} / ₹{PLANS.pro.priceInr.toLocaleString("en-IN")} per month).
+        Combined converts INR at a fixed ₹{stats.revenue.inr_per_usd}/$. Read-only — this page never changes pricing.
       </p>
     </Panel>
   );

@@ -19,6 +19,11 @@ const router = Router();
 // Monthly USD amount per paid plan, read from shared/pricing.ts. Changing those
 // numbers changes a dashboard figure, never what a customer is charged.
 const PLAN_MRR: Record<string, number> = { plus: planPrices.plus.usd, pro: planPrices.pro.usd };
+const PLAN_MRR_INR: Record<string, number> = { plus: planPrices.plus.inr, pro: planPrices.pro.inr };
+
+// Fixed rate for the "combined" MRR figure only. INR revenue is also reported
+// on its own line, unconverted, so this approximation never hides anything.
+const INR_PER_USD = 83;
 
 // A subscriber is "paying" while active OR canceling (canceling = cancel at
 // period end, still paid for the current period).
@@ -121,10 +126,10 @@ async function getAdminStats() {
 
     // MRR / paying customers.
     pool.query(
-      `SELECT plan, COUNT(*) AS count
+      `SELECT plan, payment_provider, COUNT(*) AS count
        FROM profiles
        WHERE plan IN ('plus', 'pro') AND subscription_status = ANY($1)
-       GROUP BY plan`,
+       GROUP BY plan, payment_provider`,
       [PAYING_STATUSES],
     ),
 
@@ -150,15 +155,23 @@ async function getAdminStats() {
     plans[row.plan] = (plans[row.plan] || 0) + num(row.count);
   }
 
-  let mrr = 0;
+  // Razorpay subscribers pay INR; everyone else (Paddle, and Paddle subs from
+  // before payment_provider existed, where it is null) pays USD.
+  let mrrUsd = 0;
+  let mrrInr = 0;
   let payingCustomers = 0;
   const payingByPlan: Record<string, number> = {};
   for (const row of mrrData.rows) {
     const count = num(row.count);
-    payingByPlan[row.plan] = count;
+    payingByPlan[row.plan] = (payingByPlan[row.plan] ?? 0) + count;
     payingCustomers += count;
-    mrr += count * (PLAN_MRR[row.plan] ?? 0);
+    if (row.payment_provider === "razorpay") {
+      mrrInr += count * (PLAN_MRR_INR[row.plan] ?? 0);
+    } else {
+      mrrUsd += count * (PLAN_MRR[row.plan] ?? 0);
+    }
   }
+  const mrr = Math.round(mrrUsd + mrrInr / INR_PER_USD);
 
   return {
     users: {
@@ -183,7 +196,10 @@ async function getAdminStats() {
     },
     revenue: {
       paying_customers: payingCustomers,
-      mrr,
+      mrr, // combined, USD-equivalent (approx.)
+      mrr_usd: mrrUsd,
+      mrr_inr: mrrInr,
+      inr_per_usd: INR_PER_USD,
       arr: mrr * 12,
       churned_this_month: num(churnedMonth.rows[0].count),
     },

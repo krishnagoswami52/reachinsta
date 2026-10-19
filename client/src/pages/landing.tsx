@@ -1,8 +1,12 @@
 import { useEffect } from "react";
 import { FloatingVideoBadge } from "@/components/FloatingVideoBadge";
 import { PLANS } from "@/lib/plans";
+import { CurrencyToggle } from "@/components/CurrencyToggle";
+import { useCurrency } from "@/lib/locationDetection";
+import { formatPlanPrice } from "@shared/pricing";
 
 export default function LandingPage() {
+  const [currency, setCurrency] = useCurrency();
   useEffect(() => { document.title = "ReachInsta — Find viral Reels before your competitors do."; }, []);
 
   return (
@@ -288,9 +292,10 @@ export default function LandingPage() {
           <h2 className="font-tight font-bold text-[40px] lg:text-[48px] leading-[1.1] tracking-tightest mb-3 max-w-[700px]">
             Pricing that respects your time.
           </h2>
-          <p className="text-[17px] text-text-secondary max-w-[520px] mb-14">
+          <p className="text-[17px] text-text-secondary max-w-[520px] mb-8">
             Start free. Upgrade when you need more competitors. That&apos;s it.
           </p>
+          <CurrencyToggle currency={currency} onChange={setCurrency} className="mb-10" />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* FREE */}
@@ -299,7 +304,7 @@ export default function LandingPage() {
               <h3 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-2">Free</h3>
               <p className="text-[13px] text-text-secondary mb-7">For getting started</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="font-tight font-bold text-[48px] tracking-tightest">${PLANS.free.priceUsd}</span>
+                <span className="font-tight font-bold text-[48px] tracking-tightest">{formatPlanPrice("free", currency)}</span>
                 <span className="font-mono text-[13px] text-text-muted">/month</span>
               </div>
               <ul className="space-y-3 text-[14px] mb-8 flex-1">
@@ -320,7 +325,7 @@ export default function LandingPage() {
               <h3 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-2">Plus</h3>
               <p className="text-[13px] text-text-secondary mb-7">For growing creators</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="font-tight font-bold text-[48px] tracking-tightest">${PLANS.plus.priceUsd}</span>
+                <span className="font-tight font-bold text-[48px] tracking-tightest">{formatPlanPrice("plus", currency)}</span>
                 <span className="font-mono text-[13px] text-text-muted">/month</span>
               </div>
               <ul className="space-y-3 text-[14px] mb-8 flex-1">
@@ -338,7 +343,7 @@ export default function LandingPage() {
               <h3 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-2">Pro</h3>
               <p className="text-[13px] text-text-secondary mb-7">For agencies</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="font-tight font-bold text-[48px] tracking-tightest">${PLANS.pro.priceUsd}</span>
+                <span className="font-tight font-bold text-[48px] tracking-tightest">{formatPlanPrice("pro", currency)}</span>
                 <span className="font-mono text-[13px] text-text-muted">/month</span>
               </div>
               <ul className="space-y-3 text-[14px] mb-8 flex-1">

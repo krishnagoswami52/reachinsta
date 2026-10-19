@@ -6,6 +6,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { loadPaddle, openCheckout } from "@/lib/paddle";
 import { PLANS } from "@/lib/plans";
+import { useCurrency } from "@/lib/locationDetection";
+import { formatPlanPrice } from "@shared/pricing";
 import { Camera, Crown, CreditCard, Shield, KeyRound, LogOut, ChevronDown, ArrowRight } from "lucide-react";
 import type { Profile, Competitor } from "@shared/schema";
 
@@ -163,6 +165,7 @@ export default function ProfilePage() {
   const displayAvatar = avatarPreview ?? user?.profileImageUrl ?? undefined;
   const initials = (user?.firstName?.charAt(0) ?? user?.email?.charAt(0) ?? "U").toUpperCase();
   const currentPlan = profile?.plan ?? "free";
+  const [currency] = useCurrency();
 
   const memberSince = useMemo(() => {
     if (!user?.createdAt) return null;
@@ -305,7 +308,7 @@ export default function ProfilePage() {
                 {currentPlan === plan && <span className="font-mono text-[10px] text-mint">current</span>}
               </div>
               <div className="font-mono text-[24px] font-semibold text-text-primary mb-3">
-                ${PLANS[plan].priceUsd}<span className="text-[12px] text-text-muted">/mo</span>
+                {formatPlanPrice(plan, currency)}<span className="text-[12px] text-text-muted">/mo</span>
               </div>
               <ul className="space-y-1 font-mono text-[11px] text-text-secondary">
                 <li>{PLANS[plan].competitors} competitors</li>

@@ -1,5 +1,8 @@
 import { PLANS } from "@/lib/plans";
 import { UpgradeButton } from "@/components/UpgradeButton";
+import { CurrencyToggle } from "@/components/CurrencyToggle";
+import { useCurrency } from "@/lib/locationDetection";
+import { formatPlanPrice } from "@shared/pricing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Profile } from "@shared/schema";
@@ -63,6 +66,7 @@ const pricingPlans = [
 
 export function PricingSection({ profile, showHeader = true }: Props) {
   const currentPlan = profile?.plan;
+  const [currency, setCurrency] = useCurrency();
 
   return (
     <div>
@@ -72,6 +76,10 @@ export function PricingSection({ profile, showHeader = true }: Props) {
           <p className="text-lg text-muted-foreground">Start free, upgrade as you grow. No hidden fees.</p>
         </div>
       )}
+
+      <div className="flex justify-center mb-8">
+        <CurrencyToggle currency={currency} onChange={setCurrency} />
+      </div>
 
       <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
         {pricingPlans.map(({ plan, description, highlighted, features }) => (
@@ -87,7 +95,7 @@ export function PricingSection({ profile, showHeader = true }: Props) {
                 <p className="text-muted-foreground text-sm mt-1">{description}</p>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold">${plan.priceUsd}</span>
+                <span className="text-4xl font-bold">{formatPlanPrice(plan.id, currency)}</span>
                 <span className="text-muted-foreground">/month</span>
               </div>
               <ul className="space-y-3 text-sm">

@@ -1,6 +1,6 @@
 import { PLANS } from "@/lib/plans";
 import { UpgradeButton } from "@/components/UpgradeButton";
-import { CurrencyToggle } from "@/components/CurrencyToggle";
+import { CurrencySwitchLink } from "@/components/CurrencySwitchLink";
 import { useCurrency } from "@/lib/locationDetection";
 import { formatPlanPrice } from "@shared/pricing";
 import { Button } from "@/components/ui/button";
@@ -77,10 +77,6 @@ export function PricingSection({ profile, showHeader = true }: Props) {
         </div>
       )}
 
-      <div className="flex justify-center mb-8">
-        <CurrencyToggle currency={currency} onChange={setCurrency} />
-      </div>
-
       <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
         {pricingPlans.map(({ plan, description, highlighted, features }) => (
           <Card key={plan.id} className={`relative ${highlighted ? "border-primary" : ""}`}>
@@ -130,6 +126,8 @@ export function PricingSection({ profile, showHeader = true }: Props) {
           </Card>
         ))}
       </div>
+
+      <CurrencySwitchLink currency={currency} onChange={setCurrency} className="mt-8" />
     </div>
   );
 }

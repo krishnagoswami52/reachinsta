@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { FloatingVideoBadge } from "@/components/FloatingVideoBadge";
 import { PLANS } from "@/lib/plans";
-import { CurrencyToggle } from "@/components/CurrencyToggle";
+import { CurrencySwitchLink } from "@/components/CurrencySwitchLink";
 import { useCurrency } from "@/lib/locationDetection";
 import { formatPlanPrice } from "@shared/pricing";
 
@@ -292,10 +292,9 @@ export default function LandingPage() {
           <h2 className="font-tight font-bold text-[40px] lg:text-[48px] leading-[1.1] tracking-tightest mb-3 max-w-[700px]">
             Pricing that respects your time.
           </h2>
-          <p className="text-[17px] text-text-secondary max-w-[520px] mb-8">
+          <p className="text-[17px] text-text-secondary max-w-[520px] mb-14">
             Start free. Upgrade when you need more competitors. That&apos;s it.
           </p>
-          <CurrencyToggle currency={currency} onChange={setCurrency} className="mb-10" />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* FREE */}
@@ -355,6 +354,8 @@ export default function LandingPage() {
               <a href="/signup?plan=pro" className="border border-border-subtle hover:border-mint hover:text-mint text-center font-semibold text-[14px] py-3 rounded-md transition-colors">Upgrade to Pro</a>
             </div>
           </div>
+
+          <CurrencySwitchLink currency={currency} onChange={setCurrency} className="mt-8" />
 
           <p className="font-mono text-[12px] text-text-muted mt-10 max-w-[600px]">
             Annual billing? Email{" "}

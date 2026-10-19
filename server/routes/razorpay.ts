@@ -1,9 +1,8 @@
 import { Router } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
-import { hasLiveSubscription } from "@shared/subscription";
+import { getCheckoutBlock } from "@shared/subscription";
 import {
-  cancelScheduledChanges,
   cancelSubscriptionAtCycleEnd,
   createSubscription,
   getNote,
@@ -42,11 +41,9 @@ router.post("/api/razorpay/create-subscription", isAuthenticated, async (req: an
       return res.status(404).json({ message: "Profile not found" });
     }
 
-    if (hasLiveSubscription(profile)) {
-      return res.status(409).json({
-        message: "You already have an active subscription. To change plans, cancel from Billing and subscribe to the new plan.",
-        code: "ALREADY_SUBSCRIBED",
-      });
+    const block = getCheckoutBlock(profile, planId);
+    if (block) {
+      return res.status(409).json(block);
     }
 
     const sub = await createSubscription(razorpayPlanId, { user_id: userId, plan: planId });
@@ -115,6 +112,11 @@ router.post("/api/razorpay/verify-payment", isAuthenticated, async (req: any, re
  * Schedules cancellation at the end of the current cycle. User keeps paid
  * access until then; the daily cron (or the subscription.cancelled webhook)
  * downgrades after.
+ *
+ * Irreversible: Razorpay has no way to undo a cycle-end cancel
+ * (cancel_scheduled_changes answers "No Pending update for this
+ * subscription"), and while it's pending the API still reports the sub as
+ * active with has_scheduled_changes=false. So there is no resume endpoint.
  */
 router.post("/api/razorpay/cancel-subscription", isAuthenticated, async (req: any, res) => {
   try {
@@ -157,65 +159,6 @@ router.post("/api/razorpay/cancel-subscription", isAuthenticated, async (req: an
   } catch (error) {
     console.error("[Razorpay cancel-subscription] Error:", error);
     res.status(500).json({ message: "Failed to cancel subscription. Please try again or contact support." });
-  }
-});
-
-/**
- * POST /api/razorpay/resume-subscription
- * Tries to remove a scheduled cycle-end cancel. Razorpay doesn't document
- * whether that's possible, so a rejection is reported to the user as
- * "can't be resumed" rather than a generic failure.
- */
-router.post("/api/razorpay/resume-subscription", isAuthenticated, async (req: any, res) => {
-  try {
-    const userId = req.user.claims.sub;
-
-    const profile = await storage.getProfile(userId);
-    if (profile?.paymentProvider !== "razorpay" || !profile.razorpaySubscriptionId) {
-      return res.status(400).json({
-        message: "No subscription found",
-        code: "NO_SUBSCRIPTION",
-      });
-    }
-
-    if (profile.subscriptionStatus !== "canceling") {
-      return res.status(400).json({
-        message: "Subscription is not scheduled to cancel",
-        code: "NOT_CANCELING",
-      });
-    }
-
-    try {
-      await cancelScheduledChanges(profile.razorpaySubscriptionId);
-    } catch (err) {
-      console.warn(`[Razorpay] Resume rejected for ${profile.razorpaySubscriptionId}:`, err);
-      return res.status(409).json({
-        message: "This subscription can't be resumed. You keep access until the end of your billing period and can subscribe again after that.",
-        code: "RESUME_UNSUPPORTED",
-      });
-    }
-
-    const sub = await getSubscription(profile.razorpaySubscriptionId);
-    if (sub.status !== "active" && sub.status !== "authenticated") {
-      return res.status(409).json({
-        message: "This subscription can't be resumed. You can subscribe again once it ends.",
-        code: "RESUME_UNSUPPORTED",
-      });
-    }
-
-    await storage.updateProfileSubscription(userId, {
-      subscriptionStatus: "active",
-      cancelAtPeriodEnd: false,
-      cancelAt: null,
-      currentPeriodEnd: unixToDate(sub.current_end) ?? profile.currentPeriodEnd,
-    });
-
-    console.log(`[Razorpay] User ${userId} resumed ${profile.razorpaySubscriptionId}`);
-
-    res.json({ message: "Subscription resumed. You will not be downgraded." });
-  } catch (error) {
-    console.error("[Razorpay resume-subscription] Error:", error);
-    res.status(500).json({ message: "Failed to resume subscription. Please try again or contact support." });
   }
 });
 

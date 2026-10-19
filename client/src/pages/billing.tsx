@@ -80,7 +80,7 @@ export default function BillingPage() {
 
   const resumeMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", isRazorpay ? "/api/razorpay/resume-subscription" : "/api/subscription/resume");
+      const res = await apiRequest("POST", "/api/subscription/resume");
       return res.json();
     },
     onSuccess: () => {
@@ -226,18 +226,30 @@ export default function BillingPage() {
           <CardContent className="p-6 space-y-4">
             <div>
               <p className="font-medium">Subscription canceled</p>
-              <p className="text-sm text-muted-foreground">
-                You'll keep your {PLANS[profile.plan]?.name ?? profile.plan} plan until{" "}
-                <span className="font-medium text-foreground">{formatDate(profile.cancelAt ?? profile.currentPeriodEnd)}</span>,
-                then be downgraded to Free. Changed your mind?
-              </p>
+              {isRazorpay ? (
+                // Razorpay can't undo a cycle-end cancel (cancel_scheduled_changes
+                // answers "No Pending update"), so no resume button — say so plainly.
+                <p className="text-sm text-muted-foreground">
+                  Your subscription is scheduled to end on{" "}
+                  <span className="font-medium text-foreground">{formatDate(profile.cancelAt ?? profile.currentPeriodEnd)}</span>.
+                  To continue after that, you'll need to subscribe again.
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  You'll keep your {PLANS[profile.plan]?.name ?? profile.plan} plan until{" "}
+                  <span className="font-medium text-foreground">{formatDate(profile.cancelAt ?? profile.currentPeriodEnd)}</span>,
+                  then be downgraded to Free. Changed your mind?
+                </p>
+              )}
             </div>
-            <Button
-              onClick={() => resumeMutation.mutate()}
-              disabled={resumeMutation.isPending}
-            >
-              {resumeMutation.isPending ? "Resuming…" : "Resume subscription"}
-            </Button>
+            {!isRazorpay && (
+              <Button
+                onClick={() => resumeMutation.mutate()}
+                disabled={resumeMutation.isPending}
+              >
+                {resumeMutation.isPending ? "Resuming…" : "Resume subscription"}
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : hasProviderSubscription && (profile?.subscriptionStatus === "active" || profile?.subscriptionStatus === "past_due") ? (
@@ -267,8 +279,10 @@ export default function BillingPage() {
             <AlertDialogDescription>
               You'll keep access to your current plan until{" "}
               <span className="font-medium text-foreground">{formatDate(profile?.currentPeriodEnd)}</span>.
-              After that, you'll be downgraded to the Free plan. You can resume any
-              time before then.
+              After that, you'll be downgraded to the Free plan.{" "}
+              {isRazorpay
+                ? "This can't be undone — to continue after that, you'll need to subscribe again."
+                : "You can resume any time before then."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

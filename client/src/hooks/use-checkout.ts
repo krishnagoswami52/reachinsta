@@ -7,11 +7,8 @@ import { openRazorpayCheckout } from "@/lib/razorpay";
 import { useCurrency } from "@/lib/locationDetection";
 import { PLANS } from "@/lib/plans";
 import { errMessage } from "@/lib/apiError";
-import { hasLiveSubscription } from "@shared/subscription";
+import { getCheckoutBlock } from "@shared/subscription";
 import type { Profile } from "@shared/schema";
-
-const ALREADY_SUBSCRIBED =
-  "You already have an active subscription. To change plans, cancel from Billing and subscribe to the new plan.";
 
 /**
  * One entry point for paid checkout. The selected currency picks the
@@ -45,8 +42,12 @@ export function useCheckout() {
       return;
     }
 
-    if (profile && hasLiveSubscription(profile)) {
-      toast({ title: "Already subscribed", description: ALREADY_SUBSCRIBED });
+    const block = profile ? getCheckoutBlock(profile, planId) : null;
+    if (block) {
+      toast({
+        title: block.code === "SUBSCRIPTION_ENDING" ? "Plan ending soon" : "Already subscribed",
+        description: block.message,
+      });
       return;
     }
 

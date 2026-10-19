@@ -130,18 +130,6 @@ export async function cancelSubscriptionAtCycleEnd(subscriptionId: string): Prom
   );
 }
 
-/**
- * Removes a scheduled change before it takes effect. Razorpay documents this
- * for scheduled plan updates; whether it also revokes a cycle-end cancel is
- * not documented, so callers must handle a rejection.
- */
-export async function cancelScheduledChanges(subscriptionId: string): Promise<RazorpaySubscription> {
-  return razorpayRequest<RazorpaySubscription>(
-    "POST",
-    `/subscriptions/${subscriptionId}/cancel_scheduled_changes`,
-  );
-}
-
 export function unixToDate(seconds: number | null | undefined): Date | null {
   return seconds ? new Date(seconds * 1000) : null;
 }

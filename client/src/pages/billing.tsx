@@ -159,7 +159,7 @@ export default function BillingPage() {
                 <div className="flex items-center gap-3">
                   <PlanBadge plan={profile.plan} />
                   <span className="text-2xl font-bold">
-                    ${plan.price}
+                    ${plan.priceUsd}
                     <span className="text-sm font-normal text-muted-foreground">/mo</span>
                   </span>
                 </div>

@@ -21,6 +21,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import type { Profile } from "@shared/schema";
+import { PLANS } from "@/lib/plans";
 
 /**
  * Admin analytics dashboard — READ-ONLY business metrics.
@@ -329,7 +330,7 @@ function RevenueSection({ stats }: { stats: AdminStats }) {
         />
       </div>
       <p className="font-mono text-[10px] text-text-muted mt-4">
-        MRR uses the live plan prices (Plus $49/mo, Pro $99/mo). Read-only — this
+        MRR uses the live plan prices (Plus ${PLANS.plus.priceUsd}/mo, Pro ${PLANS.pro.priceUsd}/mo). Read-only — this
         page never changes pricing.
       </p>
     </Panel>

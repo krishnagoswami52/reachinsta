@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { PLANS } from "@/lib/plans";
 
 export default function RefundPage() {
   useEffect(() => { document.title = "Refund Policy — ReachInsta"; }, []);
@@ -100,8 +101,8 @@ export default function RefundPage() {
                 The 14-day guarantee covers every paid ReachInsta subscription:
               </p>
               <ul className="space-y-2 text-[15px] text-text-secondary leading-[1.7] pl-5">
-                <li>● <strong className="text-text-primary">Plus</strong> ($49/mo) — monthly and annual billing</li>
-                <li>● <strong className="text-text-primary">Pro</strong> ($99/mo) — monthly and annual billing</li>
+                <li>● <strong className="text-text-primary">Plus</strong> (${PLANS.plus.priceUsd}/mo) — monthly and annual billing</li>
+                <li>● <strong className="text-text-primary">Pro</strong> (${PLANS.pro.priceUsd}/mo) — monthly and annual billing</li>
                 <li>● Any upgrade, downgrade, or plan-change charge</li>
                 <li>● Renewal charges, each with their own 14-day window</li>
               </ul>

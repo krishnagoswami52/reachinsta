@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "../db";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { requireAdmin } from "../middleware/adminAuth";
+import { planPrices } from "@shared/pricing";
 
 /**
  * Admin analytics API — STRICTLY READ-ONLY.
@@ -15,10 +16,9 @@ import { requireAdmin } from "../middleware/adminAuth";
  */
 const router = Router();
 
-// Monthly USD amount per paid plan. MIRROR ONLY — the source of truth is
-// client/src/lib/plans.ts / Paddle. Changing these changes a dashboard number,
-// never what a customer is charged.
-const PLAN_MRR: Record<string, number> = { plus: 49, pro: 99 };
+// Monthly USD amount per paid plan, read from shared/pricing.ts. Changing those
+// numbers changes a dashboard figure, never what a customer is charged.
+const PLAN_MRR: Record<string, number> = { plus: planPrices.plus.usd, pro: planPrices.pro.usd };
 
 // A subscriber is "paying" while active OR canceling (canceling = cancel at
 // period end, still paid for the current period).

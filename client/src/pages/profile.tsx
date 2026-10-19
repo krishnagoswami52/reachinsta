@@ -305,12 +305,13 @@ export default function ProfilePage() {
                 {currentPlan === plan && <span className="font-mono text-[10px] text-mint">current</span>}
               </div>
               <div className="font-mono text-[24px] font-semibold text-text-primary mb-3">
-                {plan === "free" ? "$0" : plan === "plus" ? "$49" : "$99"}<span className="text-[12px] text-text-muted">/mo</span>
+                ${PLANS[plan].priceUsd}<span className="text-[12px] text-text-muted">/mo</span>
               </div>
               <ul className="space-y-1 font-mono text-[11px] text-text-secondary">
-                {plan === "free" && <><li>5 competitors</li><li>1 fetch / month</li><li>7-day window</li></>}
-                {plan === "plus" && <><li>50 competitors</li><li>2 fetches / month</li><li>14-day window</li></>}
-                {plan === "pro" && <><li>100 competitors</li><li>4 fetches / month</li><li>+ CSV export</li></>}
+                <li>{PLANS[plan].competitors} competitors</li>
+                <li>{PLANS[plan].fetchesPerMonth} {PLANS[plan].fetchesPerMonth === 1 ? "fetch" : "fetches"} / month</li>
+                <li>{PLANS[plan].timeRange}-day window</li>
+                {PLANS[plan].csvExport && <li>+ CSV export</li>}
               </ul>
             </div>
           ))}

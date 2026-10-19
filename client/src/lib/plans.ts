@@ -1,8 +1,11 @@
+import { planPrices } from '@shared/pricing';
+
 export const PLANS = {
   free: {
     id: 'free' as const,
     name: 'Free',
-    price: 0,
+    priceUsd: planPrices.free.usd,
+    priceInr: planPrices.free.inr,
     competitors: 5,
     timeRange: 7,
     fetchesPerMonth: 1,
@@ -12,7 +15,8 @@ export const PLANS = {
   plus: {
     id: 'plus' as const,
     name: 'Plus',
-    price: 49,
+    priceUsd: planPrices.plus.usd,
+    priceInr: planPrices.plus.inr,
     competitors: 50,
     // 14, not 28. The server enforces planLimits.plus.timeRangeMaxDays = 14
     // (shared/schema.ts) and rejects anything longer with "Time range not
@@ -26,7 +30,8 @@ export const PLANS = {
   pro: {
     id: 'pro' as const,
     name: 'Pro',
-    price: 99,
+    priceUsd: planPrices.pro.usd,
+    priceInr: planPrices.pro.inr,
     competitors: 100,
     timeRange: 28,
     fetchesPerMonth: 4,

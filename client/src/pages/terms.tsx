@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { PLANS } from "@/lib/plans";
 
 export default function TermsPage() {
   useEffect(() => { document.title = "Terms of Service — ReachInsta"; }, []);
@@ -101,7 +102,7 @@ export default function TermsPage() {
             <section>
               <h2 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-4">4. Plans, billing, and refunds</h2>
               <p className="text-[15px] text-text-secondary leading-[1.7] mb-3">
-                Pricing is shown on the homepage. We currently offer Free ($0), Plus ($49/mo), and Pro ($99/mo) tiers. Payments are processed by our third-party payment provider, which acts as the merchant of record for your purchase.
+                Pricing is shown on the homepage. We currently offer Free (${PLANS.free.priceUsd}), Plus (${PLANS.plus.priceUsd}/mo, or ₹{PLANS.plus.priceInr.toLocaleString("en-IN")}/mo in INR), and Pro (${PLANS.pro.priceUsd}/mo, or ₹{PLANS.pro.priceInr.toLocaleString("en-IN")}/mo in INR) tiers. USD payments are processed by Paddle, which acts as the merchant of record for your purchase. INR payments are processed by Razorpay; for those, ReachInsta is the seller.
               </p>
               <p className="text-[15px] text-text-secondary leading-[1.7] mb-3">
                 <strong className="text-text-primary">Refunds:</strong> We offer a 14-day full refund window from your payment date, no questions asked. Email{" "}

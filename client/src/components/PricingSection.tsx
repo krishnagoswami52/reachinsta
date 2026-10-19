@@ -1,5 +1,8 @@
 import { PLANS } from "@/lib/plans";
 import { UpgradeButton } from "@/components/UpgradeButton";
+import { CurrencySwitchLink } from "@/components/CurrencySwitchLink";
+import { useCurrency } from "@/lib/locationDetection";
+import { formatPlanPrice } from "@shared/pricing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Profile } from "@shared/schema";
@@ -63,6 +66,7 @@ const pricingPlans = [
 
 export function PricingSection({ profile, showHeader = true }: Props) {
   const currentPlan = profile?.plan;
+  const [currency, setCurrency] = useCurrency();
 
   return (
     <div>
@@ -87,7 +91,7 @@ export function PricingSection({ profile, showHeader = true }: Props) {
                 <p className="text-muted-foreground text-sm mt-1">{description}</p>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold">${plan.price}</span>
+                <span className="text-4xl font-bold">{formatPlanPrice(plan.id, currency)}</span>
                 <span className="text-muted-foreground">/month</span>
               </div>
               <ul className="space-y-3 text-sm">
@@ -122,6 +126,8 @@ export function PricingSection({ profile, showHeader = true }: Props) {
           </Card>
         ))}
       </div>
+
+      <CurrencySwitchLink currency={currency} onChange={setCurrency} className="mt-8" />
     </div>
   );
 }

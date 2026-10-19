@@ -4,8 +4,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { loadPaddle, openCheckout } from "@/lib/paddle";
+import { useCheckout } from "@/hooks/use-checkout";
 import { PLANS } from "@/lib/plans";
+import { useCurrency } from "@/lib/locationDetection";
+import { formatPlanPrice } from "@shared/pricing";
 import { Camera, Crown, CreditCard, Shield, KeyRound, LogOut, ChevronDown, ArrowRight } from "lucide-react";
 import type { Profile, Competitor } from "@shared/schema";
 
@@ -136,33 +138,12 @@ export default function ProfilePage() {
     }
   }
 
-  const [paddleReady, setPaddleReady] = useState(false);
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
-
-  useEffect(() => {
-    loadPaddle()
-      .then(() => setPaddleReady(true))
-      .catch((err) => console.error("[Paddle] Load failed:", err));
-  }, []);
-
-  function handleUpgrade(planId: "plus" | "pro") {
-    if (!user) return;
-    const plan = PLANS[planId];
-    if (!plan.paddlePriceId) return;
-    setUpgradeLoading(true);
-    try {
-      openCheckout({ priceId: plan.paddlePriceId, userId: user.id, userEmail: user.email });
-    } catch (err) {
-      console.error("[Paddle] Checkout open failed:", err);
-      setUpgradeLoading(false);
-      return;
-    }
-    setTimeout(() => setUpgradeLoading(false), 2000);
-  }
+  const { startCheckout, loading: upgradeLoading, ready: checkoutReady } = useCheckout();
 
   const displayAvatar = avatarPreview ?? user?.profileImageUrl ?? undefined;
   const initials = (user?.firstName?.charAt(0) ?? user?.email?.charAt(0) ?? "U").toUpperCase();
   const currentPlan = profile?.plan ?? "free";
+  const [currency] = useCurrency();
 
   const memberSince = useMemo(() => {
     if (!user?.createdAt) return null;
@@ -305,12 +286,13 @@ export default function ProfilePage() {
                 {currentPlan === plan && <span className="font-mono text-[10px] text-mint">current</span>}
               </div>
               <div className="font-mono text-[24px] font-semibold text-text-primary mb-3">
-                {plan === "free" ? "$0" : plan === "plus" ? "$49" : "$99"}<span className="text-[12px] text-text-muted">/mo</span>
+                {formatPlanPrice(plan, currency)}<span className="text-[12px] text-text-muted">/mo</span>
               </div>
               <ul className="space-y-1 font-mono text-[11px] text-text-secondary">
-                {plan === "free" && <><li>5 competitors</li><li>1 fetch / month</li><li>7-day window</li></>}
-                {plan === "plus" && <><li>50 competitors</li><li>2 fetches / month</li><li>14-day window</li></>}
-                {plan === "pro" && <><li>100 competitors</li><li>4 fetches / month</li><li>+ CSV export</li></>}
+                <li>{PLANS[plan].competitors} competitors</li>
+                <li>{PLANS[plan].fetchesPerMonth} {PLANS[plan].fetchesPerMonth === 1 ? "fetch" : "fetches"} / month</li>
+                <li>{PLANS[plan].timeRange}-day window</li>
+                {PLANS[plan].csvExport && <li>+ CSV export</li>}
               </ul>
             </div>
           ))}
@@ -319,8 +301,8 @@ export default function ProfilePage() {
         <div className="flex flex-wrap gap-3">
           {currentPlan !== "pro" && (
             <button
-              onClick={() => handleUpgrade(currentPlan === "free" ? "plus" : "pro")}
-              disabled={upgradeLoading || !paddleReady}
+              onClick={() => startCheckout(currentPlan === "free" ? "plus" : "pro")}
+              disabled={upgradeLoading || !checkoutReady}
               className="bg-mint hover:bg-mint-hover text-bg-base font-semibold text-[14px] px-5 py-2.5 rounded-md inline-flex items-center gap-2 transition-all disabled:opacity-50"
             >
               <Crown className="w-4 h-4" />

@@ -13,6 +13,7 @@ import {
   type ApifyKey,
   planLimits,
   type PlanType,
+  type PaymentProviderType,
 } from "@shared/schema";
 import { users, emailVerificationTokens, passwordResetTokens, type User, type UpsertUser } from "@shared/models/auth";
 
@@ -76,9 +77,12 @@ export interface IStorage {
   getAllProfiles(): Promise<Profile[]>;
   updateProfile(id: string, updates: Partial<InsertProfile>): Promise<Profile | undefined>;
   getProfileByPaddleCustomerId(customerId: string): Promise<Profile | undefined>;
+  getProfileByRazorpaySubscriptionId(subscriptionId: string): Promise<Profile | undefined>;
   updateProfileSubscription(userId: string, data: {
     paddleCustomerId?: string;
     paddleSubscriptionId?: string | null;
+    razorpaySubscriptionId?: string | null;
+    paymentProvider?: PaymentProviderType | null;
     subscriptionStatus?: string;
     plan?: string;
     currentPeriodEnd?: Date | null;
@@ -415,11 +419,21 @@ export class DatabaseStorage implements IStorage {
     return profile;
   }
 
+  async getProfileByRazorpaySubscriptionId(subscriptionId: string): Promise<Profile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.razorpaySubscriptionId, subscriptionId));
+    return profile;
+  }
+
   async updateProfileSubscription(
     userId: string,
     data: {
       paddleCustomerId?: string;
       paddleSubscriptionId?: string | null;
+      razorpaySubscriptionId?: string | null;
+      paymentProvider?: PaymentProviderType | null;
       subscriptionStatus?: string;
       plan?: string;
       currentPeriodEnd?: Date | null;
@@ -433,6 +447,8 @@ export class DatabaseStorage implements IStorage {
 
     if (data.paddleCustomerId !== undefined) updates.paddleCustomerId = data.paddleCustomerId;
     if (data.paddleSubscriptionId !== undefined) updates.paddleSubscriptionId = data.paddleSubscriptionId;
+    if (data.razorpaySubscriptionId !== undefined) updates.razorpaySubscriptionId = data.razorpaySubscriptionId;
+    if (data.paymentProvider !== undefined) updates.paymentProvider = data.paymentProvider;
     if (data.subscriptionStatus !== undefined) updates.subscriptionStatus = data.subscriptionStatus;
     if (data.currentPeriodEnd !== undefined) updates.currentPeriodEnd = data.currentPeriodEnd;
     if (data.cancelAtPeriodEnd !== undefined) updates.cancelAtPeriodEnd = data.cancelAtPeriodEnd;

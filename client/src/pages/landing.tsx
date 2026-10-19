@@ -1,7 +1,12 @@
 import { useEffect } from "react";
 import { FloatingVideoBadge } from "@/components/FloatingVideoBadge";
+import { PLANS } from "@/lib/plans";
+import { CurrencySwitchLink } from "@/components/CurrencySwitchLink";
+import { useCurrency } from "@/lib/locationDetection";
+import { formatPlanPrice } from "@shared/pricing";
 
 export default function LandingPage() {
+  const [currency, setCurrency] = useCurrency();
   useEffect(() => { document.title = "ReachInsta — Find viral Reels before your competitors do."; }, []);
 
   return (
@@ -298,13 +303,13 @@ export default function LandingPage() {
               <h3 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-2">Free</h3>
               <p className="text-[13px] text-text-secondary mb-7">For getting started</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="font-tight font-bold text-[48px] tracking-tightest">$0</span>
+                <span className="font-tight font-bold text-[48px] tracking-tightest">{formatPlanPrice("free", currency)}</span>
                 <span className="font-mono text-[13px] text-text-muted">/month</span>
               </div>
               <ul className="space-y-3 text-[14px] mb-8 flex-1">
-                <PricingFeature>5 competitors</PricingFeature>
-                <PricingFeature>7-day time range</PricingFeature>
-                <PricingFeature>1 fetch / month</PricingFeature>
+                <PricingFeature>{PLANS.free.competitors} competitors</PricingFeature>
+                <PricingFeature>{PLANS.free.timeRange}-day time range</PricingFeature>
+                <PricingFeature>{PLANS.free.fetchesPerMonth} fetch / month</PricingFeature>
                 <PricingFeatureMissing>No CSV export</PricingFeatureMissing>
               </ul>
               <a href="/signup" className="border border-border-subtle hover:border-mint hover:text-mint text-center font-semibold text-[14px] py-3 rounded-md transition-colors">Start Free</a>
@@ -319,13 +324,13 @@ export default function LandingPage() {
               <h3 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-2">Plus</h3>
               <p className="text-[13px] text-text-secondary mb-7">For growing creators</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="font-tight font-bold text-[48px] tracking-tightest">$49</span>
+                <span className="font-tight font-bold text-[48px] tracking-tightest">{formatPlanPrice("plus", currency)}</span>
                 <span className="font-mono text-[13px] text-text-muted">/month</span>
               </div>
               <ul className="space-y-3 text-[14px] mb-8 flex-1">
-                <PricingFeature>50 competitors</PricingFeature>
-                <PricingFeature>14-day time range</PricingFeature>
-                <PricingFeature>2 fetches / month</PricingFeature>
+                <PricingFeature>{PLANS.plus.competitors} competitors</PricingFeature>
+                <PricingFeature>{PLANS.plus.timeRange}-day time range</PricingFeature>
+                <PricingFeature>{PLANS.plus.fetchesPerMonth} fetches / month</PricingFeature>
                 <PricingFeatureMissing>No CSV export</PricingFeatureMissing>
               </ul>
               <a href="/signup?plan=plus" className="bg-mint hover:bg-mint-hover text-bg-base text-center font-semibold text-[14px] py-3 rounded-md transition-all hover:-translate-y-px">Upgrade to Plus</a>
@@ -337,18 +342,20 @@ export default function LandingPage() {
               <h3 className="font-tight font-semibold text-[24px] tracking-tighter-2 mb-2">Pro</h3>
               <p className="text-[13px] text-text-secondary mb-7">For agencies</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="font-tight font-bold text-[48px] tracking-tightest">$99</span>
+                <span className="font-tight font-bold text-[48px] tracking-tightest">{formatPlanPrice("pro", currency)}</span>
                 <span className="font-mono text-[13px] text-text-muted">/month</span>
               </div>
               <ul className="space-y-3 text-[14px] mb-8 flex-1">
-                <PricingFeature>100 competitors</PricingFeature>
-                <PricingFeature>28-day time range</PricingFeature>
-                <PricingFeature>4 fetches / month</PricingFeature>
+                <PricingFeature>{PLANS.pro.competitors} competitors</PricingFeature>
+                <PricingFeature>{PLANS.pro.timeRange}-day time range</PricingFeature>
+                <PricingFeature>{PLANS.pro.fetchesPerMonth} fetches / month</PricingFeature>
                 <PricingFeature>CSV export</PricingFeature>
               </ul>
               <a href="/signup?plan=pro" className="border border-border-subtle hover:border-mint hover:text-mint text-center font-semibold text-[14px] py-3 rounded-md transition-colors">Upgrade to Pro</a>
             </div>
           </div>
+
+          <CurrencySwitchLink currency={currency} onChange={setCurrency} className="mt-8" />
 
           <p className="font-mono text-[12px] text-text-muted mt-10 max-w-[600px]">
             Annual billing? Email{" "}

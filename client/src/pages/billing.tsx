@@ -19,6 +19,9 @@ import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { ArrowLeft, CreditCard, RefreshCw } from "lucide-react";
 import { PLANS } from "@/lib/plans";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { errMessage } from "@/lib/apiError";
+import { useCurrency } from "@/lib/locationDetection";
+import { formatPlanPrice } from "@shared/pricing";
 import type { Profile } from "@shared/schema";
 
 function formatDate(value: Date | string | null | undefined): string {
@@ -30,16 +33,6 @@ function formatDate(value: Date | string | null | undefined): string {
   });
 }
 
-/** apiRequest throws "<status>: <json body>" — extract the server's message field. */
-function errMessage(error: Error): string {
-  const raw = error.message.replace(/^\d+:\s*/, "");
-  try {
-    return JSON.parse(raw).message ?? raw;
-  } catch {
-    return raw;
-  }
-}
-
 export default function BillingPage() {
   useEffect(() => { document.title = "Billing - ReachInsta"; }, []);
   const { toast } = useToast();
@@ -49,6 +42,14 @@ export default function BillingPage() {
   const { data: profile, isLoading } = useQuery<Profile>({
     queryKey: ["/api/profile"],
   });
+  const [displayCurrency] = useCurrency();
+
+  // Paddle subscribers from before payment_provider existed have it null, so
+  // only an explicit "razorpay" routes to the Razorpay endpoints.
+  const isRazorpay = profile?.paymentProvider === "razorpay";
+  const hasProviderSubscription = !!(profile?.paddleSubscriptionId || profile?.razorpaySubscriptionId);
+  // A paying user sees what they're billed in; anyone else sees their chosen currency.
+  const priceCurrency = isRazorpay ? "INR" : hasProviderSubscription ? "USD" : displayCurrency;
 
   const invalidateUserState = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
@@ -57,7 +58,7 @@ export default function BillingPage() {
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/subscription/cancel");
+      const res = await apiRequest("POST", isRazorpay ? "/api/razorpay/cancel-subscription" : "/api/subscription/cancel");
       return res.json();
     },
     onSuccess: (data: { cancelAt?: string }) => {
@@ -159,10 +160,15 @@ export default function BillingPage() {
                 <div className="flex items-center gap-3">
                   <PlanBadge plan={profile.plan} />
                   <span className="text-2xl font-bold">
-                    ${plan.price}
+                    {formatPlanPrice(profile.plan, priceCurrency)}
                     <span className="text-sm font-normal text-muted-foreground">/mo</span>
                   </span>
                 </div>
+                {hasProviderSubscription && (
+                  <p className="text-xs text-muted-foreground">
+                    Billed monthly in {isRazorpay ? "INR via Razorpay" : "USD via Paddle"}
+                  </p>
+                )}
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>Up to {plan.competitors} competitors</li>
                   <li>{plan.timeRange}-day analytics window</li>
@@ -220,21 +226,33 @@ export default function BillingPage() {
           <CardContent className="p-6 space-y-4">
             <div>
               <p className="font-medium">Subscription canceled</p>
-              <p className="text-sm text-muted-foreground">
-                You'll keep your {PLANS[profile.plan]?.name ?? profile.plan} plan until{" "}
-                <span className="font-medium text-foreground">{formatDate(profile.cancelAt ?? profile.currentPeriodEnd)}</span>,
-                then be downgraded to Free. Changed your mind?
-              </p>
+              {isRazorpay ? (
+                // Razorpay can't undo a cycle-end cancel (cancel_scheduled_changes
+                // answers "No Pending update"), so no resume button — say so plainly.
+                <p className="text-sm text-muted-foreground">
+                  Your subscription is scheduled to end on{" "}
+                  <span className="font-medium text-foreground">{formatDate(profile.cancelAt ?? profile.currentPeriodEnd)}</span>.
+                  To continue after that, you'll need to subscribe again.
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  You'll keep your {PLANS[profile.plan]?.name ?? profile.plan} plan until{" "}
+                  <span className="font-medium text-foreground">{formatDate(profile.cancelAt ?? profile.currentPeriodEnd)}</span>,
+                  then be downgraded to Free. Changed your mind?
+                </p>
+              )}
             </div>
-            <Button
-              onClick={() => resumeMutation.mutate()}
-              disabled={resumeMutation.isPending}
-            >
-              {resumeMutation.isPending ? "Resuming…" : "Resume subscription"}
-            </Button>
+            {!isRazorpay && (
+              <Button
+                onClick={() => resumeMutation.mutate()}
+                disabled={resumeMutation.isPending}
+              >
+                {resumeMutation.isPending ? "Resuming…" : "Resume subscription"}
+              </Button>
+            )}
           </CardContent>
         </Card>
-      ) : profile?.paddleSubscriptionId && (profile.subscriptionStatus === "active" || profile.subscriptionStatus === "past_due") ? (
+      ) : hasProviderSubscription && (profile?.subscriptionStatus === "active" || profile?.subscriptionStatus === "past_due") ? (
         <Card className="border-destructive/20">
           <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -261,8 +279,10 @@ export default function BillingPage() {
             <AlertDialogDescription>
               You'll keep access to your current plan until{" "}
               <span className="font-medium text-foreground">{formatDate(profile?.currentPeriodEnd)}</span>.
-              After that, you'll be downgraded to the Free plan. You can resume any
-              time before then.
+              After that, you'll be downgraded to the Free plan.{" "}
+              {isRazorpay
+                ? "This can't be undone — to continue after that, you'll need to subscribe again."
+                : "You can resume any time before then."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
